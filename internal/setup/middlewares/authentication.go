@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -25,8 +24,6 @@ func VerifyAccessToken(next http.Handler) http.Handler {
 			http.Error(w, "Invalid or expired access token", http.StatusUnauthorized)
 			return
 		}
-
-		log.Println(claims)
 
 		r.Header.Set("UserId", claims["sub"].(string))
 
