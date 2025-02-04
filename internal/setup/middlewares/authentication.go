@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -18,12 +19,14 @@ func VerifyAccessToken(next http.Handler) http.Handler {
 
 		authorization = strings.TrimPrefix(authorization, "Bearer ")
 
-		_, claims, err := utils.NewCreateAccessTokenUtil().Validate(authorization)
+		claims, err := utils.NewCreateAccessTokenUtil().DecodeToken(authorization)
 
 		if err != nil {
 			http.Error(w, "Invalid or expired access token", http.StatusUnauthorized)
 			return
 		}
+
+		log.Println(claims)
 
 		r.Header.Set("UserId", claims["sub"].(string))
 

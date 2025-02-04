@@ -10,6 +10,9 @@ func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountC
 	// dbCreateChat := usecase.NewDbCreateChat(createChatRepository)
 
 	// return controllers.NewCreateChatController(dbCreateChat)
+	// createAccountController := controllers.NewCreateAccountController(usecase.CreateAccount{})
 
-	return &controllers.CreateAccountController{}
+	return &controllers.CreateAccountController{
+		// CreateAccount: dbCreateAccount,
+	}
 }
