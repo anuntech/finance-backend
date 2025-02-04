@@ -1,11 +1,10 @@
 package middlewares
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/utils"
+	"github.com/anuntech/finance-backend/internal/utils"
 )
 
 func VerifyAccessToken(next http.Handler) http.Handler {
@@ -19,8 +18,7 @@ func VerifyAccessToken(next http.Handler) http.Handler {
 
 		authorization = strings.TrimPrefix(authorization, "Bearer ")
 
-		claims, err := utils.NewCreateAccessTokenUtil().Validate(authorization)
-		log.Println(err.Error())
+		_, claims, err := utils.NewCreateAccessTokenUtil().Validate(authorization)
 
 		if err != nil {
 			http.Error(w, "Invalid or expired access token", http.StatusUnauthorized)

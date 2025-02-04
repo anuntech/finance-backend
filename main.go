@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup"
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/config"
+	"github.com/anuntech/finance-backend/internal/setup"
+	"github.com/anuntech/finance-backend/internal/setup/config"
 )
 
 func main() {

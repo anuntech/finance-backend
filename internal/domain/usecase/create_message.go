@@ -1,6 +1,6 @@
 package usecase
 
-import "github.com/willchat-ofc/api-willchat-golang/internal/domain/models"
+import "github.com/anuntech/finance-backend/internal/domain/models"
 
 type CreateMessageInput struct {
 	ChatId     string

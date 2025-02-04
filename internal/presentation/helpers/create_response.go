@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/presentation/protocols"
 )
 
 func CreateResponse(body any, statusCode int) *protocols.HttpResponse {

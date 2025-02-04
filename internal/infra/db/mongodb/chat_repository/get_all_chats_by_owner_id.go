@@ -1,9 +1,9 @@
 package chat_repository
 
 import (
-	"github.com/willchat-ofc/api-willchat-golang/internal/data/protocols"
-	"github.com/willchat-ofc/api-willchat-golang/internal/domain/models"
-	"github.com/willchat-ofc/api-willchat-golang/internal/infra/db/mongodb/helpers"
+	"github.com/anuntech/finance-backend/internal/data/protocols"
+	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

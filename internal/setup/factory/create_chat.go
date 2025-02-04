@@ -1,7 +1,7 @@
 package factory
 
 import (
-	controllers "github.com/willchat-ofc/api-willchat-golang/internal/presentation/controllers/chat"
+	controllers "github.com/anuntech/finance-backend/internal/presentation/controllers/chat"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

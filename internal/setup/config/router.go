@@ -3,7 +3,7 @@ package config
 import (
 	"net/http"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/routes"
+	"github.com/anuntech/finance-backend/internal/setup/routes"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

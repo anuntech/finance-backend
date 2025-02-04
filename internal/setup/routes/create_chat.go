@@ -3,9 +3,9 @@ package routes
 import (
 	"net/http"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/adapters"
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/factory"
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/middlewares"
+	"github.com/anuntech/finance-backend/internal/setup/adapters"
+	"github.com/anuntech/finance-backend/internal/setup/factory"
+	"github.com/anuntech/finance-backend/internal/setup/middlewares"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

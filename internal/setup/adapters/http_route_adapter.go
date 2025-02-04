@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/presentation/protocols"
 )
 
 func AdaptRoute(controller protocols.Controller) http.Handler {

@@ -3,9 +3,9 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/domain/usecase"
-	"github.com/willchat-ofc/api-willchat-golang/internal/presentation/helpers"
-	presentationProtocols "github.com/willchat-ofc/api-willchat-golang/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	"github.com/anuntech/finance-backend/internal/presentation/helpers"
+	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 )
 
 type CreateChatController struct {

@@ -3,8 +3,8 @@ package setup
 import (
 	"net/http"
 
-	"github.com/willchat-ofc/api-willchat-golang/internal/infra/db/mongodb/helpers"
-	"github.com/willchat-ofc/api-willchat-golang/internal/setup/config"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
+	"github.com/anuntech/finance-backend/internal/setup/config"
 )
 
 func Server() *http.ServeMux {
