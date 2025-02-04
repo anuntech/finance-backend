@@ -27,13 +27,13 @@ func NewCreateAccountController(createAccount usecase.CreateAccount) *CreateAcco
 
 type CreateAccountControllerResponse struct {
 	Id    string `json:"id"`
-	Name  string `json:"name" validate:"required,email"`
+	Name  string `json:"name" validate:"required"`
 	Image string `json:"image" validate:"required,mongodb"`
 	Color string `json:"color" validate:"required,hexcolor"`
 }
 
 type CreateAccountControllerBody struct {
-	Name  string `validate:"required,email"`
+	Name  string `validate:"required"`
 	Image string `validate:"required,mongodb"`
 	Color string `validate:"required,hexcolor"`
 }
