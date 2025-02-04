@@ -1,11 +1,7 @@
 package usecase
 
-type CreateChatOutput struct {
-	Id        string
-	OwnerId   string
-	CreatedAt string
-}
+import "github.com/anuntech/finance-backend/internal/domain/models"
 
-type CreateChat interface {
-	Create(ownerId string) (*CreateChatOutput, error)
+type CreateAccount interface {
+	Create(*models.AccountInput) (*models.Account, error)
 }

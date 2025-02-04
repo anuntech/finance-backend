@@ -8,5 +8,5 @@ import (
 )
 
 func SetupRoutes(server *http.ServeMux, db *mongo.Database) {
-	routes.CreateChat(server, db)
+	routes.AccountRoutes(server, db)
 }
