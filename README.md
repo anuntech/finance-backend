@@ -1,0 +1,1 @@
+use `gow run .` to execute the project
