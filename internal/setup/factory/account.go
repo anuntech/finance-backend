@@ -21,3 +21,8 @@ func MakeGetAccountByIdController(db *mongo.Database) *controllers.GetAccountByI
 	findById := account_repository.NewFindByIdMongoRepository(db)
 	return controllers.NewGetAccountByIdController(findById)
 }
+
+func MakeDeleteAccountController(db *mongo.Database) *controllers.DeleteAccountController {
+	deleteAccount := account_repository.NewDeleteAccountMongoRepository(db)
+	return controllers.NewDeleteAccountController(deleteAccount)
+}

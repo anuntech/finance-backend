@@ -35,5 +35,11 @@ func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
+	if account == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "account not found",
+		}, http.StatusNotFound)
+	}
+
 	return helpers.CreateResponse(account, http.StatusOK)
 }

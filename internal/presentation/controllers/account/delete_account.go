@@ -6,6 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/google/uuid"
 )
 
 type DeleteAccountController struct {
@@ -19,14 +20,15 @@ func NewDeleteAccountController(deleteAccount usecase.DeleteAccount) *DeleteAcco
 }
 
 func (c *DeleteAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	id := r.Req.URL.Query().Get("id")
-	if id == "" {
+	id := r.Req.PathValue("id")
+	err := uuid.Validate(id)
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "missing account ID",
+			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
 	}
 
-	err := c.DeleteAccount.Delete(id)
+	err = c.DeleteAccount.Delete(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting account: " + err.Error(),

@@ -23,6 +23,9 @@ func (f *FindByIdMongoRepository) Find(id string) (*models.Account, error) {
 
 	filter := bson.M{"_id": id}
 	cursor := collection.FindOne(context.Background(), filter)
+	if cursor.Err() == mongo.ErrNoDocuments {
+		return nil, nil
+	}
 	if cursor.Err() != nil {
 		return nil, cursor.Err()
 	}
