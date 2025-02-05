@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
@@ -15,13 +16,32 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 		workspaceId := r.Header.Get("workspaceId")
 		applicationId := r.Header.Get("applicationId")
 
-		collection := db.Collection("workspaces")
 		workspaceObjectID, err := primitive.ObjectIDFromHex(workspaceId)
 		if err != nil {
 			http.Error(w, "Invalid workspace ID", http.StatusBadRequest)
 			return
 		}
 
+		myApplicationsCollection := db.Collection("myapplications")
+		myApplications := myApplicationsCollection.FindOne(helpers.Ctx, bson.M{"workspaceId": workspaceObjectID})
+		if myApplications.Err() != nil {
+			http.Error(w, "Workspace not found", http.StatusNotFound)
+			return
+		}
+
+		var myApplication models.MyApplication
+		if err := myApplications.Decode(&myApplication); err != nil {
+			http.Error(w, "Error decoding my application", http.StatusInternalServerError)
+			return
+		}
+
+		isWorkspaceAllowedToAccessApplication := slices.Contains(myApplication.AllowedApplicationsId, applicationId)
+		if !isWorkspaceAllowedToAccessApplication {
+			http.Error(w, "Workspace not allowed to access this application", http.StatusUnauthorized)
+			return
+		}
+
+		collection := db.Collection("workspaces")
 		result := collection.FindOne(helpers.Ctx, bson.M{"_id": workspaceObjectID})
 
 		if result.Err() != nil {
