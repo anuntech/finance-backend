@@ -6,6 +6,6 @@ type CreateAccount interface {
 	Create(*models.AccountInput) (*models.Account, error)
 }
 
-type FindManyByUserIdAndWorkspaceId interface {
-	FindManyByUserIdAndWorkspaceId(string, string) ([]models.Account, error)
+type FindByUserIdAndWorkspaceId interface {
+	Find(string, string) ([]models.Account, error)
 }

@@ -12,18 +12,18 @@ import (
 )
 
 type CreateAccountController struct {
-	CreateAccount                  usecase.CreateAccount
-	Validate                       *validator.Validate
-	FindManyByUserIdAndWorkspaceId usecase.FindManyByUserIdAndWorkspaceId
+	CreateAccount              usecase.CreateAccount
+	Validate                   *validator.Validate
+	FindByUserIdAndWorkspaceId usecase.FindByUserIdAndWorkspaceId
 }
 
-func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindManyByUserIdAndWorkspaceId) *CreateAccountController {
+func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindByUserIdAndWorkspaceId) *CreateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateAccountController{
-		CreateAccount:                  createAccount,
-		FindManyByUserIdAndWorkspaceId: findManyByUserIdAndWorkspaceId,
-		Validate:                       validate,
+		CreateAccount:              createAccount,
+		FindByUserIdAndWorkspaceId: findManyByUserIdAndWorkspaceId,
+		Validate:                   validate,
 	}
 }
 
@@ -56,7 +56,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
-	accounts, err := c.FindManyByUserIdAndWorkspaceId.FindManyByUserIdAndWorkspaceId(r.Header.Get("userId"), r.Header.Get("workspaceId"))
+	accounts, err := c.FindByUserIdAndWorkspaceId.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error ocurred when finding accounts",

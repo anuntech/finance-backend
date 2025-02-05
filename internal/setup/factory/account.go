@@ -11,3 +11,8 @@ func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountC
 	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
 	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId)
 }
+
+func MakeGetAccountsController(db *mongo.Database) *controllers.GetAccountsController {
+	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
+	return controllers.NewGetAccountsController(findManyByUserIdAndWorkspaceId)
+}

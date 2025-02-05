@@ -8,7 +8,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/protocols"
 )
 
-func CreateResponse(body any, statusCode int) *protocols.HttpResponse {
+func CreateResponse(body interface{}, statusCode int) *protocols.HttpResponse {
 	var bodyBuffer bytes.Buffer
 	err := json.NewEncoder(&bodyBuffer).Encode(body)
 
