@@ -3,28 +3,17 @@ package middlewares
 import (
 	"net/http"
 
+	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Member struct {
-	ID       primitive.ObjectID `bson:"_id"`
-	Role     string             `bson:"role"`
-	MemberId primitive.ObjectID `bson:"memberId"`
-}
-
-type Workspace struct {
-	ID      primitive.ObjectID `bson:"_id"`
-	Owner   primitive.ObjectID `bson:"owner"`
-	Members []Member           `bson:"members"`
-}
-
 func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		workspaceId := r.Header.Get("workspaceId")
-		// applicationId := r.Header.Get("applicationId")
+		applicationId := r.Header.Get("applicationId")
 
 		collection := db.Collection("workspaces")
 		workspaceObjectID, err := primitive.ObjectIDFromHex(workspaceId)
@@ -40,7 +29,7 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 			return
 		}
 
-		var workspace Workspace
+		var workspace models.Workspace
 		if err := result.Decode(&workspace); err != nil {
 			http.Error(w, "Error decoding workspace", http.StatusInternalServerError)
 			return
@@ -66,7 +55,23 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 			}
 		}
 
-		// tenho que fazer com que ele verifique se esse user tem acesso a essa aplicação nas rules
+		applicationObjectID, err := primitive.ObjectIDFromHex(applicationId)
+		if err != nil {
+			http.Error(w, "Invalid application ID", http.StatusBadRequest)
+			return
+		}
+
+		// Check if a normal user has access to the application
+		for _, value := range workspace.Rules.AllowedMemberApps {
+			if value.AppId == applicationObjectID {
+				for _, value := range value.Members {
+					if value.MemberId == userObjectID {
+						isUserAllowed = true
+						break
+					}
+				}
+			}
+		}
 
 		if !isUserAllowed {
 			http.Error(w, "User not allowed to access this application", http.StatusUnauthorized)
