@@ -37,4 +37,11 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 			workspaceDb,
 		),
 	))
+
+	server.Handle("PUT /account/{id}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeUpdateAccountController(db)),
+			workspaceDb,
+		),
+	))
 }

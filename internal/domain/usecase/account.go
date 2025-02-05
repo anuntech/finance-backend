@@ -17,3 +17,7 @@ type FindById interface {
 type DeleteAccount interface {
 	Delete(string) error
 }
+
+type UpdateAccount interface {
+	Update(string, *models.AccountInput) (*models.Account, error)
+}

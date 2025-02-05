@@ -26,3 +26,8 @@ func MakeDeleteAccountController(db *mongo.Database) *controllers.DeleteAccountC
 	deleteAccount := account_repository.NewDeleteAccountMongoRepository(db)
 	return controllers.NewDeleteAccountController(deleteAccount)
 }
+
+func MakeUpdateAccountController(db *mongo.Database) *controllers.UpdateAccountController {
+	updateAccount := account_repository.NewUpdateAccountMongoRepository(db)
+	return controllers.NewUpdateAccountController(updateAccount)
+}
