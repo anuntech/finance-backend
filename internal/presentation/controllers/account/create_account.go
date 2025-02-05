@@ -63,7 +63,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusInternalServerError)
 	}
 
-	if len(accounts) >= 4 {
+	if len(accounts) >= 50 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "user has reached the maximum number of accounts",
 		}, http.StatusBadRequest)
