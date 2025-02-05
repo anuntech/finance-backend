@@ -8,5 +8,6 @@ import (
 
 func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountController {
 	accountRepository := account_repository.NewCreateAccountMongoRepository(db)
-	return controllers.NewCreateAccountController(accountRepository)
+	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
+	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId)
 }

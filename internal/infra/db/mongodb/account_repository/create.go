@@ -49,11 +49,13 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 	}
 
 	return &models.Account{
-		Id:        accountToSave.Id,
-		Name:      accountToSave.Name,
-		Image:     accountToSave.Image,
-		Color:     accountToSave.Color,
-		CreatedAt: accountToSave.CreatedAt,
-		UpdatedAt: accountToSave.UpdatedAt,
+		Id:          accountToSave.Id,
+		Name:        accountToSave.Name,
+		Image:       accountToSave.Image,
+		Color:       accountToSave.Color,
+		CreatedAt:   accountToSave.CreatedAt,
+		UpdatedAt:   accountToSave.UpdatedAt,
+		WorkspaceId: accountToSave.WorkspaceId,
+		UserId:      accountToSave.UserId,
 	}, nil
 }

@@ -12,16 +12,18 @@ import (
 )
 
 type CreateAccountController struct {
-	CreateAccount usecase.CreateAccount
-	Validate      *validator.Validate
+	CreateAccount                  usecase.CreateAccount
+	Validate                       *validator.Validate
+	FindManyByUserIdAndWorkspaceId usecase.FindManyByUserIdAndWorkspaceId
 }
 
-func NewCreateAccountController(createAccount usecase.CreateAccount) *CreateAccountController {
+func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindManyByUserIdAndWorkspaceId) *CreateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateAccountController{
-		CreateAccount: createAccount,
-		Validate:      validate,
+		CreateAccount:                  createAccount,
+		FindManyByUserIdAndWorkspaceId: findManyByUserIdAndWorkspaceId,
+		Validate:                       validate,
 	}
 }
 
@@ -52,6 +54,19 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: err.Error(),
 		}, http.StatusUnprocessableEntity)
+	}
+
+	accounts, err := c.FindManyByUserIdAndWorkspaceId.FindManyByUserIdAndWorkspaceId(r.Header.Get("userId"), r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error ocurred when finding accounts",
+		}, http.StatusInternalServerError)
+	}
+
+	if len(accounts) >= 4 {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "user has reached the maximum number of accounts",
+		}, http.StatusBadRequest)
 	}
 
 	account, err := c.CreateAccount.Create(&models.AccountInput{
