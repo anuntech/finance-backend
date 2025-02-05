@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -15,6 +16,8 @@ func Server() *http.ServeMux {
 	dbChan := make(chan *mongo.Database)
 	workspaceDbChan := make(chan *mongo.Database)
 
+	log.Println("Loading databases...")
+
 	go func() {
 		dbChan <- helpers.MongoHelper(os.Getenv("MONGO_URL"), "finance")
 	}()
@@ -25,6 +28,8 @@ func Server() *http.ServeMux {
 
 	db := <-dbChan
 	workspaceDb := <-workspaceDbChan
+
+	log.Println("Databases loaded")
 
 	config.SetupRoutes(mux, db, workspaceDb)
 
