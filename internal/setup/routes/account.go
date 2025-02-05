@@ -23,4 +23,11 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 			workspaceDb,
 		),
 	))
+
+	server.Handle("GET /account/{id}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeGetAccountByIdController(db)),
+			workspaceDb,
+		),
+	))
 }

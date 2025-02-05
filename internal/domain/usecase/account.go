@@ -9,3 +9,7 @@ type CreateAccount interface {
 type FindByWorkspaceId interface {
 	Find(string, string) ([]models.Account, error)
 }
+
+type FindById interface {
+	Find(string) (*models.Account, error)
+}
