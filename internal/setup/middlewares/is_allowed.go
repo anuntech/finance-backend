@@ -16,6 +16,18 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 		workspaceId := r.Header.Get("workspaceId")
 		applicationId := r.Header.Get("applicationId")
 
+		_, err := primitive.ObjectIDFromHex(workspaceId)
+		if err != nil {
+			http.Error(w, "Invalid workspace ID format", http.StatusBadRequest)
+			return
+		}
+
+		_, err = primitive.ObjectIDFromHex(applicationId)
+		if err != nil {
+			http.Error(w, "Invalid application ID format", http.StatusBadRequest)
+			return
+		}
+
 		workspaceObjectID, err := primitive.ObjectIDFromHex(workspaceId)
 		if err != nil {
 			http.Error(w, "Invalid workspace ID", http.StatusBadRequest)
