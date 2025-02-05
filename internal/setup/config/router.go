@@ -8,5 +8,8 @@ import (
 )
 
 func SetupRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.Database) {
-	routes.AccountRoutes(server, db, workspaceDb)
+	apiServer := http.NewServeMux()
+	routes.AccountRoutes(apiServer, db, workspaceDb)
+
+	server.Handle("/api/", http.StripPrefix("/api", apiServer))
 }
