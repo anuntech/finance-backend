@@ -21,7 +21,7 @@ func NewFindManyByUserIdAndWorkspaceIdMongoRepository(db *mongo.Database) *FindM
 func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(userId string, workspaceId string) ([]models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	filter := bson.M{"user_id": userId, "workspace_id": workspaceId}
+	filter := bson.M{"workspace_id": workspaceId}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, err

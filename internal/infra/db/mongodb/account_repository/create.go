@@ -41,8 +41,8 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 		WorkspaceId: account.WorkspaceId,
-		UserId:      account.UserId,
 	}
+
 	_, err := collection.InsertOne(context.Background(), accountToSave)
 	if err != nil {
 		return nil, err
@@ -56,6 +56,5 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		CreatedAt:   accountToSave.CreatedAt,
 		UpdatedAt:   accountToSave.UpdatedAt,
 		WorkspaceId: accountToSave.WorkspaceId,
-		UserId:      accountToSave.UserId,
 	}, nil
 }

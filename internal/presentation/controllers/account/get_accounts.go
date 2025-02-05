@@ -9,17 +9,17 @@ import (
 )
 
 type GetAccountsController struct {
-	FindByUserIdAndWorkspaceId usecase.FindByUserIdAndWorkspaceId
+	FindByWorkspaceId usecase.FindByWorkspaceId
 }
 
-func NewGetAccountsController(findManyByUserIdAndWorkspaceId usecase.FindByUserIdAndWorkspaceId) *GetAccountsController {
+func NewGetAccountsController(findManyByUserIdAndWorkspaceId usecase.FindByWorkspaceId) *GetAccountsController {
 	return &GetAccountsController{
-		FindByUserIdAndWorkspaceId: findManyByUserIdAndWorkspaceId,
+		FindByWorkspaceId: findManyByUserIdAndWorkspaceId,
 	}
 }
 
 func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	accounts, err := c.FindByUserIdAndWorkspaceId.Find(r.Header.Get("UserId"), r.Header.Get("workspaceId"))
+	accounts, err := c.FindByWorkspaceId.Find(r.Header.Get("UserId"), r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving accounts",
