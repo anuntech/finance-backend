@@ -7,6 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func SetupRoutes(server *http.ServeMux, db *mongo.Database) {
-	routes.AccountRoutes(server, db)
+func SetupRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.Database) {
+	routes.AccountRoutes(server, db, workspaceDb)
 }

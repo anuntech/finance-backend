@@ -3,7 +3,6 @@ package helpers
 import (
 	"context"
 	"log"
-	"os"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -11,8 +10,8 @@ import (
 
 var Ctx = context.TODO()
 
-func MongoHelper() *mongo.Database {
-	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_URL"))
+func MongoHelper(URI string, databaseName string) *mongo.Database {
+	clientOptions := options.Client().ApplyURI(URI)
 	client, err := mongo.Connect(Ctx, clientOptions)
 	if err != nil {
 		log.Fatal(err)
@@ -23,7 +22,7 @@ func MongoHelper() *mongo.Database {
 		log.Fatal(err)
 	}
 
-	log.Println("MongoDB connection established")
+	log.Println("MongoDB connection established with database", databaseName)
 
-	return client.Database("database")
+	return client.Database(databaseName)
 }
