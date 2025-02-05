@@ -33,7 +33,6 @@ type CreateAccountControllerResponse struct {
 	Image       string `json:"image" validate:"required,mongodb"`
 	Color       string `json:"color" validate:"required,hexcolor"`
 	WorkspaceId string `json:"workspaceId" validate:"required"`
-	UserId      string `json:"userId" validate:"required"`
 }
 
 type CreateAccountControllerBody struct {
@@ -74,7 +73,6 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		Image:       body.Image,
 		Color:       body.Color,
 		WorkspaceId: r.Header.Get("workspaceId"),
-		UserId:      r.Header.Get("userId"),
 	})
 
 	if err != nil {
@@ -89,6 +87,5 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		Image:       account.Image,
 		Color:       account.Color,
 		WorkspaceId: account.WorkspaceId,
-		UserId:      account.UserId,
 	}, http.StatusOK)
 }

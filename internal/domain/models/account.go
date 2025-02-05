@@ -10,7 +10,6 @@ type Account struct {
 	Image       string    `bson:"image" json:"image"`
 	Color       string    `bson:"color" json:"color"`
 	WorkspaceId string    `bson:"workspace_id" json:"workspaceId"`
-	UserId      string    `bson:"user_id" json:"userId"`
 }
 
 type AccountInput struct {
@@ -18,5 +17,4 @@ type AccountInput struct {
 	Image       string `bson:"image"`
 	Color       string `bson:"color"`
 	WorkspaceId string `bson:"workspace_id"`
-	UserId      string `bson:"user_id"`
 }
