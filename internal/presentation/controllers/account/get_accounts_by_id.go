@@ -6,6 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/google/uuid"
 )
 
 type GetAccountByIdController struct {
@@ -20,6 +21,13 @@ func NewGetAccountByIdController(findById usecase.FindById) *GetAccountByIdContr
 
 func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
+	err := uuid.Validate(id)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid account ID format",
+		}, http.StatusBadRequest)
+	}
+
 	account, err := c.FindById.Find(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

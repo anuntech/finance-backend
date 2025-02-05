@@ -13,3 +13,7 @@ type FindByWorkspaceId interface {
 type FindById interface {
 	Find(string) (*models.Account, error)
 }
+
+type DeleteAccount interface {
+	Delete(string) error
+}
