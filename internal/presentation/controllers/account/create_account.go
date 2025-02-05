@@ -26,10 +26,12 @@ func NewCreateAccountController(createAccount usecase.CreateAccount) *CreateAcco
 }
 
 type CreateAccountControllerResponse struct {
-	Id    string `json:"id"`
-	Name  string `json:"name" validate:"required"`
-	Image string `json:"image" validate:"required,mongodb"`
-	Color string `json:"color" validate:"required,hexcolor"`
+	Id          string `json:"id"`
+	Name        string `json:"name" validate:"required"`
+	Image       string `json:"image" validate:"required,mongodb"`
+	Color       string `json:"color" validate:"required,hexcolor"`
+	WorkspaceId string `json:"workspaceId" validate:"required"`
+	UserId      string `json:"userId" validate:"required"`
 }
 
 type CreateAccountControllerBody struct {
@@ -53,9 +55,11 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	}
 
 	account, err := c.CreateAccount.Create(&models.AccountInput{
-		Name:  body.Name,
-		Image: body.Image,
-		Color: body.Color,
+		Name:        body.Name,
+		Image:       body.Image,
+		Color:       body.Color,
+		WorkspaceId: r.Header.Get("workspaceId"),
+		UserId:      r.Header.Get("userId"),
 	})
 
 	if err != nil {
@@ -65,9 +69,11 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	}
 
 	return helpers.CreateResponse(&CreateAccountControllerResponse{
-		Id:    account.Id,
-		Name:  account.Name,
-		Image: account.Image,
-		Color: account.Color,
+		Id:          account.Id,
+		Name:        account.Name,
+		Image:       account.Image,
+		Color:       account.Color,
+		WorkspaceId: account.WorkspaceId,
+		UserId:      account.UserId,
 	}, http.StatusOK)
 }
