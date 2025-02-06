@@ -6,7 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
-	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type DeleteAccountController struct {
@@ -21,14 +21,14 @@ func NewDeleteAccountController(deleteAccount usecase.DeleteAccountRepository) *
 
 func (c *DeleteAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
-	err := uuid.Validate(id)
+	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
 	}
 
-	err = c.DeleteAccountRepository.Delete(id)
+	err = c.DeleteAccountRepository.Delete(objectId.Hex())
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting account: " + err.Error(),

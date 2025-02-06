@@ -1,18 +1,22 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Account struct {
-	Id          string    `bson:"_id" json:"id"`
-	CreatedAt   time.Time `bson:"created_at" json:"createdAt"`
-	UpdatedAt   time.Time `bson:"updated_at" json:"updatedAt"`
-	Name        string    `bson:"name" json:"name"`
-	Bank        string    `bson:"bank" json:"bank"`
-	WorkspaceId string    `bson:"workspace_id" json:"workspaceId"`
+	Id          primitive.ObjectID `bson:"_id" json:"id"`
+	CreatedAt   time.Time          `bson:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time          `bson:"updated_at" json:"updatedAt"`
+	Name        string             `bson:"name" json:"name"`
+	BankId      primitive.ObjectID `bson:"bank_id" json:"bankId"`
+	WorkspaceId primitive.ObjectID `bson:"workspace_id" json:"workspaceId"`
 }
 
 type AccountInput struct {
-	Name        string `bson:"name"`
-	Bank        string `bson:"bank"`
-	WorkspaceId string `bson:"workspace_id"`
+	Name        string             `bson:"name"`
+	BankId      primitive.ObjectID `bson:"bank_id"`
+	WorkspaceId primitive.ObjectID `bson:"workspace_id"`
 }

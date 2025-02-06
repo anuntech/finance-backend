@@ -5,6 +5,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,7 +22,12 @@ func NewFindManyByUserIdAndWorkspaceIdMongoRepository(db *mongo.Database) *FindM
 func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(userId string, workspaceId string) ([]models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	filter := bson.M{"workspace_id": workspaceId}
+	workspaceIdObjectId, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := bson.M{"workspace_id": workspaceIdObjectId}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, err

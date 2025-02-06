@@ -5,6 +5,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,7 +22,12 @@ func NewFindByIdMongoRepository(db *mongo.Database) *FindByIdMongoRepository {
 func (f *FindByIdMongoRepository) Find(id string) (*models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	filter := bson.M{"_id": id}
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := bson.M{"_id": objectId}
 	cursor := collection.FindOne(context.Background(), filter)
 	if cursor.Err() == mongo.ErrNoDocuments {
 		return nil, nil

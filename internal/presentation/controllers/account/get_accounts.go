@@ -19,7 +19,7 @@ func NewGetAccountsController(findManyByUserIdAndWorkspaceId usecase.FindAccount
 }
 
 func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("UserId"), r.Header.Get("workspaceId"))
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving accounts",

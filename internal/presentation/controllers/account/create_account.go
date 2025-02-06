@@ -9,6 +9,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type CreateAccountController struct {
@@ -33,12 +34,12 @@ type CreateAccountControllerResponse struct {
 	Id          string `json:"id"`
 	Name        string `json:"name" validate:"required"`
 	WorkspaceId string `json:"workspaceId" validate:"required"`
-	Bank        string `json:"bank" validate:"required"`
+	BankId      string `json:"bankId" validate:"required"`
 }
 
 type CreateAccountControllerBody struct {
-	Name string `validate:"required"`
-	Bank string `validate:"required"`
+	Name   string `validate:"required"`
+	BankId string `validate:"required"`
 }
 
 func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -55,23 +56,17 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
-	bank, err := c.FindBankById.Find(body.Bank)
+	bankId, err := primitive.ObjectIDFromHex(body.BankId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error ocurred when finding bank",
-		}, http.StatusInternalServerError)
+			Error: "Invalid bank ID format",
+		}, http.StatusBadRequest)
 	}
 
-	if bank == nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "bank not found",
-		}, http.StatusNotFound)
-	}
-
-	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error ocurred when finding accounts",
+			Error: "an error ocurred when finding accounts: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 
@@ -81,22 +76,29 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
 	account, err := c.CreateAccountRepository.Create(&models.AccountInput{
 		Name:        body.Name,
-		Bank:        body.Bank,
-		WorkspaceId: r.Header.Get("workspaceId"),
+		BankId:      bankId,
+		WorkspaceId: workspaceId,
 	})
 
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error ocurred when creating account",
+			Error: "an error occurred when creating account",
 		}, http.StatusInternalServerError)
 	}
 
 	return helpers.CreateResponse(&CreateAccountControllerResponse{
-		Id:          account.Id,
+		Id:          account.Id.Hex(),
 		Name:        account.Name,
-		WorkspaceId: account.WorkspaceId,
-		Bank:        account.Bank,
+		WorkspaceId: account.WorkspaceId.Hex(),
+		BankId:      account.BankId.Hex(),
 	}, http.StatusOK)
 }

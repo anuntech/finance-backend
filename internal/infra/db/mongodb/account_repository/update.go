@@ -6,6 +6,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -25,12 +26,17 @@ func (u *UpdateAccountMongoRepository) Update(id string, account *models.Account
 	update := bson.M{
 		"$set": bson.M{
 			"name":       account.Name,
-			"bank":       account.Bank,
+			"bank_id":    account.BankId,
 			"updated_at": time.Now(),
 		},
 	}
 
-	result := collection.FindOneAndUpdate(context.Background(), bson.M{"_id": id}, update)
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	result := collection.FindOneAndUpdate(context.Background(), bson.M{"_id": objectId}, update)
 	if result.Err() != nil {
 		return nil, result.Err()
 	}

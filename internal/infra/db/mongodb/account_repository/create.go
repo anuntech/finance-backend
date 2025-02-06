@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
-	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -20,24 +20,24 @@ func NewCreateAccountMongoRepository(db *mongo.Database) *CreateAccountMongoRepo
 }
 
 type accountToSaveInterface struct {
-	Id          string    `bson:"_id"`
-	Name        string    `bson:"name"`
-	CreatedAt   time.Time `bson:"created_at"`
-	UpdatedAt   time.Time `bson:"updated_at"`
-	WorkspaceId string    `bson:"workspace_id"`
-	Bank        string    `bson:"bank"`
+	Id          primitive.ObjectID `bson:"_id"`
+	Name        string             `bson:"name"`
+	CreatedAt   time.Time          `bson:"created_at"`
+	UpdatedAt   time.Time          `bson:"updated_at"`
+	WorkspaceId primitive.ObjectID `bson:"workspace_id"`
+	BankId      primitive.ObjectID `bson:"bank_id"`
 }
 
 func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*models.Account, error) {
 	collection := c.Db.Collection("account")
 
 	accountToSave := accountToSaveInterface{
-		Id:          uuid.New().String(),
+		Id:          primitive.NewObjectID(),
 		Name:        account.Name,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 		WorkspaceId: account.WorkspaceId,
-		Bank:        account.Bank,
+		BankId:      account.BankId,
 	}
 
 	_, err := collection.InsertOne(context.Background(), accountToSave)
@@ -51,6 +51,6 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		CreatedAt:   accountToSave.CreatedAt,
 		UpdatedAt:   accountToSave.UpdatedAt,
 		WorkspaceId: accountToSave.WorkspaceId,
-		Bank:        account.Bank,
+		BankId:      accountToSave.BankId,
 	}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -20,7 +21,12 @@ func NewDeleteAccountMongoRepository(db *mongo.Database) *DeleteAccountMongoRepo
 func (d *DeleteAccountMongoRepository) Delete(id string) error {
 	collection := d.Db.Collection("account")
 
-	filter := bson.M{"_id": id}
-	_, err := collection.DeleteOne(context.Background(), filter)
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": objectId}
+	_, err = collection.DeleteOne(context.Background(), filter)
 	return err
 }

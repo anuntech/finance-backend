@@ -84,8 +84,8 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	}
 
 	account, err := c.UpdateAccountRepository.Update(id, &models.AccountInput{
-		Name: body.Name,
-		Bank: bank.Id,
+		Name:   body.Name,
+		BankId: bank.Id,
 	})
 
 	if err != nil {

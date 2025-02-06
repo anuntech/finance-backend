@@ -7,7 +7,7 @@ type CreateAccountRepository interface {
 }
 
 type FindAccountByWorkspaceIdRepository interface {
-	Find(string, string) ([]models.Account, error)
+	Find(string) ([]models.Account, error)
 }
 
 type FindAccountByIdRepository interface {
