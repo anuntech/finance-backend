@@ -37,8 +37,7 @@ type UpdateAccountControllerBody struct {
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
-	_, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
+	if _, err := primitive.ObjectIDFromHex(id); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
@@ -57,8 +56,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
-	_, err = primitive.ObjectIDFromHex(body.BankId)
-	if err != nil {
+	if _, err := primitive.ObjectIDFromHex(body.BankId); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid bank ID format",
 		}, http.StatusBadRequest)

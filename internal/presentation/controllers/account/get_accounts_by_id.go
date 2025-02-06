@@ -21,8 +21,7 @@ func NewGetAccountByIdController(findById usecase.FindAccountByIdRepository) *Ge
 
 func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
-	_, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
+	if _, err := primitive.ObjectIDFromHex(id); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
