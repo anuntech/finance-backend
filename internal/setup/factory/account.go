@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/account_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/bank_repository"
 	controllers "github.com/anuntech/finance-backend/internal/presentation/controllers/account"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -9,7 +10,8 @@ import (
 func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountController {
 	accountRepository := account_repository.NewCreateAccountMongoRepository(db)
 	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
-	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId)
+	findBankById := bank_repository.NewFindByIdMongoRepository(db)
+	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId, findBankById)
 }
 
 func MakeGetAccountsController(db *mongo.Database) *controllers.GetAccountsController {

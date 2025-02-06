@@ -16,15 +16,17 @@ type CreateAccountController struct {
 	CreateAccount     usecase.CreateAccount
 	Validate          *validator.Validate
 	FindByWorkspaceId usecase.FindByWorkspaceId
+	FindBankById      usecase.FindByIdRepository
 }
 
-func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindByWorkspaceId) *CreateAccountController {
+func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindByWorkspaceId, findBankById usecase.FindByIdRepository) *CreateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateAccountController{
 		CreateAccount:     createAccount,
 		FindByWorkspaceId: findManyByUserIdAndWorkspaceId,
 		Validate:          validate,
+		FindBankById:      findBankById,
 	}
 }
 
@@ -59,6 +61,19 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid bank id format",
 		}, http.StatusBadRequest)
+	}
+
+	bank, err := c.FindBankById.Find(body.Bank)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error ocurred when finding bank",
+		}, http.StatusInternalServerError)
+	}
+
+	if bank == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "bank not found",
+		}, http.StatusNotFound)
 	}
 
 	accounts, err := c.FindByWorkspaceId.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
