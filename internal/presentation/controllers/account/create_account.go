@@ -9,6 +9,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 type CreateAccountController struct {
@@ -30,15 +31,13 @@ func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByU
 type CreateAccountControllerResponse struct {
 	Id          string `json:"id"`
 	Name        string `json:"name" validate:"required"`
-	Image       string `json:"image" validate:"required,mongodb"`
-	Color       string `json:"color" validate:"required,hexcolor"`
 	WorkspaceId string `json:"workspaceId" validate:"required"`
+	Bank        string `json:"bank" validate:"required"`
 }
 
 type CreateAccountControllerBody struct {
-	Name  string `validate:"required"`
-	Image string `validate:"required,mongodb"`
-	Color string `validate:"required,hexcolor"`
+	Name string `validate:"required"`
+	Bank string `validate:"required"`
 }
 
 func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -53,6 +52,13 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: err.Error(),
 		}, http.StatusUnprocessableEntity)
+	}
+
+	err := uuid.Validate(body.Bank)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid bank id format",
+		}, http.StatusBadRequest)
 	}
 
 	accounts, err := c.FindByWorkspaceId.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
@@ -70,8 +76,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 
 	account, err := c.CreateAccount.Create(&models.AccountInput{
 		Name:        body.Name,
-		Image:       body.Image,
-		Color:       body.Color,
+		Bank:        body.Bank,
 		WorkspaceId: r.Header.Get("workspaceId"),
 	})
 
@@ -84,8 +89,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	return helpers.CreateResponse(&CreateAccountControllerResponse{
 		Id:          account.Id,
 		Name:        account.Name,
-		Image:       account.Image,
-		Color:       account.Color,
 		WorkspaceId: account.WorkspaceId,
+		Bank:        account.Bank,
 	}, http.StatusOK)
 }

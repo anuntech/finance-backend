@@ -7,14 +7,12 @@ type Account struct {
 	CreatedAt   time.Time `bson:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `bson:"updated_at" json:"updatedAt"`
 	Name        string    `bson:"name" json:"name"`
-	Image       string    `bson:"image" json:"image"`
-	Color       string    `bson:"color" json:"color"`
+	Bank        string    `bson:"bank" json:"bank"`
 	WorkspaceId string    `bson:"workspace_id" json:"workspaceId"`
 }
 
 type AccountInput struct {
 	Name        string `bson:"name"`
-	Image       string `bson:"image"`
-	Color       string `bson:"color"`
+	Bank        string `bson:"bank"`
 	WorkspaceId string `bson:"workspace_id"`
 }

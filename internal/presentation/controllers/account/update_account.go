@@ -27,9 +27,8 @@ func NewUpdateAccountController(updateAccount usecase.UpdateAccount) *UpdateAcco
 }
 
 type UpdateAccountControllerBody struct {
-	Name  string `validate:"required"`
-	Image string `validate:"required,mongodb"`
-	Color string `validate:"required,hexcolor"`
+	Name string `validate:"required"`
+	Bank string `validate:"required"`
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -55,9 +54,8 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	}
 
 	account, err := c.UpdateAccount.Update(id, &models.AccountInput{
-		Name:  body.Name,
-		Image: body.Image,
-		Color: body.Color,
+		Name: body.Name,
+		Bank: body.Bank,
 	})
 
 	if err != nil {

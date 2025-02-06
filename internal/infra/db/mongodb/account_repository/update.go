@@ -25,8 +25,7 @@ func (u *UpdateAccountMongoRepository) Update(id string, account *models.Account
 	update := bson.M{
 		"$set": bson.M{
 			"name":       account.Name,
-			"image":      account.Image,
-			"color":      account.Color,
+			"bank":       account.Bank,
 			"updated_at": time.Now(),
 		},
 	}

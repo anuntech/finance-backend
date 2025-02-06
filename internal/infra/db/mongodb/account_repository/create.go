@@ -22,8 +22,6 @@ func NewCreateAccountMongoRepository(db *mongo.Database) *CreateAccountMongoRepo
 type accountToSaveInterface struct {
 	Id          string    `bson:"_id"`
 	Name        string    `bson:"name"`
-	Image       string    `bson:"image"`
-	Color       string    `bson:"color"`
 	CreatedAt   time.Time `bson:"created_at"`
 	UpdatedAt   time.Time `bson:"updated_at"`
 	WorkspaceId string    `bson:"workspace_id"`
@@ -36,8 +34,6 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 	accountToSave := accountToSaveInterface{
 		Id:          uuid.New().String(),
 		Name:        account.Name,
-		Image:       account.Image,
-		Color:       account.Color,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 		WorkspaceId: account.WorkspaceId,
@@ -51,8 +47,6 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 	return &models.Account{
 		Id:          accountToSave.Id,
 		Name:        accountToSave.Name,
-		Image:       accountToSave.Image,
-		Color:       accountToSave.Color,
 		CreatedAt:   accountToSave.CreatedAt,
 		UpdatedAt:   accountToSave.UpdatedAt,
 		WorkspaceId: accountToSave.WorkspaceId,
