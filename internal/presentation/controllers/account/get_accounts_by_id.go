@@ -10,12 +10,12 @@ import (
 )
 
 type GetAccountByIdController struct {
-	FindById usecase.FindById
+	FindAccountByIdRepository usecase.FindAccountByIdRepository
 }
 
-func NewGetAccountByIdController(findById usecase.FindById) *GetAccountByIdController {
+func NewGetAccountByIdController(findById usecase.FindAccountByIdRepository) *GetAccountByIdController {
 	return &GetAccountByIdController{
-		FindById: findById,
+		FindAccountByIdRepository: findById,
 	}
 }
 
@@ -28,7 +28,7 @@ func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	account, err := c.FindById.Find(id)
+	account, err := c.FindAccountByIdRepository.Find(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving account: " + err.Error(),

@@ -10,12 +10,12 @@ import (
 )
 
 type DeleteAccountController struct {
-	DeleteAccount usecase.DeleteAccount
+	DeleteAccountRepository usecase.DeleteAccountRepository
 }
 
-func NewDeleteAccountController(deleteAccount usecase.DeleteAccount) *DeleteAccountController {
+func NewDeleteAccountController(deleteAccount usecase.DeleteAccountRepository) *DeleteAccountController {
 	return &DeleteAccountController{
-		DeleteAccount: deleteAccount,
+		DeleteAccountRepository: deleteAccount,
 	}
 }
 
@@ -28,7 +28,7 @@ func (c *DeleteAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	err = c.DeleteAccount.Delete(id)
+	err = c.DeleteAccountRepository.Delete(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting account: " + err.Error(),

@@ -9,10 +9,10 @@ import (
 )
 
 type GetBankController struct {
-	GetAllBanksRepository usecase.FindAllRepository
+	GetAllBanksRepository usecase.FindAllBankRepository
 }
 
-func NewGetBankController(getAllBanksRepository usecase.FindAllRepository) *GetBankController {
+func NewGetBankController(getAllBanksRepository usecase.FindAllBankRepository) *GetBankController {
 	return &GetBankController{
 		GetAllBanksRepository: getAllBanksRepository,
 	}

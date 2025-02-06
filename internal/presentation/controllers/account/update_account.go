@@ -13,16 +13,20 @@ import (
 )
 
 type UpdateAccountController struct {
-	UpdateAccount usecase.UpdateAccount
-	Validate      *validator.Validate
+	UpdateAccountRepository usecase.UpdateAccountRepository
+	Validate                *validator.Validate
+	FindBankById            usecase.FindBankByIdRepository
+	FindAccountById         usecase.FindAccountByIdRepository
 }
 
-func NewUpdateAccountController(updateAccount usecase.UpdateAccount) *UpdateAccountController {
+func NewUpdateAccountController(updateAccount usecase.UpdateAccountRepository, findBankById usecase.FindBankByIdRepository, findAccountById usecase.FindAccountByIdRepository) *UpdateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &UpdateAccountController{
-		UpdateAccount: updateAccount,
-		Validate:      validate,
+		UpdateAccountRepository: updateAccount,
+		Validate:                validate,
+		FindBankById:            findBankById,
+		FindAccountById:         findAccountById,
 	}
 }
 
@@ -53,9 +57,35 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
-	account, err := c.UpdateAccount.Update(id, &models.AccountInput{
+	accountToVerify, err := c.FindAccountById.Find(id)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when finding account",
+		}, http.StatusInternalServerError)
+	}
+
+	if accountToVerify == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "account not found",
+		}, http.StatusNotFound)
+	}
+
+	bank, err := c.FindBankById.Find(body.Bank)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when finding bank",
+		}, http.StatusInternalServerError)
+	}
+
+	if bank == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "bank not found",
+		}, http.StatusNotFound)
+	}
+
+	account, err := c.UpdateAccountRepository.Update(id, &models.AccountInput{
 		Name: body.Name,
-		Bank: body.Bank,
+		Bank: bank.Id,
 	})
 
 	if err != nil {

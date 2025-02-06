@@ -9,24 +9,23 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 type CreateAccountController struct {
-	CreateAccount     usecase.CreateAccount
-	Validate          *validator.Validate
-	FindByWorkspaceId usecase.FindByWorkspaceId
-	FindBankById      usecase.FindByIdRepository
+	CreateAccountRepository            usecase.CreateAccountRepository
+	Validate                           *validator.Validate
+	FindAccountByWorkspaceIdRepository usecase.FindAccountByWorkspaceIdRepository
+	FindBankById                       usecase.FindBankByIdRepository
 }
 
-func NewCreateAccountController(createAccount usecase.CreateAccount, findManyByUserIdAndWorkspaceId usecase.FindByWorkspaceId, findBankById usecase.FindByIdRepository) *CreateAccountController {
+func NewCreateAccountController(createAccount usecase.CreateAccountRepository, findManyByUserIdAndWorkspaceId usecase.FindAccountByWorkspaceIdRepository, findBankById usecase.FindBankByIdRepository) *CreateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateAccountController{
-		CreateAccount:     createAccount,
-		FindByWorkspaceId: findManyByUserIdAndWorkspaceId,
-		Validate:          validate,
-		FindBankById:      findBankById,
+		CreateAccountRepository:            createAccount,
+		FindAccountByWorkspaceIdRepository: findManyByUserIdAndWorkspaceId,
+		Validate:                           validate,
+		FindBankById:                       findBankById,
 	}
 }
 
@@ -56,13 +55,6 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
-	err := uuid.Validate(body.Bank)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid bank id format",
-		}, http.StatusBadRequest)
-	}
-
 	bank, err := c.FindBankById.Find(body.Bank)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -76,7 +68,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusNotFound)
 	}
 
-	accounts, err := c.FindByWorkspaceId.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("userId"), r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error ocurred when finding accounts",
@@ -89,7 +81,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	account, err := c.CreateAccount.Create(&models.AccountInput{
+	account, err := c.CreateAccountRepository.Create(&models.AccountInput{
 		Name:        body.Name,
 		Bank:        body.Bank,
 		WorkspaceId: r.Header.Get("workspaceId"),

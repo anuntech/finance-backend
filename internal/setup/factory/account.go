@@ -31,5 +31,7 @@ func MakeDeleteAccountController(db *mongo.Database) *controllers.DeleteAccountC
 
 func MakeUpdateAccountController(db *mongo.Database) *controllers.UpdateAccountController {
 	updateAccount := account_repository.NewUpdateAccountMongoRepository(db)
-	return controllers.NewUpdateAccountController(updateAccount)
+	findBankById := bank_repository.NewFindByIdMongoRepository(db)
+	findAccountById := account_repository.NewFindByIdMongoRepository(db)
+	return controllers.NewUpdateAccountController(updateAccount, findBankById, findAccountById)
 }
