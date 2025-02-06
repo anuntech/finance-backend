@@ -27,6 +27,7 @@ func (u *UpdateAccountMongoRepository) Update(id string, account *models.Account
 		"$set": bson.M{
 			"name":       account.Name,
 			"bank_id":    account.BankId,
+			"balance":    account.Balance,
 			"updated_at": time.Now(),
 		},
 	}

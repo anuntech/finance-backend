@@ -31,8 +31,9 @@ func NewUpdateAccountController(updateAccount usecase.UpdateAccountRepository, f
 }
 
 type UpdateAccountControllerBody struct {
-	Name   string `validate:"required"`
-	BankId string `validate:"required"`
+	Name    string  `validate:"required"`
+	BankId  string  `validate:"required"`
+	Balance float64 `validate:"required"`
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -89,8 +90,9 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	}
 
 	account, err := c.UpdateAccountRepository.Update(id, &models.AccountInput{
-		Name:   body.Name,
-		BankId: bank.Id,
+		Name:    body.Name,
+		Balance: body.Balance,
+		BankId:  bank.Id,
 	})
 
 	if err != nil {

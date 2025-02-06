@@ -26,6 +26,7 @@ type accountToSaveInterface struct {
 	UpdatedAt   time.Time          `bson:"updated_at"`
 	WorkspaceId primitive.ObjectID `bson:"workspace_id"`
 	BankId      primitive.ObjectID `bson:"bank_id"`
+	Balance     float64            `bson:"balance"`
 }
 
 func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*models.Account, error) {
@@ -38,6 +39,7 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		UpdatedAt:   time.Now(),
 		WorkspaceId: account.WorkspaceId,
 		BankId:      account.BankId,
+		Balance:     account.Balance,
 	}
 
 	_, err := collection.InsertOne(context.Background(), accountToSave)
@@ -52,5 +54,6 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		UpdatedAt:   accountToSave.UpdatedAt,
 		WorkspaceId: accountToSave.WorkspaceId,
 		BankId:      accountToSave.BankId,
+		Balance:     accountToSave.Balance,
 	}, nil
 }

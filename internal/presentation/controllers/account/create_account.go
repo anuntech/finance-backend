@@ -31,15 +31,17 @@ func NewCreateAccountController(createAccount usecase.CreateAccountRepository, f
 }
 
 type CreateAccountControllerResponse struct {
-	Id          string `json:"id"`
-	Name        string `json:"name" validate:"required"`
-	WorkspaceId string `json:"workspaceId" validate:"required"`
-	BankId      string `json:"bankId" validate:"required"`
+	Id          string  `json:"id"`
+	Name        string  `json:"name" validate:"required"`
+	WorkspaceId string  `json:"workspaceId" validate:"required"`
+	BankId      string  `json:"bankId" validate:"required"`
+	Balance     float64 `json:"balance" validate:"required"`
 }
 
 type CreateAccountControllerBody struct {
-	Name   string `validate:"required"`
-	BankId string `validate:"required"`
+	Name    string  `validate:"required,min=3,max=255"`
+	Balance float64 `validate:"required"`
+	BankId  string  `validate:"required"`
 }
 
 func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -99,6 +101,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	account, err := c.CreateAccountRepository.Create(&models.AccountInput{
 		Name:        body.Name,
 		BankId:      bankId,
+		Balance:     body.Balance,
 		WorkspaceId: workspaceId,
 	})
 
@@ -113,5 +116,6 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		Name:        account.Name,
 		WorkspaceId: account.WorkspaceId.Hex(),
 		BankId:      account.BankId.Hex(),
+		Balance:     account.Balance,
 	}, http.StatusOK)
 }
