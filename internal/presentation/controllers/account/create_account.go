@@ -63,6 +63,19 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
+	bank, err := c.FindBankById.Find(bankId.Hex())
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "bank not found",
+		}, http.StatusNotFound)
+	}
+
+	if bank == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "bank not found",
+		}, http.StatusNotFound)
+	}
+
 	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

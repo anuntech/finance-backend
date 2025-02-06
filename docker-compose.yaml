@@ -1,20 +1,8 @@
 services:
-  mongodb:
-    image: "mongo:latest"
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=database
-      - MONGODB_DATA_DIR=/data/db
-      - MONDODB_LOG_DIR=/dev/null
-    volumes:
-      - mongo:/data/db
-    networks:
-      - oauth-api_network
-
-volumes:
-  mongo:
-
-networks:
-  oauth-api_network:
-    driver: bridge
+      - "8080:8080"
+    command: go run main.go

@@ -6,7 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
-	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GetAccountByIdController struct {
@@ -21,7 +21,7 @@ func NewGetAccountByIdController(findById usecase.FindAccountByIdRepository) *Ge
 
 func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
-	err := uuid.Validate(id)
+	_, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",

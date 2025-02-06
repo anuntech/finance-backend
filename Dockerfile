@@ -1,9 +1,11 @@
-FROM golang:1.22.5
+FROM golang:1.23
+
 WORKDIR /app
 
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
 COPY . .
-RUN go build -a . .
-CMD ./api-willchat-golang
+
+RUN go mod download
+
+RUN go build -o main .
+
+CMD ["./main"]

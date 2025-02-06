@@ -9,7 +9,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UpdateAccountController struct {
@@ -31,13 +31,13 @@ func NewUpdateAccountController(updateAccount usecase.UpdateAccountRepository, f
 }
 
 type UpdateAccountControllerBody struct {
-	Name string `validate:"required"`
-	Bank string `validate:"required"`
+	Name   string `validate:"required"`
+	BankId string `validate:"required"`
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	id := r.Req.PathValue("id")
-	err := uuid.Validate(id)
+	_, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
@@ -57,6 +57,13 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusUnprocessableEntity)
 	}
 
+	_, err = primitive.ObjectIDFromHex(body.BankId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid bank ID format",
+		}, http.StatusBadRequest)
+	}
+
 	accountToVerify, err := c.FindAccountById.Find(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -70,7 +77,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusNotFound)
 	}
 
-	bank, err := c.FindBankById.Find(body.Bank)
+	bank, err := c.FindBankById.Find(body.BankId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when finding bank",
