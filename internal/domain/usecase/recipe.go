@@ -12,6 +12,7 @@ type FindRecipesByWorkspaceIdRepository interface {
 
 type UpdateRecipeRepository interface {
 	CreateSubCategory(subCategory models.SubRecipeCategory, recipeId string, workspaceId string) (*models.SubRecipeCategory, error)
+	DeleteSubCategory(recipeId string, subCategoryId string, workspaceId string) error
 }
 
 type FindRecipeByIdRepository interface {

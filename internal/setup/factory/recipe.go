@@ -24,3 +24,8 @@ func MakeCreateSubCategoryController(db *mongo.Database) *controllers_recipe.Cre
 	findRecipeById := recipe_repository.NewFindRecipeByIdRepository(db)
 	return controllers_recipe.NewCreateSubCategoryController(updateRecipe, findRecipeById)
 }
+
+func MakeDeleteSubCategoryController(db *mongo.Database) *controllers_recipe.DeleteSubCategoryController {
+	updateRecipe := recipe_repository.NewUpdateRecipeRepository(db)
+	return controllers_recipe.NewDeleteSubCategoryController(updateRecipe)
+}
