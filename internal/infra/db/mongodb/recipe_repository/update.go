@@ -19,19 +19,20 @@ func NewUpdateRecipeRepository(db *mongo.Database) *UpdateRecipeRepository {
 	}
 }
 
-func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeCategory, recipeId string, workspaceId string) error {
+func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeCategory, recipeId string, workspaceId string) (*models.SubRecipeCategory, error) {
 	collection := r.Db.Collection("recipe")
 
 	recipeObjectId, err := primitive.ObjectIDFromHex(recipeId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	workspaceObjectId, err := primitive.ObjectIDFromHex(workspaceId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	subCategory.Id = primitive.NewObjectID()
 	update := bson.M{
 		"$push": bson.M{
 			"subCategories": subCategory,
@@ -39,5 +40,9 @@ func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeC
 	}
 
 	_, err = collection.UpdateOne(context.Background(), bson.M{"_id": recipeObjectId, "workspaceId": workspaceObjectId}, update)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return &subCategory, nil
 }

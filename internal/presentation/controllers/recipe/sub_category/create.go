@@ -75,7 +75,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 
 	workspaceId := r.Header.Get("workspaceId")
 
-	err = c.UpdateRecipeRepository.CreateSubCategory(models.SubRecipeCategory{
+	subCategory, err := c.UpdateRecipeRepository.CreateSubCategory(models.SubRecipeCategory{
 		Name:   body.SubCategory.Name,
 		Icon:   body.SubCategory.Icon,
 		Amount: body.SubCategory.Amount,
@@ -86,5 +86,5 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(nil, http.StatusOK)
+	return helpers.CreateResponse(subCategory, http.StatusOK)
 }
