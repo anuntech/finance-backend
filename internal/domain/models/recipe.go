@@ -1,6 +1,10 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type SubRecipeCategory struct {
 	Id     string  `json:"id" bson:"id"`
@@ -14,4 +18,7 @@ type Recipe struct {
 	Name          string              `json:"name" bson:"name"`
 	AccountId     primitive.ObjectID  `json:"accountId" bson:"accountId"`
 	SubCategories []SubRecipeCategory `json:"subCategories" bson:"subCategories"`
+	CreatedAt     time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedAt     time.Time           `json:"updatedAt" bson:"updatedAt"`
+	WorkspaceId   primitive.ObjectID  `json:"workspaceId" bson:"workspaceId"`
 }

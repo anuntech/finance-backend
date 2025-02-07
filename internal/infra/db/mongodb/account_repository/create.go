@@ -19,20 +19,10 @@ func NewCreateAccountMongoRepository(db *mongo.Database) *CreateAccountMongoRepo
 	}
 }
 
-type accountToSaveInterface struct {
-	Id          primitive.ObjectID `bson:"_id"`
-	Name        string             `bson:"name"`
-	CreatedAt   time.Time          `bson:"created_at"`
-	UpdatedAt   time.Time          `bson:"updated_at"`
-	WorkspaceId primitive.ObjectID `bson:"workspace_id"`
-	BankId      primitive.ObjectID `bson:"bank_id"`
-	Balance     float64            `bson:"balance"`
-}
-
 func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*models.Account, error) {
 	collection := c.Db.Collection("account")
 
-	accountToSave := accountToSaveInterface{
+	accountToSave := models.Account{
 		Id:          primitive.NewObjectID(),
 		Name:        account.Name,
 		CreatedAt:   time.Now(),
