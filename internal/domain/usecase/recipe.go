@@ -9,3 +9,11 @@ type CreateRecipeRepository interface {
 type FindRecipesByWorkspaceIdRepository interface {
 	Find(workspaceId string) ([]models.Recipe, error)
 }
+
+type UpdateRecipeRepository interface {
+	CreateSubCategory(subCategory models.SubRecipeCategory, recipeId string, workspaceId string) error
+}
+
+type FindRecipeByIdRepository interface {
+	Find(recipeId string, workspaceId string) (*models.Recipe, error)
+}

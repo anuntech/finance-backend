@@ -23,4 +23,11 @@ func RecipeRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /recipe/sub-category", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeCreateSubCategoryController(db)),
+			workspaceDb,
+		),
+	))
 }
