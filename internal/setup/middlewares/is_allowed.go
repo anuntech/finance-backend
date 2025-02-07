@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"os"
 	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -14,7 +15,7 @@ import (
 func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		workspaceId := r.Header.Get("workspaceId")
-		applicationId := r.Header.Get("applicationId")
+		applicationId := os.Getenv("APPLICATION_ID")
 
 		_, err := primitive.ObjectIDFromHex(workspaceId)
 		if err != nil {
