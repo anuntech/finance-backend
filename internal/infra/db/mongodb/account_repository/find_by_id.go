@@ -19,15 +19,19 @@ func NewFindByIdMongoRepository(db *mongo.Database) *FindByIdMongoRepository {
 	}
 }
 
-func (f *FindByIdMongoRepository) Find(id string) (*models.Account, error) {
+func (f *FindByIdMongoRepository) Find(id string, workspaceId string) (*models.Account, error) {
 	collection := f.Db.Collection("account")
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
 	}
+	workspaceObjectId, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return nil, err
+	}
 
-	filter := bson.M{"_id": objectId}
+	filter := bson.M{"_id": objectId, "workspaceId": workspaceObjectId}
 	cursor := collection.FindOne(context.Background(), filter)
 	if cursor.Err() == mongo.ErrNoDocuments {
 		return nil, nil

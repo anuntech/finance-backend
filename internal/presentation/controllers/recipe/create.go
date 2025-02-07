@@ -62,7 +62,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	account, err := c.FindAccountById.Find(accountId.Hex())
+	account, err := c.FindAccountById.Find(accountId.Hex(), r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "account not found",

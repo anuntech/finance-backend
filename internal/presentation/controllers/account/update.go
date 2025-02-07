@@ -63,7 +63,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	accountToVerify, err := c.FindAccountById.Find(id)
+	accountToVerify, err := c.FindAccountById.Find(id, r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when finding account",
