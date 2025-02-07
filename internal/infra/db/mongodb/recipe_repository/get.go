@@ -5,6 +5,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,7 +22,12 @@ func NewFindRecipesByWorkspaceIdRepository(db *mongo.Database) *FindRecipesByWor
 func (r *FindRecipesByWorkspaceIdRepository) Find(workspaceId string) ([]models.Recipe, error) {
 	collection := r.Db.Collection("recipe")
 
-	cursor, err := collection.Find(context.Background(), bson.M{"workspaceId": workspaceId})
+	workspaceIdObject, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := collection.Find(context.Background(), bson.M{"workspaceId": workspaceIdObject})
 	if err != nil {
 		return nil, err
 	}
