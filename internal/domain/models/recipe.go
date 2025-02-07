@@ -7,10 +7,10 @@ import (
 )
 
 type SubRecipeCategory struct {
-	Id     string  `json:"id" bson:"id"`
-	Name   string  `json:"name" bson:"name"`
-	Icon   string  `json:"icon" bson:"icon"`
-	Amount float64 `json:"amount" bson:"amount"`
+	Id     primitive.ObjectID `json:"id" bson:"id"`
+	Name   string             `json:"name" bson:"name"`
+	Icon   string             `json:"icon" bson:"icon"`
+	Amount float64            `json:"amount" bson:"amount"`
 }
 
 type Recipe struct {

@@ -81,6 +81,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 			result := make([]models.SubRecipeCategory, len(subCats))
 			for i, subCat := range subCats {
 				result[i] = models.SubRecipeCategory{
+					Id:     primitive.NewObjectID(),
 					Name:   subCat.Name,
 					Amount: subCat.Amount,
 					Icon:   subCat.Icon,
