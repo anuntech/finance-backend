@@ -22,7 +22,7 @@ func NewCreateRecipeRepository(db *mongo.Database) *CreateRecipeRepository {
 func (r *CreateRecipeRepository) Create(recipe models.Recipe) (*models.Recipe, error) {
 	collection := r.Db.Collection("recipe")
 
-	_, err := collection.InsertOne(context.Background(), &models.Recipe{
+	recipeToSave := &models.Recipe{
 		Id:            primitive.NewObjectID(),
 		Name:          recipe.Name,
 		CreatedAt:     time.Now(),
@@ -30,10 +30,11 @@ func (r *CreateRecipeRepository) Create(recipe models.Recipe) (*models.Recipe, e
 		WorkspaceId:   recipe.WorkspaceId,
 		AccountId:     recipe.AccountId,
 		SubCategories: recipe.SubCategories,
-	})
+	}
+	_, err := collection.InsertOne(context.Background(), recipeToSave)
 	if err != nil {
 		return nil, err
 	}
 
-	return &recipe, nil
+	return recipeToSave, nil
 }

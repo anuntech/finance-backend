@@ -17,10 +17,10 @@ func RecipeRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.
 		),
 	))
 
-	// server.Handle("GET /recipe", middlewares.VerifyAccessToken(
-	// 	middlewares.IsAllowed(
-	// 		adapters.AdaptRoute(factory.MakeGetRecipesController(db)),
-	// 		workspaceDb,
-	// 	),
-	// ))
+	server.Handle("GET /recipe", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeGetRecipesController(db)),
+			workspaceDb,
+		),
+	))
 }

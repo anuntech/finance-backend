@@ -74,9 +74,17 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusNotFound)
 	}
 
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspace id",
+		}, http.StatusBadRequest)
+	}
+
 	recipe, err := c.CreateRecipeRepository.Create(models.Recipe{
-		Name:      body.Name,
-		AccountId: accountId,
+		Name:        body.Name,
+		AccountId:   accountId,
+		WorkspaceId: workspaceId,
 		SubCategories: func(subCats []subRecipeCategory) []models.SubRecipeCategory {
 			result := make([]models.SubRecipeCategory, len(subCats))
 			for i, subCat := range subCats {
