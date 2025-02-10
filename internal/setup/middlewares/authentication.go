@@ -10,13 +10,17 @@ import (
 func VerifyAccessToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var authorization string
-		if cookie, err := r.Cookie("__Secure-next-auth.session-token"); err == nil {
-			authorization = cookie.Value
-		} else if cookie, err := r.Cookie("next-auth.session-token"); err == nil {
-			authorization = cookie.Value
-		} else {
-			http.Error(w, "Missing or invalid access token", http.StatusUnauthorized)
-			return
+		cookieNames := []string{"__Secure-next-auth.session-token", "next-auth.session-token"}
+
+		for _, name := range cookieNames {
+			if cookie, err := r.Cookie(name); err == nil {
+				authorization = cookie.Value
+				break
+			}
+		}
+
+		if authorization == "" {
+			authorization = r.Header.Get("Authorization")
 		}
 
 		if authorization == "" {
