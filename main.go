@@ -13,6 +13,19 @@ import (
 	"github.com/anuntech/finance-backend/internal/setup/config"
 )
 
+// Middleware para adicionar cabeçalhos CORS
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	config.LoadEnvFile(".env")
 	port := os.Getenv("PORT")
@@ -22,9 +35,12 @@ func main() {
 
 	log.Println("server is running with port", port)
 
+	// Adiciona o middleware CORS ao servidor
+	handler := corsMiddleware(setup.Server())
+
 	sm := http.Server{
 		Addr:         ":" + port,
-		Handler:      setup.Server(),
+		Handler:      handler,
 		IdleTimeout:  60 * time.Second,
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,
