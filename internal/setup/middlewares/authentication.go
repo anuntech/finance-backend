@@ -9,7 +9,15 @@ import (
 
 func VerifyAccessToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authorization := r.Header.Get("Authorization")
+		var authorization string
+		if cookie, err := r.Cookie("__Secure-next-auth.session-token"); err == nil {
+			authorization = cookie.Value
+		} else if cookie, err := r.Cookie("next-auth.session-token"); err == nil {
+			authorization = cookie.Value
+		} else {
+			http.Error(w, "Missing or invalid access token", http.StatusUnauthorized)
+			return
+		}
 
 		if authorization == "" {
 			http.Error(w, "Missing or invalid access token", http.StatusUnauthorized)
