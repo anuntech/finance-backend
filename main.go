@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,11 @@ func corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if r.Method == "OPTIONS" {
 			return
+		}
+
+		cookies := r.Cookies()
+		for _, cookie := range cookies {
+			fmt.Printf("Cookie recebido: %s = %s\n", cookie.Name, cookie.Value)
 		}
 		next.ServeHTTP(w, r)
 	})
