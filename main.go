@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -35,10 +34,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		cookies := r.Cookies()
-		for _, cookie := range cookies {
-			fmt.Printf("Cookie recebido: %s = %s\n", cookie.Name, cookie.Value)
-		}
 		next.ServeHTTP(w, r)
 	})
 }
