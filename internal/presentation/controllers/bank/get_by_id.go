@@ -20,8 +20,8 @@ func NewGetBankByIdController(findByIdUsecase usecase.FindBankByIdRepository) *G
 	}
 }
 
-func (c *GetBankByIdController) Handle(w http.ResponseWriter, r *http.Request) *presentationProtocols.HttpResponse {
-	id := r.URL.Query().Get("id")
+func (c *GetBankByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+	id := r.Req.PathValue("id")
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
