@@ -26,5 +26,9 @@ func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *pre
 		}, http.StatusInternalServerError)
 	}
 
+	for i, j := 0, len(accounts)-1; i < j; i, j = i+1, j-1 {
+		accounts[i], accounts[j] = accounts[j], accounts[i]
+	}
+
 	return helpers.CreateResponse(accounts, http.StatusOK)
 }
