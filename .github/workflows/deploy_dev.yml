@@ -21,7 +21,7 @@ jobs:
 
       - name: Set up .env file
         run: |
-          echo "SECRET_JWT_KEY=${{ secrets.SECRET_JWT_KEY }}" >> .env
+          echo "SECRET_JWT_KEY=${{ secrets.SECRET_JWT }}" >> .env
           echo "MONGO_URL=${{ secrets.MONGO_URL }}" >> .env
           echo "WORKSPACE_MONGO_URL=${{ secrets.WORKSPACE_MONGO_URL }}" >> .env
           echo "APPLICATION_ID=${{ secrets.APPLICATION_ID }}" >> .env
