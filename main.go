@@ -13,11 +13,11 @@ import (
 	"github.com/anuntech/finance-backend/internal/setup/config"
 )
 
-// Middleware para adicionar cabeçalhos CORS
 func corsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := map[string]bool{
 		"https://anun.tech":     true,
 		"http://localhost:3000": true,
+		"http://localhost:3001": true,
 		"https://anuntech.com":  true,
 	}
 
