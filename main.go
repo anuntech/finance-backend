@@ -15,10 +15,11 @@ import (
 
 func corsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := map[string]bool{
-		"https://anun.tech":     true,
-		"http://localhost:3000": true,
-		"http://localhost:3001": true,
-		"https://anuntech.com":  true,
+		"https://anun.tech":                 true,
+		"http://localhost:3000":             true,
+		"http://localhost:3001":             true,
+		"https://anuntech.com":              true,
+		"https://finance-company.anun.tech": true,
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
