@@ -19,21 +19,11 @@ func NewFindRecipeByIdRepository(db *mongo.Database) *FindRecipeByIdRepository {
 	}
 }
 
-func (r *FindRecipeByIdRepository) Find(recipeId string, workspaceId string) (*models.Recipe, error) {
+func (r *FindRecipeByIdRepository) Find(recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Recipe, error) {
 	collection := r.Db.Collection("recipe")
 
-	recipeObjectId, err := primitive.ObjectIDFromHex(recipeId)
-	if err != nil {
-		return nil, err
-	}
-
-	workspaceObjectId, err := primitive.ObjectIDFromHex(workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
 	var recipe models.Recipe
-	err = collection.FindOne(context.Background(), bson.M{"_id": recipeObjectId, "workspaceId": workspaceObjectId}).Decode(&recipe)
+	err := collection.FindOne(context.Background(), bson.M{"_id": recipeId, "workspaceId": workspaceId}).Decode(&recipe)
 	if err != nil {
 		return nil, err
 	}

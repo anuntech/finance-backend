@@ -20,23 +20,21 @@ func NewDeleteRecipeController(deleteRecipe usecase.DeleteRecipeRepository) *Del
 }
 
 func (c *DeleteRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	workspaceId := r.Header.Get("workspaceId")
-	recipeId := r.Req.PathValue("recipeId")
-
-	if recipeId == "" {
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "recipe id is required",
-		}, http.StatusUnprocessableEntity)
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
 	}
 
-	objectId, err := primitive.ObjectIDFromHex(recipeId)
+	recipeId, err := primitive.ObjectIDFromHex(r.Req.PathValue("recipeId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid recipe ID format",
 		}, http.StatusBadRequest)
 	}
 
-	err = c.DeleteRecipeRepository.Delete(objectId.Hex(), workspaceId)
+	err = c.DeleteRecipeRepository.Delete(recipeId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting recipe: " + err.Error(),

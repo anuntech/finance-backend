@@ -61,7 +61,14 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.FindRecipeById.Find(recipeId.Hex(), r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspace id",
+		}, http.StatusBadRequest)
+	}
+
+	recipe, err := c.FindRecipeById.Find(recipeId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "account not found",
@@ -73,13 +80,11 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusNotFound)
 	}
 
-	workspaceId := r.Header.Get("workspaceId")
-
 	subCategory, err := c.UpdateRecipeRepository.CreateSubCategory(models.SubRecipeCategory{
 		Name:   body.SubCategory.Name,
 		Icon:   body.SubCategory.Icon,
 		Amount: body.SubCategory.Amount,
-	}, recipeId.Hex(), workspaceId)
+	}, recipeId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating SubCategory",

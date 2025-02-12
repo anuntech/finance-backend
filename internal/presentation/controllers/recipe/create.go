@@ -63,7 +63,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding recipes",

@@ -6,6 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GetRecipesController struct {
@@ -19,7 +20,14 @@ func NewGetRecipesController(findManyByUserIdAndWorkspaceId usecase.FindRecipesB
 }
 
 func (c *GetRecipesController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspaceId format",
+		}, http.StatusBadRequest)
+	}
+
+	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving recipes",

@@ -19,15 +19,10 @@ func NewFindRecipesByWorkspaceIdRepository(db *mongo.Database) *FindRecipesByWor
 	}
 }
 
-func (r *FindRecipesByWorkspaceIdRepository) Find(workspaceId string) ([]models.Recipe, error) {
+func (r *FindRecipesByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID) ([]models.Recipe, error) {
 	collection := r.Db.Collection("recipe")
 
-	workspaceIdObject, err := primitive.ObjectIDFromHex(workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	cursor, err := collection.Find(context.Background(), bson.M{"workspaceId": workspaceIdObject})
+	cursor, err := collection.Find(context.Background(), bson.M{"workspaceId": workspaceId})
 	if err != nil {
 		return nil, err
 	}
