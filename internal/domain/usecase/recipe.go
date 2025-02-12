@@ -18,3 +18,7 @@ type UpdateRecipeRepository interface {
 type FindRecipeByIdRepository interface {
 	Find(recipeId string, workspaceId string) (*models.Recipe, error)
 }
+
+type DeleteRecipeRepository interface {
+	Delete(recipeId string, workspaceId string) error
+}
