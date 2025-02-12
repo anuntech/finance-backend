@@ -21,7 +21,7 @@ func NewDeleteRecipeRepository(db *mongo.Database) *DeleteRecipeRepository {
 func (r *DeleteRecipeRepository) Delete(recipeId primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := r.Db.Collection("recipe")
 
-	_, err := collection.DeleteOne(context.Background(), bson.M{"_id": recipeId, "workspaceId": workspaceId})
+	_, err := collection.DeleteOne(context.Background(), bson.M{"_id": recipeId, "workspace_id": workspaceId})
 	if err != nil {
 		return err
 	}

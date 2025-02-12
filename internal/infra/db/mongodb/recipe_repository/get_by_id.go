@@ -23,7 +23,7 @@ func (r *FindRecipeByIdRepository) Find(recipeId primitive.ObjectID, workspaceId
 	collection := r.Db.Collection("recipe")
 
 	var recipe models.Recipe
-	err := collection.FindOne(context.Background(), bson.M{"_id": recipeId, "workspaceId": workspaceId}).Decode(&recipe)
+	err := collection.FindOne(context.Background(), bson.M{"_id": recipeId, "workspace_id": workspaceId}).Decode(&recipe)
 	if err != nil {
 		return nil, err
 	}

@@ -16,10 +16,10 @@ type SubRecipeCategory struct {
 type Recipe struct {
 	Id            primitive.ObjectID  `json:"id" bson:"_id"`
 	Name          string              `json:"name" bson:"name"`
-	SubCategories []SubRecipeCategory `json:"subCategories" bson:"subCategories"`
-	CreatedAt     time.Time           `json:"createdAt" bson:"createdAt"`
-	UpdatedAt     time.Time           `json:"updatedAt" bson:"updatedAt"`
-	WorkspaceId   primitive.ObjectID  `json:"workspaceId" bson:"workspaceId"`
+	SubCategories []SubRecipeCategory `json:"subCategories" bson:"sub_categories"`
+	CreatedAt     time.Time           `json:"createdAt" bson:"created_at"`
+	UpdatedAt     time.Time           `json:"updatedAt" bson:"updated_at"`
+	WorkspaceId   primitive.ObjectID  `json:"workspaceId" bson:"workspace_id"`
 	TotalAmount   float64             `json:"totalAmount" bson:"-"`
 }
 

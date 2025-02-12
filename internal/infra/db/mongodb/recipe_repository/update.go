@@ -2,6 +2,7 @@ package recipe_repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,11 +27,11 @@ func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeC
 
 	update := bson.M{
 		"$push": bson.M{
-			"subCategories": subCategory,
+			"sub_categories": subCategory,
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": recipeId, "workspaceId": workspaceId}, update)
+	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": recipeId, "workspace_id": workspaceId}, update)
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +43,30 @@ func (r *UpdateRecipeRepository) DeleteSubCategory(recipeId primitive.ObjectID, 
 	collection := r.Db.Collection("recipe")
 
 	filter := bson.M{
-		"_id":           recipeId,
-		"workspaceId":   workspaceId,
-		"subCategories": bson.M{"$elemMatch": bson.M{"id": subCategoryId}},
+		"_id":            recipeId,
+		"workspace_id":   workspaceId,
+		"sub_categories": bson.M{"$elemMatch": bson.M{"id": subCategoryId}},
 	}
 
 	update := bson.M{
 		"$pull": bson.M{
-			"subCategories": bson.M{"id": subCategoryId},
+			"sub_categories": bson.M{"id": subCategoryId},
+		},
+	}
+
+	_, err := collection.UpdateOne(context.Background(), filter, update)
+	return err
+}
+
+func (r *UpdateRecipeRepository) UpdateRecipe(recipe models.Recipe) error {
+	collection := r.Db.Collection("recipe")
+
+	filter := bson.M{"_id": recipe.Id, "workspace_id": recipe.WorkspaceId}
+	update := bson.M{
+		"$set": bson.M{
+			"name":           recipe.Name,
+			"sub_categories": recipe.SubCategories,
+			"updated_at":     time.Now(),
 		},
 	}
 

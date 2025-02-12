@@ -16,6 +16,7 @@ type FindRecipesByWorkspaceIdRepository interface {
 type UpdateRecipeRepository interface {
 	CreateSubCategory(subCategory models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error)
 	DeleteSubCategory(recipeId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
+	UpdateRecipe(recipe models.Recipe) error
 }
 
 type FindRecipeByIdRepository interface {

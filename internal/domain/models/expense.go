@@ -12,6 +12,6 @@ type SubExpenseCategory struct {
 type Expense struct {
 	Id            primitive.ObjectID   `json:"id" bson:"_id"`
 	Name          string               `json:"name" bson:"name"`
-	AccountId     primitive.ObjectID   `json:"accountId" bson:"accountId"`
-	SubCategories []SubExpenseCategory `json:"subCategories" bson:"subCategories"`
+	AccountId     primitive.ObjectID   `json:"accountId" bson:"account_id"`
+	SubCategories []SubExpenseCategory `json:"subCategories" bson:"sub_categories"`
 }
