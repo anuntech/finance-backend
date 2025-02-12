@@ -40,3 +40,9 @@ func MakeGetRecipeByIdController(db *mongo.Database) *controllers.GetRecipeByIdC
 	findRecipeById := recipe_repository.NewFindRecipeByIdRepository(db)
 	return controllers.NewGetRecipeByIdController(findRecipeById)
 }
+
+func MakeUpdateRecipeController(db *mongo.Database) *controllers.UpdateRecipeController {
+	updateRecipe := recipe_repository.NewUpdateRecipeRepository(db)
+	findRecipeById := recipe_repository.NewFindRecipeByIdRepository(db)
+	return controllers.NewUpdateRecipeController(updateRecipe, findRecipeById)
+}

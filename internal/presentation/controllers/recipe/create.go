@@ -37,8 +37,8 @@ type subRecipeCategory struct {
 }
 
 type CreateRecipeBody struct {
-	Name        string              `json:"name" validate:"required,min=3,max=255"`
-	SubCategory []subRecipeCategory `json:"subCategory" validate:"dive"`
+	Name          string              `json:"name" validate:"required,min=3,max=255"`
+	SubCategories []subRecipeCategory `json:"subCategories" validate:"dive"`
 }
 
 func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -90,7 +90,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 				}
 			}
 			return result
-		}(body.SubCategory),
+		}(body.SubCategories),
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
