@@ -22,6 +22,8 @@ func NewUpdateRecipeRepository(db *mongo.Database) *UpdateRecipeRepository {
 func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error) {
 	collection := r.Db.Collection("recipe")
 
+	subCategory.Id = primitive.NewObjectID()
+
 	update := bson.M{
 		"$push": bson.M{
 			"subCategories": subCategory,
