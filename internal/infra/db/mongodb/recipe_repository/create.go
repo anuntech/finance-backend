@@ -29,7 +29,9 @@ func (r *CreateRecipeRepository) Create(recipe *models.Recipe) (*models.Recipe, 
 		UpdatedAt:     time.Now(),
 		WorkspaceId:   recipe.WorkspaceId,
 		SubCategories: recipe.SubCategories,
+		Icon:          recipe.Icon,
 	}
+
 	_, err := collection.InsertOne(context.Background(), recipeToSave)
 	if err != nil {
 		return nil, err

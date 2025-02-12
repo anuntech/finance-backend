@@ -39,6 +39,7 @@ type subRecipeCategory struct {
 type CreateRecipeBody struct {
 	Name          string              `json:"name" validate:"required,min=3,max=255"`
 	SubCategories []subRecipeCategory `json:"subCategories" validate:"dive"`
+	Icon          string              `json:"icon" validate:"required,min=1,max=50"`
 }
 
 func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
