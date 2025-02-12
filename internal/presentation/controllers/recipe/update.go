@@ -82,7 +82,7 @@ func (c *UpdateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		return result
 	}(body.SubCategories)
 
-	err = c.UpdateRecipeRepository.UpdateRecipe(*recipe)
+	err = c.UpdateRecipeRepository.UpdateRecipe(recipe)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error updating recipe",

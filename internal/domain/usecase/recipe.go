@@ -6,7 +6,7 @@ import (
 )
 
 type CreateRecipeRepository interface {
-	Create(recipe models.Recipe) (*models.Recipe, error)
+	Create(recipe *models.Recipe) (*models.Recipe, error)
 }
 
 type FindRecipesByWorkspaceIdRepository interface {
@@ -14,9 +14,9 @@ type FindRecipesByWorkspaceIdRepository interface {
 }
 
 type UpdateRecipeRepository interface {
-	CreateSubCategory(subCategory models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error)
+	CreateSubCategory(subCategory *models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error)
 	DeleteSubCategory(recipeId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
-	UpdateRecipe(recipe models.Recipe) error
+	UpdateRecipe(recipe *models.Recipe) error
 }
 
 type FindRecipeByIdRepository interface {

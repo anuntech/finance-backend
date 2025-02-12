@@ -20,7 +20,7 @@ func NewUpdateRecipeRepository(db *mongo.Database) *UpdateRecipeRepository {
 	}
 }
 
-func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error) {
+func (r *UpdateRecipeRepository) CreateSubCategory(subCategory *models.SubRecipeCategory, recipeId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubRecipeCategory, error) {
 	collection := r.Db.Collection("recipe")
 
 	subCategory.Id = primitive.NewObjectID()
@@ -36,7 +36,7 @@ func (r *UpdateRecipeRepository) CreateSubCategory(subCategory models.SubRecipeC
 		return nil, err
 	}
 
-	return &subCategory, nil
+	return subCategory, nil
 }
 
 func (r *UpdateRecipeRepository) DeleteSubCategory(recipeId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error {
@@ -58,7 +58,7 @@ func (r *UpdateRecipeRepository) DeleteSubCategory(recipeId primitive.ObjectID, 
 	return err
 }
 
-func (r *UpdateRecipeRepository) UpdateRecipe(recipe models.Recipe) error {
+func (r *UpdateRecipeRepository) UpdateRecipe(recipe *models.Recipe) error {
 	collection := r.Db.Collection("recipe")
 
 	filter := bson.M{"_id": recipe.Id, "workspace_id": recipe.WorkspaceId}

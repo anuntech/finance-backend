@@ -19,7 +19,7 @@ func NewCreateRecipeRepository(db *mongo.Database) *CreateRecipeRepository {
 	}
 }
 
-func (r *CreateRecipeRepository) Create(recipe models.Recipe) (*models.Recipe, error) {
+func (r *CreateRecipeRepository) Create(recipe *models.Recipe) (*models.Recipe, error) {
 	collection := r.Db.Collection("recipe")
 
 	recipeToSave := &models.Recipe{

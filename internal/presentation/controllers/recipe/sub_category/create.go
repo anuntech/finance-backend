@@ -80,7 +80,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusNotFound)
 	}
 
-	subCategory, err := c.UpdateRecipeRepository.CreateSubCategory(models.SubRecipeCategory{
+	subCategory, err := c.UpdateRecipeRepository.CreateSubCategory(&models.SubRecipeCategory{
 		Name:   body.SubCategory.Name,
 		Icon:   body.SubCategory.Icon,
 		Amount: body.SubCategory.Amount,

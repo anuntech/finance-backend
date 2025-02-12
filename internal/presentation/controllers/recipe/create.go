@@ -76,7 +76,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.CreateRecipeRepository.Create(models.Recipe{
+	recipe, err := c.CreateRecipeRepository.Create(&models.Recipe{
 		Name:        body.Name,
 		WorkspaceId: workspaceId,
 		SubCategories: func(subCats []subRecipeCategory) []models.SubRecipeCategory {
