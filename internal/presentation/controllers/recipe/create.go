@@ -80,6 +80,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 	recipe, err := c.CreateRecipeRepository.Create(&models.Recipe{
 		Name:        body.Name,
 		WorkspaceId: workspaceId,
+		Icon:        body.Icon,
 		SubCategories: func(subCats []subRecipeCategory) []models.SubRecipeCategory {
 			result := make([]models.SubRecipeCategory, len(subCats))
 			for i, subCat := range subCats {
