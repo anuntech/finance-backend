@@ -35,7 +35,7 @@ func (c *GetRecipesController) Handle(r presentationProtocols.HttpRequest) *pres
 	}
 
 	for i := range recipes {
-		recipes[i].TotalAmount = recipes[i].CalculateTotalAmount()
+		recipes[i].Amount = recipes[i].CalculateTotalAmount()
 	}
 
 	return helpers.CreateResponse(recipes, http.StatusOK)

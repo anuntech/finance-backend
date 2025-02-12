@@ -20,7 +20,7 @@ type Recipe struct {
 	CreatedAt     time.Time           `json:"createdAt" bson:"created_at"`
 	UpdatedAt     time.Time           `json:"updatedAt" bson:"updated_at"`
 	WorkspaceId   primitive.ObjectID  `json:"workspaceId" bson:"workspace_id"`
-	TotalAmount   float64             `json:"totalAmount" bson:"-"`
+	Amount        float64             `json:"amount" bson:"-"`
 }
 
 func (r *Recipe) CalculateTotalAmount() float64 {
