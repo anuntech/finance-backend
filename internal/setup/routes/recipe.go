@@ -44,4 +44,11 @@ func RecipeRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.
 			workspaceDb,
 		),
 	))
+
+	server.Handle("GET /recipe/{recipeId}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeGetRecipeByIdController(db)),
+			workspaceDb,
+		),
+	))
 }

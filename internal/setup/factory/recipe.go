@@ -35,3 +35,8 @@ func MakeDeleteRecipeController(db *mongo.Database) *controllers.DeleteRecipeCon
 	deleteRecipe := recipe_repository.NewDeleteRecipeRepository(db)
 	return controllers.NewDeleteRecipeController(deleteRecipe)
 }
+
+func MakeGetRecipeByIdController(db *mongo.Database) *controllers.GetRecipeByIdController {
+	findRecipeById := recipe_repository.NewFindRecipeByIdRepository(db)
+	return controllers.NewGetRecipeByIdController(findRecipeById)
+}
