@@ -2,7 +2,6 @@ package account_repository
 
 import (
 	"context"
-	"log"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,24 +19,10 @@ func NewFindByIdMongoRepository(db *mongo.Database) *FindByIdMongoRepository {
 	}
 }
 
-func (f *FindByIdMongoRepository) Find(id string, workspaceId string) (*models.Account, error) {
+func (f *FindByIdMongoRepository) Find(id primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	objectId, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("ObjectID: %s", objectId.Hex())
-
-	workspaceObjectId, err := primitive.ObjectIDFromHex(workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("WorkspaceObjectID: %s", workspaceObjectId.Hex())
-
-	filter := bson.M{"_id": objectId, "workspace_id": workspaceObjectId}
+	filter := bson.M{"_id": id, "workspace_id": workspaceId}
 	cursor := collection.FindOne(context.Background(), filter)
 	if cursor.Err() == mongo.ErrNoDocuments {
 		return nil, nil

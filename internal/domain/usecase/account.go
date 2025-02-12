@@ -14,7 +14,7 @@ type FindAccountByWorkspaceIdRepository interface {
 }
 
 type FindAccountByIdRepository interface {
-	Find(string, string) (*models.Account, error)
+	Find(primitive.ObjectID, primitive.ObjectID) (*models.Account, error)
 }
 
 type DeleteAccountRepository interface {
@@ -22,5 +22,5 @@ type DeleteAccountRepository interface {
 }
 
 type UpdateAccountRepository interface {
-	Update(string, *models.AccountInput) (*models.Account, error)
+	Update(primitive.ObjectID, *models.AccountInput) (*models.Account, error)
 }

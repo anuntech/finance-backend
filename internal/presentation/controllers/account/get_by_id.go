@@ -20,11 +20,17 @@ func NewGetAccountByIdController(findById usecase.FindAccountByIdRepository) *Ge
 }
 
 func (c *GetAccountByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	id := r.Req.PathValue("id")
-	workspaceId := r.Header.Get("workspaceId")
-	if _, err := primitive.ObjectIDFromHex(id); err != nil {
+	id, err := primitive.ObjectIDFromHex(r.Req.PathValue("id"))
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
+		}, http.StatusBadRequest)
+	}
+
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
 		}, http.StatusBadRequest)
 	}
 
