@@ -29,3 +29,8 @@ func MakeDeleteSubCategoryController(db *mongo.Database) *controllers_recipe.Del
 	updateRecipe := recipe_repository.NewUpdateRecipeRepository(db)
 	return controllers_recipe.NewDeleteSubCategoryController(updateRecipe)
 }
+
+func MakeDeleteRecipeController(db *mongo.Database) *controllers.DeleteRecipeController {
+	deleteRecipe := recipe_repository.NewDeleteRecipeRepository(db)
+	return controllers.NewDeleteRecipeController(deleteRecipe)
+}

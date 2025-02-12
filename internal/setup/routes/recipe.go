@@ -37,4 +37,11 @@ func RecipeRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.
 			workspaceDb,
 		),
 	))
+
+	server.Handle("DELETE /recipe/{recipeId}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeDeleteRecipeController(db)),
+			workspaceDb,
+		),
+	))
 }
