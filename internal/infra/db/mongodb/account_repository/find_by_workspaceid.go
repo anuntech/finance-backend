@@ -19,15 +19,10 @@ func NewFindManyByUserIdAndWorkspaceIdMongoRepository(db *mongo.Database) *FindM
 	}
 }
 
-func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(workspaceId string) ([]models.Account, error) {
+func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(workspaceId primitive.ObjectID) ([]models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	workspaceIdObjectId, err := primitive.ObjectIDFromHex(workspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	filter := bson.M{"workspace_id": workspaceIdObjectId}
+	filter := bson.M{"workspace_id": workspaceId}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, err
