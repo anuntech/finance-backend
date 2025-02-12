@@ -18,20 +18,10 @@ func NewDeleteRecipeRepository(db *mongo.Database) *DeleteRecipeRepository {
 	}
 }
 
-func (r *DeleteRecipeRepository) Delete(recipeId string, workspaceId string) error {
+func (r *DeleteRecipeRepository) Delete(recipeId primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := r.Db.Collection("recipe")
 
-	recipeIdObjectId, err := primitive.ObjectIDFromHex(recipeId)
-	if err != nil {
-		return err
-	}
-
-	workspaceIdObjectId, err := primitive.ObjectIDFromHex(workspaceId)
-	if err != nil {
-		return err
-	}
-
-	_, err = collection.DeleteOne(context.Background(), bson.M{"_id": recipeIdObjectId, "workspaceId": workspaceIdObjectId})
+	_, err := collection.DeleteOne(context.Background(), bson.M{"_id": recipeId, "workspaceId": workspaceId})
 	if err != nil {
 		return err
 	}

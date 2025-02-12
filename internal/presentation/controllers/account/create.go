@@ -78,7 +78,14 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusNotFound)
 	}
 
-	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error ocurred when finding accounts: " + err.Error(),
@@ -88,13 +95,6 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	if len(accounts) >= 50 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "user has reached the maximum number of accounts",
-		}, http.StatusBadRequest)
-	}
-
-	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
 		}, http.StatusBadRequest)
 	}
 

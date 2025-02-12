@@ -6,6 +6,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GetAccountsController struct {
@@ -19,7 +20,14 @@ func NewGetAccountsController(findManyByUserIdAndWorkspaceId usecase.FindAccount
 }
 
 func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving accounts",

@@ -20,7 +20,7 @@ func NewUpdateAccountMongoRepository(db *mongo.Database) *UpdateAccountMongoRepo
 	}
 }
 
-func (u *UpdateAccountMongoRepository) Update(id string, account *models.AccountInput) (*models.Account, error) {
+func (u *UpdateAccountMongoRepository) Update(id primitive.ObjectID, account *models.AccountInput) (*models.Account, error) {
 	collection := u.Db.Collection("account")
 
 	update := bson.M{
@@ -32,12 +32,7 @@ func (u *UpdateAccountMongoRepository) Update(id string, account *models.Account
 		},
 	}
 
-	objectId, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, err
-	}
-
-	result := collection.FindOneAndUpdate(context.Background(), bson.M{"_id": objectId}, update)
+	result := collection.FindOneAndUpdate(context.Background(), bson.M{"_id": id}, update)
 	if result.Err() != nil {
 		return nil, result.Err()
 	}

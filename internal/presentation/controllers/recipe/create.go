@@ -33,12 +33,12 @@ func NewCreateRecipeController(createRecipe usecase.CreateRecipeRepository, find
 type subRecipeCategory struct {
 	Name   string  `json:"name" validate:"required,min=3,max=255"`
 	Icon   string  `json:"icon" validate:"required,min=1,max=255"`
-	Amount float64 `json:"amount" validate:"required"`
+	Amount float64 `json:"amount" validate:"required,min=0"`
 }
 
 type CreateRecipeBody struct {
 	Name        string              `json:"name" validate:"required,min=3,max=255"`
-	SubCategory []subRecipeCategory `json:"subCategory"`
+	SubCategory []subRecipeCategory `json:"subCategory" validate:"dive"`
 }
 
 func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -63,7 +63,7 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding recipes",

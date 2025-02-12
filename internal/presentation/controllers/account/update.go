@@ -37,8 +37,8 @@ type UpdateAccountControllerBody struct {
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	id := r.Req.PathValue("id")
-	if _, err := primitive.ObjectIDFromHex(id); err != nil {
+	id, err := primitive.ObjectIDFromHex(r.Req.PathValue("id"))
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
@@ -63,7 +63,14 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	accountToVerify, err := c.FindAccountById.Find(id, r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	accountToVerify, err := c.FindAccountById.Find(id, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when finding account",
