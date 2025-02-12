@@ -11,7 +11,8 @@ import (
 func MakeCreateRecipeController(db *mongo.Database) *controllers.CreateRecipeController {
 	createRecipe := recipe_repository.NewCreateRecipeRepository(db)
 	findAccountById := account_repository.NewFindByIdMongoRepository(db)
-	return controllers.NewCreateRecipeController(createRecipe, findAccountById)
+	findRecipesByWorkspaceId := recipe_repository.NewFindRecipesByWorkspaceIdRepository(db)
+	return controllers.NewCreateRecipeController(createRecipe, findAccountById, findRecipesByWorkspaceId)
 }
 
 func MakeGetRecipesController(db *mongo.Database) *controllers.GetRecipesController {

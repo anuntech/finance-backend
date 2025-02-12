@@ -13,18 +13,20 @@ import (
 )
 
 type CreateRecipeController struct {
-	CreateRecipeRepository usecase.CreateRecipeRepository
-	Validate               *validator.Validate
-	FindAccountById        usecase.FindAccountByIdRepository
+	CreateRecipeRepository             usecase.CreateRecipeRepository
+	Validate                           *validator.Validate
+	FindAccountById                    usecase.FindAccountByIdRepository
+	FindRecipesByWorkspaceIdRepository usecase.FindRecipesByWorkspaceIdRepository
 }
 
-func NewCreateRecipeController(createRecipe usecase.CreateRecipeRepository, findAccountById usecase.FindAccountByIdRepository) *CreateRecipeController {
+func NewCreateRecipeController(createRecipe usecase.CreateRecipeRepository, findAccountById usecase.FindAccountByIdRepository, findRecipesByWorkspaceId usecase.FindRecipesByWorkspaceIdRepository) *CreateRecipeController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateRecipeController{
-		CreateRecipeRepository: createRecipe,
-		Validate:               validate,
-		FindAccountById:        findAccountById,
+		CreateRecipeRepository:             createRecipe,
+		Validate:                           validate,
+		FindAccountById:                    findAccountById,
+		FindRecipesByWorkspaceIdRepository: findRecipesByWorkspaceId,
 	}
 }
 
@@ -58,6 +60,19 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid workspace id",
+		}, http.StatusBadRequest)
+	}
+
+	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding recipes",
+		}, http.StatusInternalServerError)
+	}
+
+	if len(recipes) >= 50 {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "user has reached the maximum number of recipes",
 		}, http.StatusBadRequest)
 	}
 
