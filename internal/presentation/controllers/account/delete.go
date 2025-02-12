@@ -28,7 +28,7 @@ func (c *DeleteAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	err = c.DeleteAccountRepository.Delete(objectId.Hex())
+	err = c.DeleteAccountRepository.Delete(objectId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting account: " + err.Error(),
