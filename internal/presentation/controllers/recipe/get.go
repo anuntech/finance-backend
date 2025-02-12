@@ -26,5 +26,9 @@ func (c *GetRecipesController) Handle(r presentationProtocols.HttpRequest) *pres
 		}, http.StatusInternalServerError)
 	}
 
+	for i := range recipes {
+		recipes[i].TotalAmount = recipes[i].CalculateTotalAmount()
+	}
+
 	return helpers.CreateResponse(recipes, http.StatusOK)
 }

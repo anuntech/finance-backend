@@ -16,9 +16,17 @@ type SubRecipeCategory struct {
 type Recipe struct {
 	Id            primitive.ObjectID  `json:"id" bson:"_id"`
 	Name          string              `json:"name" bson:"name"`
-	AccountId     primitive.ObjectID  `json:"accountId" bson:"accountId"`
 	SubCategories []SubRecipeCategory `json:"subCategories" bson:"subCategories"`
 	CreatedAt     time.Time           `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time           `json:"updatedAt" bson:"updatedAt"`
 	WorkspaceId   primitive.ObjectID  `json:"workspaceId" bson:"workspaceId"`
+	TotalAmount   float64             `json:"totalAmount" bson:"-"`
+}
+
+func (r *Recipe) CalculateTotalAmount() float64 {
+	total := 0.0
+	for _, subCategory := range r.SubCategories {
+		total += subCategory.Amount
+	}
+	return total
 }

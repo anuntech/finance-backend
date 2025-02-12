@@ -36,7 +36,6 @@ type subRecipeCategory struct {
 
 type CreateRecipeBody struct {
 	Name        string              `json:"name" validate:"required,min=3,max=255"`
-	AccountId   string              `json:"accountId" validate:"required"`
 	SubCategory []subRecipeCategory `json:"subCategory"`
 }
 
@@ -55,25 +54,6 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusUnprocessableEntity)
 	}
 
-	accountId, err := primitive.ObjectIDFromHex(body.AccountId)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid account id",
-		}, http.StatusBadRequest)
-	}
-
-	account, err := c.FindAccountById.Find(accountId.Hex(), r.Header.Get("workspaceId"))
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "account not found",
-		}, http.StatusNotFound)
-	}
-	if account == nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "account not found",
-		}, http.StatusNotFound)
-	}
-
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -83,7 +63,6 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 
 	recipe, err := c.CreateRecipeRepository.Create(models.Recipe{
 		Name:        body.Name,
-		AccountId:   accountId,
 		WorkspaceId: workspaceId,
 		SubCategories: func(subCats []subRecipeCategory) []models.SubRecipeCategory {
 			result := make([]models.SubRecipeCategory, len(subCats))

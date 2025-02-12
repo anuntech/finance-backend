@@ -28,7 +28,6 @@ func (r *CreateRecipeRepository) Create(recipe models.Recipe) (*models.Recipe, e
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 		WorkspaceId:   recipe.WorkspaceId,
-		AccountId:     recipe.AccountId,
 		SubCategories: recipe.SubCategories,
 	}
 	_, err := collection.InsertOne(context.Background(), recipeToSave)
