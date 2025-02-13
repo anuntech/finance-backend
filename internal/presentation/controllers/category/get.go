@@ -40,5 +40,9 @@ func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *pr
 		categories[i].Amount = categories[i].CalculateTotalAmount()
 	}
 
+	for i, j := 0, len(categories)-1; i < j; i, j = i+1, j-1 {
+		categories[i], categories[j] = categories[j], categories[i]
+	}
+
 	return helpers.CreateResponse(categories, http.StatusOK)
 }
