@@ -17,6 +17,7 @@ type Category struct {
 	Id            primitive.ObjectID    `json:"id" bson:"_id"`
 	Name          string                `json:"name" bson:"name"`
 	Amount        float64               `json:"amount" bson:"-"`
+	Type          string                `json:"type" bson:"type"`
 	Icon          string                `json:"icon" bson:"icon"`
 	SubCategories []SubCategoryCategory `json:"subCategories" bson:"sub_categories"`
 	CreatedAt     time.Time             `json:"createdAt" bson:"created_at"`

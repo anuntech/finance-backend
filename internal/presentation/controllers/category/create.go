@@ -31,14 +31,14 @@ func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository
 }
 
 type subCategoryCategory struct {
-	Name   string  `json:"name" validate:"required,min=3,max=255"`
-	Icon   string  `json:"icon" validate:"required,min=1,max=255"`
-	Amount float64 `json:"amount" validate:"required,min=0"`
+	Name string `json:"name" validate:"required,min=3,max=255"`
+	Icon string `json:"icon" validate:"required,min=1,max=255"`
 }
 
 type CreateCategoryBody struct {
 	Name          string                `json:"name" validate:"required,min=3,max=255"`
 	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
+	Type          string                `json:"type" validate:"required,oneof=recipe expense"`
 	Icon          string                `json:"icon" validate:"required,min=1,max=50"`
 }
 
@@ -85,14 +85,14 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 			result := make([]models.SubCategoryCategory, len(subCats))
 			for i, subCat := range subCats {
 				result[i] = models.SubCategoryCategory{
-					Id:     primitive.NewObjectID(),
-					Name:   subCat.Name,
-					Amount: subCat.Amount,
-					Icon:   subCat.Icon,
+					Id:   primitive.NewObjectID(),
+					Name: subCat.Name,
+					Icon: subCat.Icon,
 				}
 			}
 			return result
 		}(body.SubCategories),
+		Type: body.Type,
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

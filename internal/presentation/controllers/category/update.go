@@ -30,6 +30,7 @@ func NewUpdateCategoryController(updateCategory usecase.UpdateCategoryRepository
 
 type UpdateCategoryBody struct {
 	Name          string                `json:"name" validate:"required,min=3,max=255"`
+	Type          string                `json:"type" validate:"required,oneof=recipe expense"`
 	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
 }
 
@@ -69,6 +70,7 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	category.Name = body.Name
+	category.Type = body.Type
 	category.SubCategories = func(subCats []subCategoryCategory) []models.SubCategoryCategory {
 		result := make([]models.SubCategoryCategory, len(subCats))
 		for i, subCat := range subCats {
