@@ -64,10 +64,10 @@ func (r *UpdateCategoryRepository) UpdateCategory(category *models.Category) err
 	filter := bson.M{"_id": category.Id, "workspace_id": category.WorkspaceId}
 	update := bson.M{
 		"$set": bson.M{
-			"name":           category.Name,
-			"sub_categories": category.SubCategories,
-			"updated_at":     time.Now(),
-			"type":           category.Type,
+			"name":       category.Name,
+			"icon":       category.Icon,
+			"updated_at": time.Now(),
+			"type":       category.Type,
 		},
 	}
 

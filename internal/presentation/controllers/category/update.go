@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -29,9 +28,9 @@ func NewUpdateCategoryController(updateCategory usecase.UpdateCategoryRepository
 }
 
 type UpdateCategoryBody struct {
-	Name          string                `json:"name" validate:"required,min=3,max=255"`
-	Type          string                `json:"type" validate:"required,oneof=recipe expense"`
-	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
+	Name string `json:"name" validate:"required,min=3,max=255"`
+	Type string `json:"type" validate:"required,oneof=recipe expense"`
+	Icon string `json:"icon" validate:"required,min=1,max=50"`
 }
 
 func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -71,18 +70,7 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 
 	category.Name = body.Name
 	category.Type = body.Type
-	category.SubCategories = func(subCats []subCategoryCategory) []models.SubCategoryCategory {
-		result := make([]models.SubCategoryCategory, len(subCats))
-		for i, subCat := range subCats {
-			result[i] = models.SubCategoryCategory{
-				Id:     primitive.NewObjectID(),
-				Name:   subCat.Name,
-				Icon:   subCat.Icon,
-				Amount: 0,
-			}
-		}
-		return result
-	}(body.SubCategories)
+	category.Icon = body.Icon
 
 	err = c.UpdateCategoryRepository.UpdateCategory(category)
 	if err != nil {
