@@ -10,20 +10,20 @@ import (
 )
 
 type DeleteSubCategoryController struct {
-	UpdateRecipeRepository usecase.UpdateRecipeRepository
+	UpdateCategoryRepository usecase.UpdateCategoryRepository
 }
 
-func NewDeleteSubCategoryController(updateRecipe usecase.UpdateRecipeRepository) *DeleteSubCategoryController {
+func NewDeleteSubCategoryController(updateCategory usecase.UpdateCategoryRepository) *DeleteSubCategoryController {
 	return &DeleteSubCategoryController{
-		UpdateRecipeRepository: updateRecipe,
+		UpdateCategoryRepository: updateCategory,
 	}
 }
 
 func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	recipeId, err := primitive.ObjectIDFromHex(r.Req.PathValue("recipeId"))
+	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid recipeId format",
+			Error: "invalid categoryId format",
 		}, http.StatusBadRequest)
 	}
 
@@ -41,7 +41,7 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	err = c.UpdateRecipeRepository.DeleteSubCategory(recipeId, subCategoryId, workspaceId)
+	err = c.UpdateCategoryRepository.DeleteSubCategory(categoryId, subCategoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting sub category: " + err.Error(),

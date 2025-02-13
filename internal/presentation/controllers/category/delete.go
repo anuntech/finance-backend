@@ -1,4 +1,4 @@
-package recipe
+package category
 
 import (
 	"net/http"
@@ -9,17 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type DeleteRecipeController struct {
-	DeleteRecipeRepository usecase.DeleteRecipeRepository
+type DeleteCategoryController struct {
+	DeleteCategoryRepository usecase.DeleteCategoryRepository
 }
 
-func NewDeleteRecipeController(deleteRecipe usecase.DeleteRecipeRepository) *DeleteRecipeController {
-	return &DeleteRecipeController{
-		DeleteRecipeRepository: deleteRecipe,
+func NewDeleteCategoryController(deleteCategory usecase.DeleteCategoryRepository) *DeleteCategoryController {
+	return &DeleteCategoryController{
+		DeleteCategoryRepository: deleteCategory,
 	}
 }
 
-func (c *DeleteRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+func (c *DeleteCategoryController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -27,17 +27,17 @@ func (c *DeleteRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipeId, err := primitive.ObjectIDFromHex(r.Req.PathValue("recipeId"))
+	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid recipe ID format",
+			Error: "Invalid category ID format",
 		}, http.StatusBadRequest)
 	}
 
-	err = c.DeleteRecipeRepository.Delete(recipeId, workspaceId)
+	err = c.DeleteCategoryRepository.Delete(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when deleting recipe: " + err.Error(),
+			Error: "an error occurred when deleting category: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 

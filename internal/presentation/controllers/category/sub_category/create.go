@@ -13,18 +13,18 @@ import (
 )
 
 type CreateSubCategoryController struct {
-	UpdateRecipeRepository usecase.UpdateRecipeRepository
-	Validate               *validator.Validate
-	FindRecipeById         usecase.FindRecipeByIdRepository
+	UpdateCategoryRepository usecase.UpdateCategoryRepository
+	Validate                 *validator.Validate
+	FindCategoryById         usecase.FindCategoryByIdRepository
 }
 
-func NewCreateSubCategoryController(updateRecipe usecase.UpdateRecipeRepository, findRecipeById usecase.FindRecipeByIdRepository) *CreateSubCategoryController {
+func NewCreateSubCategoryController(updateCategory usecase.UpdateCategoryRepository, findCategoryById usecase.FindCategoryByIdRepository) *CreateSubCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateSubCategoryController{
-		UpdateRecipeRepository: updateRecipe,
-		Validate:               validate,
-		FindRecipeById:         findRecipeById,
+		UpdateCategoryRepository: updateCategory,
+		Validate:                 validate,
+		FindCategoryById:         findCategoryById,
 	}
 }
 
@@ -35,7 +35,7 @@ type subCategory struct {
 }
 
 type subCategoryBody struct {
-	RecipeId    string      `json:"recipeId" validate:"required,mongodb"`
+	CategoryId  string      `json:"categoryId" validate:"required,mongodb"`
 	SubCategory subCategory `json:"subCategory"`
 }
 
@@ -54,7 +54,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusUnprocessableEntity)
 	}
 
-	recipeId, err := primitive.ObjectIDFromHex(body.RecipeId)
+	categoryId, err := primitive.ObjectIDFromHex(body.CategoryId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid account id",
@@ -68,23 +68,23 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.FindRecipeById.Find(recipeId, workspaceId)
+	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "account not found",
 		}, http.StatusNotFound)
 	}
-	if recipe == nil {
+	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "account not found",
 		}, http.StatusNotFound)
 	}
 
-	subCategory, err := c.UpdateRecipeRepository.CreateSubCategory(&models.SubRecipeCategory{
+	subCategory, err := c.UpdateCategoryRepository.CreateSubCategory(&models.SubCategoryCategory{
 		Name:   body.SubCategory.Name,
 		Icon:   body.SubCategory.Icon,
 		Amount: body.SubCategory.Amount,
-	}, recipeId, workspaceId)
+	}, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating SubCategory",

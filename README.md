@@ -1,6 +1,6 @@
 # Finance Backend
 
-This project is a backend service for managing financial accounts, banks, expenses, recipes, and workspaces. It is built using Go and MongoDB.
+This project is a backend service for managing financial accounts, banks, expenses, categorys, and workspaces. It is built using Go and MongoDB.
 
 ## Table of Contents
 

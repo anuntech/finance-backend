@@ -1,4 +1,4 @@
-package recipe
+package category
 
 import (
 	"encoding/json"
@@ -12,29 +12,29 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type UpdateRecipeController struct {
-	UpdateRecipeRepository usecase.UpdateRecipeRepository
-	Validate               *validator.Validate
-	FindRecipeById         usecase.FindRecipeByIdRepository
+type UpdateCategoryController struct {
+	UpdateCategoryRepository usecase.UpdateCategoryRepository
+	Validate                 *validator.Validate
+	FindCategoryById         usecase.FindCategoryByIdRepository
 }
 
-func NewUpdateRecipeController(updateRecipe usecase.UpdateRecipeRepository, findRecipeById usecase.FindRecipeByIdRepository) *UpdateRecipeController {
+func NewUpdateCategoryController(updateCategory usecase.UpdateCategoryRepository, findCategoryById usecase.FindCategoryByIdRepository) *UpdateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	return &UpdateRecipeController{
-		UpdateRecipeRepository: updateRecipe,
-		Validate:               validate,
-		FindRecipeById:         findRecipeById,
+	return &UpdateCategoryController{
+		UpdateCategoryRepository: updateCategory,
+		Validate:                 validate,
+		FindCategoryById:         findCategoryById,
 	}
 }
 
-type UpdateRecipeBody struct {
-	Name          string              `json:"name" validate:"required,min=3,max=255"`
-	SubCategories []subRecipeCategory `json:"subCategories" validate:"dive"`
+type UpdateCategoryBody struct {
+	Name          string                `json:"name" validate:"required,min=3,max=255"`
+	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
 }
 
-func (c *UpdateRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body UpdateRecipeBody
+func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+	var body UpdateCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid body request",
@@ -47,10 +47,10 @@ func (c *UpdateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusUnprocessableEntity)
 	}
 
-	recipeId, err := primitive.ObjectIDFromHex(r.Req.PathValue("recipeId"))
+	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid recipeId format",
+			Error: "invalid categoryId format",
 		}, http.StatusBadRequest)
 	}
 
@@ -61,18 +61,18 @@ func (c *UpdateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.FindRecipeById.Find(recipeId, workspaceId)
+	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "recipe not found",
+			Error: "category not found",
 		}, http.StatusNotFound)
 	}
 
-	recipe.Name = body.Name
-	recipe.SubCategories = func(subCats []subRecipeCategory) []models.SubRecipeCategory {
-		result := make([]models.SubRecipeCategory, len(subCats))
+	category.Name = body.Name
+	category.SubCategories = func(subCats []subCategoryCategory) []models.SubCategoryCategory {
+		result := make([]models.SubCategoryCategory, len(subCats))
 		for i, subCat := range subCats {
-			result[i] = models.SubRecipeCategory{
+			result[i] = models.SubCategoryCategory{
 				Id:     primitive.NewObjectID(),
 				Name:   subCat.Name,
 				Amount: subCat.Amount,
@@ -82,12 +82,12 @@ func (c *UpdateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		return result
 	}(body.SubCategories)
 
-	err = c.UpdateRecipeRepository.UpdateRecipe(recipe)
+	err = c.UpdateCategoryRepository.UpdateCategory(category)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error updating recipe",
+			Error: "error updating category",
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(recipe, http.StatusOK)
+	return helpers.CreateResponse(category, http.StatusOK)
 }

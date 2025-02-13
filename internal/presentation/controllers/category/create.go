@@ -1,4 +1,4 @@
-package recipe
+package category
 
 import (
 	"encoding/json"
@@ -12,38 +12,38 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type CreateRecipeController struct {
-	CreateRecipeRepository             usecase.CreateRecipeRepository
-	Validate                           *validator.Validate
-	FindAccountById                    usecase.FindAccountByIdRepository
-	FindRecipesByWorkspaceIdRepository usecase.FindRecipesByWorkspaceIdRepository
+type CreateCategoryController struct {
+	CreateCategoryRepository             usecase.CreateCategoryRepository
+	Validate                             *validator.Validate
+	FindAccountById                      usecase.FindAccountByIdRepository
+	FindCategorysByWorkspaceIdRepository usecase.FindCategorysByWorkspaceIdRepository
 }
 
-func NewCreateRecipeController(createRecipe usecase.CreateRecipeRepository, findAccountById usecase.FindAccountByIdRepository, findRecipesByWorkspaceId usecase.FindRecipesByWorkspaceIdRepository) *CreateRecipeController {
+func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategorysByWorkspaceIdRepository) *CreateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	return &CreateRecipeController{
-		CreateRecipeRepository:             createRecipe,
-		Validate:                           validate,
-		FindAccountById:                    findAccountById,
-		FindRecipesByWorkspaceIdRepository: findRecipesByWorkspaceId,
+	return &CreateCategoryController{
+		CreateCategoryRepository:             createCategory,
+		Validate:                             validate,
+		FindAccountById:                      findAccountById,
+		FindCategorysByWorkspaceIdRepository: findCategorysByWorkspaceId,
 	}
 }
 
-type subRecipeCategory struct {
+type subCategoryCategory struct {
 	Name   string  `json:"name" validate:"required,min=3,max=255"`
 	Icon   string  `json:"icon" validate:"required,min=1,max=255"`
 	Amount float64 `json:"amount" validate:"required,min=0"`
 }
 
-type CreateRecipeBody struct {
-	Name          string              `json:"name" validate:"required,min=3,max=255"`
-	SubCategories []subRecipeCategory `json:"subCategories" validate:"dive"`
-	Icon          string              `json:"icon" validate:"required,min=1,max=50"`
+type CreateCategoryBody struct {
+	Name          string                `json:"name" validate:"required,min=3,max=255"`
+	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
+	Icon          string                `json:"icon" validate:"required,min=1,max=50"`
 }
 
-func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body CreateRecipeBody
+func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+	var body CreateCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid body request",
@@ -64,27 +64,27 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	recipes, err := c.FindRecipesByWorkspaceIdRepository.Find(workspaceId)
+	categorys, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding recipes",
+			Error: "error finding categorys",
 		}, http.StatusInternalServerError)
 	}
 
-	if len(recipes) >= 50 {
+	if len(categorys) >= 50 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "user has reached the maximum number of recipes",
+			Error: "user has reached the maximum number of categorys",
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.CreateRecipeRepository.Create(&models.Recipe{
+	category, err := c.CreateCategoryRepository.Create(&models.Category{
 		Name:        body.Name,
 		WorkspaceId: workspaceId,
 		Icon:        body.Icon,
-		SubCategories: func(subCats []subRecipeCategory) []models.SubRecipeCategory {
-			result := make([]models.SubRecipeCategory, len(subCats))
+		SubCategories: func(subCats []subCategoryCategory) []models.SubCategoryCategory {
+			result := make([]models.SubCategoryCategory, len(subCats))
 			for i, subCat := range subCats {
-				result[i] = models.SubRecipeCategory{
+				result[i] = models.SubCategoryCategory{
 					Id:     primitive.NewObjectID(),
 					Name:   subCat.Name,
 					Amount: subCat.Amount,
@@ -96,9 +96,9 @@ func (c *CreateRecipeController) Handle(r presentationProtocols.HttpRequest) *pr
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating recipe",
+			Error: "error creating category",
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(recipe, http.StatusOK)
+	return helpers.CreateResponse(category, http.StatusOK)
 }

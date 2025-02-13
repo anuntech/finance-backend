@@ -1,4 +1,4 @@
-package recipe
+package category
 
 import (
 	"net/http"
@@ -9,21 +9,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type GetRecipeByIdController struct {
-	FindRecipeByIdRepository usecase.FindRecipeByIdRepository
+type GetCategoryByIdController struct {
+	FindCategoryByIdRepository usecase.FindCategoryByIdRepository
 }
 
-func NewGetRecipeByIdController(findRecipeByIdRepository usecase.FindRecipeByIdRepository) *GetRecipeByIdController {
-	return &GetRecipeByIdController{
-		FindRecipeByIdRepository: findRecipeByIdRepository,
+func NewGetCategoryByIdController(findCategoryByIdRepository usecase.FindCategoryByIdRepository) *GetCategoryByIdController {
+	return &GetCategoryByIdController{
+		FindCategoryByIdRepository: findCategoryByIdRepository,
 	}
 }
 
-func (c *GetRecipeByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	recipeId, err := primitive.ObjectIDFromHex(r.Req.PathValue("recipeId"))
+func (c *GetCategoryByIdController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid recipeId format",
+			Error: "invalid categoryId format",
 		}, http.StatusBadRequest)
 	}
 
@@ -34,12 +34,12 @@ func (c *GetRecipeByIdController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	recipe, err := c.FindRecipeByIdRepository.Find(recipeId, workspaceId)
+	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: err.Error(),
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(recipe, http.StatusOK)
+	return helpers.CreateResponse(category, http.StatusOK)
 }
