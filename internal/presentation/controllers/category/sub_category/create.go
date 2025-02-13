@@ -70,12 +70,12 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "account not found",
+			Error: "category not found",
 		}, http.StatusNotFound)
 	}
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "account not found",
+			Error: "category not found",
 		}, http.StatusNotFound)
 	}
 

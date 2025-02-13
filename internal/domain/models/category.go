@@ -25,10 +25,16 @@ type Category struct {
 	WorkspaceId   primitive.ObjectID    `json:"workspaceId" bson:"workspace_id"`
 }
 
-func (r *Category) CalculateTotalAmount() float64 {
+func (r *Category) CalculateTotalAmount() {
 	total := 0.0
 	for _, subCategory := range r.SubCategories {
 		total += subCategory.Amount
 	}
-	return total
+	r.Amount = total
+}
+
+func (r *Category) InvertSubCategoriesOrder() {
+	for i, j := 0, len(r.SubCategories)-1; i < j; i, j = i+1, j-1 {
+		r.SubCategories[i], r.SubCategories[j] = r.SubCategories[j], r.SubCategories[i]
+	}
 }
