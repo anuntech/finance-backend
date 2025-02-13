@@ -29,9 +29,8 @@ func NewCreateSubCategoryController(updateCategory usecase.UpdateCategoryReposit
 }
 
 type subCategory struct {
-	Name   string  `json:"name" validate:"required,min=3,max=255"`
-	Icon   string  `json:"icon" validate:"required,min=1,max=255"`
-	Amount float64 `json:"amount" validate:"required"`
+	Name string `json:"name" validate:"required,min=3,max=255"`
+	Icon string `json:"icon" validate:"required,min=1,max=255"`
 }
 
 type subCategoryBody struct {
@@ -83,7 +82,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	subCategory, err := c.UpdateCategoryRepository.CreateSubCategory(&models.SubCategoryCategory{
 		Name:   body.SubCategory.Name,
 		Icon:   body.SubCategory.Icon,
-		Amount: body.SubCategory.Amount,
+		Amount: 0,
 	}, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

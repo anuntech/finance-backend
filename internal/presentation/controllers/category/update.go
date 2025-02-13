@@ -75,8 +75,8 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 			result[i] = models.SubCategoryCategory{
 				Id:     primitive.NewObjectID(),
 				Name:   subCat.Name,
-				Amount: subCat.Amount,
 				Icon:   subCat.Icon,
+				Amount: 0,
 			}
 		}
 		return result
