@@ -30,6 +30,7 @@ func (r *CreateCategoryRepository) Create(category *models.Category) (*models.Ca
 		WorkspaceId:   category.WorkspaceId,
 		SubCategories: category.SubCategories,
 		Icon:          category.Icon,
+		Type:          category.Type,
 	}
 
 	_, err := collection.InsertOne(context.Background(), categoryToSave)

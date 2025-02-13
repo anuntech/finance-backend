@@ -67,6 +67,7 @@ func (r *UpdateCategoryRepository) UpdateCategory(category *models.Category) err
 			"name":           category.Name,
 			"sub_categories": category.SubCategories,
 			"updated_at":     time.Now(),
+			"type":           category.Type,
 		},
 	}
 
