@@ -74,3 +74,23 @@ func (r *UpdateCategoryRepository) UpdateCategory(category *models.Category) err
 	_, err := collection.UpdateOne(context.Background(), filter, update)
 	return err
 }
+
+func (r *UpdateCategoryRepository) UpdateSubCategory(subCategory *models.SubCategoryCategory, categoryId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error {
+	collection := r.Db.Collection("category")
+
+	filter := bson.M{
+		"_id":               categoryId,
+		"workspace_id":      workspaceId,
+		"sub_categories.id": subCategoryId,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"sub_categories.$.name": subCategory.Name,
+			"sub_categories.$.icon": subCategory.Icon,
+		},
+	}
+
+	_, err := collection.UpdateOne(context.Background(), filter, update)
+	return err
+}

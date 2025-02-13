@@ -46,3 +46,9 @@ func MakeUpdateCategoryController(db *mongo.Database) *controllers.UpdateCategor
 	findCategoryById := category_repository.NewFindCategoryByIdRepository(db)
 	return controllers.NewUpdateCategoryController(updateCategory, findCategoryById)
 }
+
+func MakeUpdateSubCategoryController(db *mongo.Database) *controllers_category.UpdateSubCategoryController {
+	updateCategory := category_repository.NewUpdateCategoryRepository(db)
+	findCategoryById := category_repository.NewFindCategoryByIdRepository(db)
+	return controllers_category.NewUpdateSubCategoryController(updateCategory, findCategoryById)
+}

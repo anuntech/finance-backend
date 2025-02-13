@@ -31,6 +31,13 @@ func CategoryRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mong
 		),
 	))
 
+	server.Handle("PUT /category/sub-category/{categoryId}/{subCategoryId}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeUpdateSubCategoryController(db)),
+			workspaceDb,
+		),
+	))
+
 	server.Handle("DELETE /category/sub-category/{categoryId}/{subCategoryId}", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeDeleteSubCategoryController(db)),
