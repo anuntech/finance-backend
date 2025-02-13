@@ -22,7 +22,7 @@ func NewFindCategorysByWorkspaceIdRepository(db *mongo.Database) *FindCategorysB
 func (r *FindCategorysByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID) ([]models.Category, error) {
 	collection := r.Db.Collection("category")
 
-	cursor, err := collection.Find(context.Background(), bson.M{"workspaceId": workspaceId})
+	cursor, err := collection.Find(context.Background(), bson.M{"workspace_id": workspaceId})
 	if err != nil {
 		return nil, err
 	}
