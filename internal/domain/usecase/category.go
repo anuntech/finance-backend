@@ -10,7 +10,7 @@ type CreateCategoryRepository interface {
 }
 
 type FindCategorysByWorkspaceIdRepository interface {
-	Find(workspaceId primitive.ObjectID) ([]models.Category, error)
+	Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error)
 }
 
 type UpdateCategoryRepository interface {

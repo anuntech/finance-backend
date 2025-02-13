@@ -19,18 +19,23 @@ func NewFindCategorysByWorkspaceIdRepository(db *mongo.Database) *FindCategorysB
 	}
 }
 
-func (r *FindCategorysByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID) ([]models.Category, error) {
+func (r *FindCategorysByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error) {
 	collection := r.Db.Collection("category")
 
-	cursor, err := collection.Find(context.Background(), bson.M{"workspace_id": workspaceId})
+	filter := bson.M{"workspace_id": workspaceId}
+	if categoryType != "" {
+		filter["type"] = categoryType
+	}
+
+	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var categorys []models.Category
-	if err = cursor.All(context.Background(), &categorys); err != nil {
+	var categories []models.Category
+	if err = cursor.All(context.Background(), &categories); err != nil {
 		return nil, err
 	}
 
-	return categorys, nil
+	return categories, nil
 }

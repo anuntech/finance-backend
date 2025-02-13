@@ -27,16 +27,18 @@ func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	categorys, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId)
+	categoryType := r.UrlParams.Get("type")
+
+	categories, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, categoryType)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when retrieving categorys",
+			Error: "an error occurred when retrieving categories",
 		}, http.StatusInternalServerError)
 	}
 
-	for i := range categorys {
-		categorys[i].Amount = categorys[i].CalculateTotalAmount()
+	for i := range categories {
+		categories[i].Amount = categories[i].CalculateTotalAmount()
 	}
 
-	return helpers.CreateResponse(categorys, http.StatusOK)
+	return helpers.CreateResponse(categories, http.StatusOK)
 }

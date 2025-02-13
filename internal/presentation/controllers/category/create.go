@@ -64,16 +64,16 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	categorys, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId)
+	categorys, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, body.Type)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding categorys",
+			Error: "error finding categories",
 		}, http.StatusInternalServerError)
 	}
 
 	if len(categorys) >= 50 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "user has reached the maximum number of categorys",
+			Error: "user has reached the maximum number of categories",
 		}, http.StatusBadRequest)
 	}
 
