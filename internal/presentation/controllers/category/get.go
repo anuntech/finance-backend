@@ -2,6 +2,7 @@ package category
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -28,6 +29,13 @@ func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *pr
 	}
 
 	categoryType := r.UrlParams.Get("type")
+
+	allowedTypes := []string{"recipe", "expense", "tag", ""}
+	if !slices.Contains(allowedTypes, categoryType) {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid category type",
+		}, http.StatusBadRequest)
+	}
 
 	categories, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, categoryType)
 	if err != nil {
