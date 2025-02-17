@@ -52,3 +52,9 @@ func MakeUpdateSubCategoryController(db *mongo.Database) *controllers_category.U
 	findCategoryById := category_repository.NewFindCategoryByIdRepository(db)
 	return controllers_category.NewUpdateSubCategoryController(updateCategory, findCategoryById)
 }
+
+func MakeImportCategoryController(db *mongo.Database) *controllers.ImportCategoryController {
+	importCategory := category_repository.NewImportCategoriesRepository(db)
+	findCategorysByWorkspaceId := category_repository.NewFindCategorysByWorkspaceIdRepository(db)
+	return controllers.NewImportCategoryController(importCategory, findCategorysByWorkspaceId)
+}

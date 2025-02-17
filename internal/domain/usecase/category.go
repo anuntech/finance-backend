@@ -27,3 +27,7 @@ type FindCategoryByIdRepository interface {
 type DeleteCategoryRepository interface {
 	Delete(categoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
 }
+
+type ImportCategoriesRepository interface {
+	Import(categories []models.Category, workspaceId primitive.ObjectID) ([]models.Category, error)
+}
