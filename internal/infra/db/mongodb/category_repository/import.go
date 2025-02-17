@@ -1,10 +1,10 @@
 package category_repository
 
 import (
-	"context"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -20,9 +20,7 @@ func NewImportCategoriesRepository(db *mongo.Database) *ImportCategoriesReposito
 }
 
 func (r *ImportCategoriesRepository) Import(categories []models.Category, workspaceId primitive.ObjectID) ([]models.Category, error) {
-	ctx := context.Background()
-
-	collection := r.db.Collection("categories")
+	collection := r.db.Collection("category")
 
 	var docs []interface{}
 	for i := range categories {
@@ -33,7 +31,7 @@ func (r *ImportCategoriesRepository) Import(categories []models.Category, worksp
 		docs = append(docs, categories[i])
 	}
 
-	_, err := collection.InsertMany(ctx, docs)
+	_, err := collection.InsertMany(helpers.Ctx, docs)
 	if err != nil {
 		return nil, err
 	}
