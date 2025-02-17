@@ -31,7 +31,7 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 		),
 	))
 
-	server.Handle("DELETE /account/{id}", middlewares.VerifyAccessToken(
+	server.Handle("DELETE /account", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeDeleteAccountController(db)),
 			workspaceDb,

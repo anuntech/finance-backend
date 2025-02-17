@@ -18,7 +18,7 @@ type FindAccountByIdRepository interface {
 }
 
 type DeleteAccountRepository interface {
-	Delete(primitive.ObjectID) error
+	Delete(accountIds []primitive.ObjectID, workspaceId primitive.ObjectID) error
 }
 
 type UpdateAccountRepository interface {

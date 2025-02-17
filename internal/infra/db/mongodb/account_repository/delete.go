@@ -18,10 +18,10 @@ func NewDeleteAccountMongoRepository(db *mongo.Database) *DeleteAccountMongoRepo
 	}
 }
 
-func (d *DeleteAccountMongoRepository) Delete(id primitive.ObjectID) error {
+func (d *DeleteAccountMongoRepository) Delete(accountIds []primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := d.Db.Collection("account")
 
-	filter := bson.M{"_id": id}
-	_, err := collection.DeleteOne(context.Background(), filter)
+	filter := bson.M{"_id": bson.M{"$in": accountIds}, "workspace_id": workspaceId}
+	_, err := collection.DeleteMany(context.Background(), filter)
 	return err
 }
