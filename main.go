@@ -11,35 +11,8 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/setup"
 	"github.com/anuntech/finance-backend/internal/setup/config"
+	"github.com/anuntech/finance-backend/internal/setup/middlewares"
 )
-
-func corsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := map[string]bool{
-		"https://anun.tech":                 true,
-		"http://localhost:3000":             true,
-		"http://localhost:3001":             true,
-		"https://anuntech.com":              true,
-		"https://finance-company.anun.tech": true,
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if allowedOrigins[origin] {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		}
-
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, workspaceid, X-Requested-With, Accept")
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
 
 func main() {
 	config.LoadEnvFile(".env")
@@ -50,8 +23,7 @@ func main() {
 
 	log.Println("server is running with port", port)
 
-	// Adiciona o middleware CORS ao servidor
-	handler := corsMiddleware(setup.Server())
+	handler := middlewares.CorsMiddleware(setup.Server())
 
 	sm := http.Server{
 		Addr:         ":" + port,
