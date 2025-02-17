@@ -18,10 +18,10 @@ func NewDeleteCategoryRepository(db *mongo.Database) *DeleteCategoryRepository {
 	}
 }
 
-func (r *DeleteCategoryRepository) Delete(categoryId primitive.ObjectID, workspaceId primitive.ObjectID) error {
+func (r *DeleteCategoryRepository) Delete(categoryIds []primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := r.Db.Collection("category")
 
-	_, err := collection.DeleteOne(context.Background(), bson.M{"_id": categoryId, "workspace_id": workspaceId})
+	_, err := collection.DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": categoryIds}, "workspace_id": workspaceId})
 	if err != nil {
 		return err
 	}

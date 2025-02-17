@@ -1,8 +1,6 @@
 package middlewares
 
-import (
-	"net/http"
-)
+import "net/http"
 
 func CorsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := map[string]bool{

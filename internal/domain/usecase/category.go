@@ -25,7 +25,7 @@ type FindCategoryByIdRepository interface {
 }
 
 type DeleteCategoryRepository interface {
-	Delete(categoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
+	Delete(categoryIds []primitive.ObjectID, workspaceId primitive.ObjectID) error
 }
 
 type ImportCategoriesRepository interface {

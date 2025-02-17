@@ -2,6 +2,7 @@ package category
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -27,14 +28,21 @@ func (c *DeleteCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid category ID format",
-		}, http.StatusBadRequest)
+	ids := r.UrlParams.Get("ids")
+	idsSlice := strings.Split(ids, ",")
+	idsObjectID := []primitive.ObjectID{}
+
+	for _, id := range idsSlice {
+		objectID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "Invalid category ID format",
+			}, http.StatusBadRequest)
+		}
+		idsObjectID = append(idsObjectID, objectID)
 	}
 
-	err = c.DeleteCategoryRepository.Delete(categoryId, workspaceId)
+	err = c.DeleteCategoryRepository.Delete(idsObjectID, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting category: " + err.Error(),
