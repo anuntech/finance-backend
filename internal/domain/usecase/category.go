@@ -15,7 +15,7 @@ type FindCategorysByWorkspaceIdRepository interface {
 
 type UpdateCategoryRepository interface {
 	CreateSubCategory(subCategory *models.SubCategoryCategory, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubCategoryCategory, error)
-	DeleteSubCategory(categoryId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
+	DeleteSubCategory(subCategoryIds []primitive.ObjectID, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
 	UpdateCategory(category *models.Category) error
 	UpdateSubCategory(subCategory *models.SubCategoryCategory, categoryId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error
 }

@@ -2,6 +2,7 @@ package sub_category
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -27,13 +28,6 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	subCategoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("subCategoryId"))
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid subCategoryId format",
-		}, http.StatusBadRequest)
-	}
-
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -41,7 +35,21 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	err = c.UpdateCategoryRepository.DeleteSubCategory(categoryId, subCategoryId, workspaceId)
+	ids := r.UrlParams.Get("ids")
+	idsSlice := strings.Split(ids, ",")
+	idsObjectID := []primitive.ObjectID{}
+
+	for _, id := range idsSlice {
+		objectID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "Invalid category ID format",
+			}, http.StatusBadRequest)
+		}
+		idsObjectID = append(idsObjectID, objectID)
+	}
+
+	err = c.UpdateCategoryRepository.DeleteSubCategory(idsObjectID, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when deleting sub category: " + err.Error(),

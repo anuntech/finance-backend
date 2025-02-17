@@ -39,18 +39,18 @@ func (r *UpdateCategoryRepository) CreateSubCategory(subCategory *models.SubCate
 	return subCategory, nil
 }
 
-func (r *UpdateCategoryRepository) DeleteSubCategory(categoryId primitive.ObjectID, subCategoryId primitive.ObjectID, workspaceId primitive.ObjectID) error {
+func (r *UpdateCategoryRepository) DeleteSubCategory(subCategoryIds []primitive.ObjectID, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := r.Db.Collection("category")
 
 	filter := bson.M{
 		"_id":            categoryId,
 		"workspace_id":   workspaceId,
-		"sub_categories": bson.M{"$elemMatch": bson.M{"id": subCategoryId}},
+		"sub_categories": bson.M{"$elemMatch": bson.M{"_id": bson.M{"$in": subCategoryIds}}},
 	}
 
 	update := bson.M{
 		"$pull": bson.M{
-			"sub_categories": bson.M{"id": subCategoryId},
+			"sub_categories": bson.M{"_id": bson.M{"$in": subCategoryIds}},
 		},
 	}
 

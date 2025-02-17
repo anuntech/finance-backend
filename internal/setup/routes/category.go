@@ -38,7 +38,7 @@ func CategoryRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mong
 		),
 	))
 
-	server.Handle("DELETE /category/sub-category/{categoryId}/{subCategoryId}", middlewares.VerifyAccessToken(
+	server.Handle("DELETE /category/sub-category/{categoryId}", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeDeleteSubCategoryController(db)),
 			workspaceDb,
