@@ -10,7 +10,7 @@ type SubCategoryCategory struct {
 	Id     primitive.ObjectID `json:"id" bson:"_id"`
 	Name   string             `json:"name" bson:"name"`
 	Icon   string             `json:"icon" bson:"icon"`
-	Amount float64            `json:"amount" bson:"amount"`
+	Amount float64            `json:"amount" bson:"-"`
 }
 
 type Category struct {

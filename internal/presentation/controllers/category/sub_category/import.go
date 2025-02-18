@@ -88,10 +88,9 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	var subCategoryInputs []models.SubCategoryCategory
 	for _, sc := range body.SubCategories {
 		subCategoryInputs = append(subCategoryInputs, models.SubCategoryCategory{
-			Name:   sc.Name,
-			Icon:   sc.Icon,
-			Id:     primitive.NewObjectID(),
-			Amount: 0,
+			Name: sc.Name,
+			Icon: sc.Icon,
+			Id:   primitive.NewObjectID(),
 		})
 	}
 
