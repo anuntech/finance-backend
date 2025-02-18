@@ -72,4 +72,11 @@ func CategoryRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mong
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /category/sub-category/{categoryId}/import", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeImportSubCategoryController(db)),
+			workspaceDb,
+		),
+	))
 }

@@ -94,3 +94,29 @@ func (r *UpdateCategoryRepository) UpdateSubCategory(subCategory *models.SubCate
 	_, err := collection.UpdateOne(context.Background(), filter, update)
 	return err
 }
+
+func (r *UpdateCategoryRepository) CreateSubCategories(subCategories []models.SubCategoryCategory, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) ([]models.SubCategoryCategory, error) {
+	collection := r.Db.Collection("category")
+
+	// Gera IDs para as novas subcategorias
+	for i := range subCategories {
+		subCategories[i].Id = primitive.NewObjectID()
+	}
+
+	update := bson.M{
+		"$push": bson.M{
+			"sub_categories": bson.M{
+				"$each": subCategories,
+			},
+		},
+	}
+
+	_, err := collection.UpdateOne(context.Background(),
+		bson.M{"_id": categoryId, "workspace_id": workspaceId},
+		update)
+	if err != nil {
+		return nil, err
+	}
+
+	return subCategories, nil
+}
