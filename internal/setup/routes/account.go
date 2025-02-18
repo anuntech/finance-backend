@@ -38,6 +38,13 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 		),
 	))
 
+	server.Handle("POST /account/import", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeImportAccountController(db)),
+			workspaceDb,
+		),
+	))
+
 	server.Handle("PUT /account/{id}", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeUpdateAccountController(db)),

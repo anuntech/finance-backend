@@ -22,3 +22,9 @@ type AccountInput struct {
 	BankId      primitive.ObjectID `bson:"bank_id"`
 	WorkspaceId primitive.ObjectID `bson:"workspace_id"`
 }
+
+type ImportAccountInput struct {
+	Name    string  `json:"name" validate:"required,min=3,max=255"`
+	Balance float64 `json:"balance" validate:"required"`
+	BankId  string  `json:"bankId" validate:"required"`
+}

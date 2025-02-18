@@ -24,3 +24,7 @@ type DeleteAccountRepository interface {
 type UpdateAccountRepository interface {
 	Update(primitive.ObjectID, *models.AccountInput) (*models.Account, error)
 }
+
+type ImportAccountsRepository interface {
+	Import(accounts []models.AccountInput, workspaceId primitive.ObjectID) ([]models.Account, error)
+}
