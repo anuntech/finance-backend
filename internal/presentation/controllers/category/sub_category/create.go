@@ -2,6 +2,7 @@ package sub_category
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -69,6 +70,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 
 	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
+		log.Println(err.Error())
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error while finding a category",
 		}, http.StatusInternalServerError)
@@ -80,9 +82,8 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	}
 
 	subCategory, err := c.UpdateCategoryRepository.CreateSubCategory(&models.SubCategoryCategory{
-		Name:   body.SubCategory.Name,
-		Icon:   body.SubCategory.Icon,
-		Amount: 0,
+		Name: body.SubCategory.Name,
+		Icon: body.SubCategory.Icon,
 	}, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

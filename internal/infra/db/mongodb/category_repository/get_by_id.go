@@ -25,6 +25,9 @@ func (r *FindCategoryByIdRepository) Find(categoryId primitive.ObjectID, workspa
 	var category models.Category
 	err := collection.FindOne(context.Background(), bson.M{"_id": categoryId, "workspace_id": workspaceId}).Decode(&category)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 
