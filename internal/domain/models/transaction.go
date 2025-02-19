@@ -17,7 +17,7 @@ type TransactionBalance struct {
 type TransactionRepeatSettings struct {
 	InitialInstallment time.Month `bson:"initial_installment" json:"initialInstallment"`
 	Count              int        `bson:"count" json:"count"`
-	Interval           int        `bson:"interval" json:"interval"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY
+	Interval           string     `bson:"interval" json:"interval"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY
 }
 
 type Transaction struct {
@@ -25,7 +25,7 @@ type Transaction struct {
 	Name             string                    `bson:"name" json:"name"`
 	Description      string                    `bson:"description" json:"description"`
 	CreatedBy        primitive.ObjectID        `bson:"created_by" json:"createdBy"` // email
-	Type             string                    `bson:"type" json:"type"`            // expense, recipe
+	Type             string                    `bson:"type" json:"type"`            // EXPENSE, RECIPE
 	Supplier         string                    `bson:"supplier" json:"supplier"`
 	AssignedTo       primitive.ObjectID        `bson:"assigned_to" json:"assignedTo"`
 	Balance          TransactionBalance        `bson:"balance" json:"balance"`
