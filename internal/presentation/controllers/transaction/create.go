@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type CreateTransactionController struct {
@@ -79,4 +81,85 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	// }
 
 	return helpers.CreateResponse(body, http.StatusCreated)
+}
+
+func CreateTransaction(body *CreateTransactionBody) (models.Transaction, error) {
+	transaction := models.Transaction{
+		Name:        body.Name,
+		Description: body.Description,
+		Type:        body.Type,
+		Supplier:    body.Supplier,
+		Balance: models.TransactionBalance{
+			Value:    body.Balance.Value,
+			Parts:    body.Balance.Parts,
+			Labor:    body.Balance.Labor,
+			Discount: body.Balance.Discount,
+			Interest: body.Balance.Interest,
+		},
+		Frequency: body.Frequency,
+		RepeatSettings: models.TransactionRepeatSettings{
+			InitialInstallment: body.RepeatSettings.InitialInstallment,
+			Count:              body.RepeatSettings.Count,
+			Interval:           body.RepeatSettings.Interval,
+		},
+		IsConfirmed: body.IsConfirmed,
+	}
+
+	categoryId, err := primitive.ObjectIDFromHex(body.CategoryId)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.CategoryId = categoryId
+
+	subCategoryId, err := primitive.ObjectIDFromHex(body.SubCategoryId)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.SubCategoryId = subCategoryId
+
+	tagId, err := primitive.ObjectIDFromHex(body.TagId)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.TagId = tagId
+
+	subTagId, err := primitive.ObjectIDFromHex(body.SubTagId)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.SubTagId = subTagId
+
+	accountId, err := primitive.ObjectIDFromHex(body.AccountId)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.AccountId = accountId
+
+	registrationDate, err := time.Parse(time.RFC3339, body.RegistrationDate)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.RegistrationDate = registrationDate
+
+	confirmationDate, err := time.Parse(time.RFC3339, body.ConfirmationDate)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.ConfirmationDate = confirmationDate
+
+	dueDate, err := time.Parse(time.RFC3339, body.DueDate)
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	transaction.DueDate = dueDate
+
+	return transaction, nil
 }
