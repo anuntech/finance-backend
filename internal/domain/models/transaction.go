@@ -24,9 +24,10 @@ type Transaction struct {
 	Id               primitive.ObjectID        `bson:"_id" json:"id"`
 	Name             string                    `bson:"name" json:"name"`
 	Description      string                    `bson:"description" json:"description"`
-	Type             string                    `bson:"type" json:"type"` // expense, recipe
+	CreatedBy        primitive.ObjectID        `bson:"created_by" json:"createdBy"` // email
+	Type             string                    `bson:"type" json:"type"`            // expense, recipe
 	Supplier         string                    `bson:"supplier" json:"supplier"`
-	AssignedTo       string                    `bson:"assigned_to" json:"assignedTo"`
+	AssignedTo       primitive.ObjectID        `bson:"assigned_to" json:"assignedTo"`
 	Balance          TransactionBalance        `bson:"balance" json:"balance"`
 	Frequency        string                    `bson:"frequency" json:"frequency"` // DO_NOT_REPEAT | RECURRING | REPEAT
 	RepeatSettings   TransactionRepeatSettings `bson:"repeat_settings" json:"repeatSettings"`
@@ -39,6 +40,7 @@ type Transaction struct {
 	AccountId        primitive.ObjectID        `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                 `bson:"registration_date" json:"registrationDate"`
 	ConfirmationDate time.Time                 `bson:"confirmation_date" json:"confirmationDate"`
+	IsOverdue        bool                      `bson:"-" json:"isOverdue"`
 	CreatedAt        time.Time                 `bson:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time                 `bson:"updated_at" json:"updatedAt"`
 }
