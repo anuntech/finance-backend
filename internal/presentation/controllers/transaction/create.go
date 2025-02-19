@@ -34,13 +34,13 @@ type CreateTransactionBody struct {
 		Labor    int `json:"labor" validate:"min=0"`
 		Discount int `json:"discount" validate:"min=0"`
 		Interest int `json:"interest" validate:"min=0"`
-	} `json:"balance" validate:"required,dive"`
+	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=0"`
 		Count              int        `json:"count" validate:"min=0"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
-	} `json:"repeatSettings" validate:"dive,required_if=Frequency REPEAT"`
+	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT"`
 	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02"`
 	IsConfirmed      bool   `json:"isConfirmed"`
 	CategoryId       string `json:"categoryId" validate:"required"`
@@ -49,7 +49,7 @@ type CreateTransactionBody struct {
 	SubTagId         string `json:"subTagId" validate:"required"`
 	AccountId        string `json:"accountId" validate:"required"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02"`
-	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02,required_if=IsConfirmed true"`
+	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -62,7 +62,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "invalid body validation: " + err.Error(),
 		}, http.StatusBadRequest)
 	}
 
@@ -78,5 +78,5 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	// 	}, http.StatusInternalServerError)
 	// }
 
-	return helpers.CreateResponse(nil, http.StatusCreated)
+	return helpers.CreateResponse(body, http.StatusCreated)
 }
