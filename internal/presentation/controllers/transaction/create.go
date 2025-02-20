@@ -2,7 +2,9 @@ package transaction
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -19,15 +21,19 @@ type CreateTransactionController struct {
 	Validate                    *validator.Validate
 	CreateTransactionRepository usecase.CreateTransactionRepository
 	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository   usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository  usecase.FindCategoryByIdRepository
 }
 
-func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository) *CreateTransactionController {
+func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
 		Validate:                    validate,
 		FindMemberByIdRepository:    findMemberByIdRepository,
 		CreateTransactionRepository: createTransactionRepository,
+		FindAccountByIdRepository:   findAccountByIdRepository,
+		FindCategoryByIdRepository:  findCategoryByIdRepository,
 	}
 }
 
@@ -75,7 +81,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	transaction, err := createTransaction(&body)
+	transaction, err := c.createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating transaction: " + err.Error(),
@@ -110,6 +116,21 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	transaction.AssignedTo = assignedTo
 
+	log.Println(transaction.AccountId)
+	log.Println(workspaceId)
+
+	if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+		return err
+	}
+
+	if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
+		return err
+	}
+
+	if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
+		return err
+	}
+
 	transaction, err = c.CreateTransactionRepository.Create(transaction)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -120,7 +141,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
 
-func createTransaction(body *CreateTransactionBody) (*models.Transaction, error) {
+func (c *CreateTransactionController) createTransaction(body *CreateTransactionBody) (*models.Transaction, error) {
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}
@@ -214,4 +235,83 @@ func (c *CreateTransactionController) validateAssignedMember(workspaceId primiti
 	}
 
 	return nil
+}
+
+func (c *CreateTransactionController) validateAccount(workspaceId primitive.ObjectID, accountId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	account, err := c.FindAccountByIdRepository.Find(accountId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding account",
+		}, http.StatusInternalServerError)
+	}
+
+	if account == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "account not found",
+		}, http.StatusNotFound)
+	}
+
+	return nil
+}
+
+func (c *CreateTransactionController) validateCategory(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, transactionType string, subCategoryId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding category",
+		}, http.StatusInternalServerError)
+	}
+
+	if category == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "category not found",
+		}, http.StatusNotFound)
+	}
+
+	if !strings.EqualFold(category.Type, transactionType) {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "category type does not match transaction type",
+		}, http.StatusBadRequest)
+	}
+
+	for _, subCategory := range category.SubCategories {
+		if subCategory.Id == subCategoryId {
+			return nil
+		}
+	}
+
+	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+		Error: "sub category not found",
+	}, http.StatusNotFound)
+}
+
+func (c *CreateTransactionController) validateTag(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, subCategoryId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding tag",
+		}, http.StatusInternalServerError)
+	}
+
+	if category == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "tag not found",
+		}, http.StatusNotFound)
+	}
+
+	if !strings.EqualFold(category.Type, "TAG") {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "tag type does not match transaction type",
+		}, http.StatusBadRequest)
+	}
+
+	for _, subCategory := range category.SubCategories {
+		if subCategory.Id == subCategoryId {
+			return nil
+		}
+	}
+
+	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+		Error: "sub tag not found",
+	}, http.StatusNotFound)
 }
