@@ -94,7 +94,16 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 			Error: "invalid assignedTo ID format",
 		}, http.StatusBadRequest)
 	}
-	if err := c.validateAssignedMember(r, assignedTo); err != nil {
+
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+	transaction.WorkspaceId = workspaceId
+
+	if err := c.validateAssignedMember(workspaceId, assignedTo); err != nil {
 		return err
 	}
 	transaction.AssignedTo = assignedTo
@@ -188,14 +197,7 @@ func createTransaction(body *CreateTransactionBody) (*models.Transaction, error)
 	}, nil
 }
 
-func (c *CreateTransactionController) validateAssignedMember(r presentationProtocols.HttpRequest, assignedTo primitive.ObjectID) *presentationProtocols.HttpResponse {
-	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace ID format",
-		}, http.StatusBadRequest)
-	}
-
+func (c *CreateTransactionController) validateAssignedMember(workspaceId primitive.ObjectID, assignedTo primitive.ObjectID) *presentationProtocols.HttpResponse {
 	member, err := c.FindMemberByIdRepository.Find(workspaceId, assignedTo)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
