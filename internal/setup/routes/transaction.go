@@ -12,7 +12,7 @@ import (
 func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.Database) {
 	server.Handle("POST /transaction", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
-			adapters.AdaptRoute(factory.MakeCreateTransactionController(workspaceDb)),
+			adapters.AdaptRoute(factory.MakeCreateTransactionController(workspaceDb, db)),
 			workspaceDb,
 		),
 	))

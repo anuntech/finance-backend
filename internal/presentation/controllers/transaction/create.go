@@ -7,6 +7,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -20,12 +21,13 @@ type CreateTransactionController struct {
 	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
 }
 
-func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository) *CreateTransactionController {
+func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
-		Validate:                 validate,
-		FindMemberByIdRepository: findMemberByIdRepository,
+		Validate:                    validate,
+		FindMemberByIdRepository:    findMemberByIdRepository,
+		CreateTransactionRepository: createTransactionRepository,
 	}
 }
 
