@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -115,9 +114,6 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		return err
 	}
 	transaction.AssignedTo = assignedTo
-
-	log.Println(transaction.AccountId)
-	log.Println(workspaceId)
 
 	if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
 		return err
