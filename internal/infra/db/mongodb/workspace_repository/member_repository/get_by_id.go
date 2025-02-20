@@ -28,6 +28,13 @@ func (r *FindMemberByIdRepository) Find(WorkspaceId primitive.ObjectID, MemberId
 		return nil, err
 	}
 
+	if workspace.Owner == MemberId {
+		return &models.Member{
+			MemberId: MemberId,
+			Role:     "owner",
+		}, nil
+	}
+
 	for _, member := range workspace.Members {
 		if member.MemberId == MemberId {
 			return &member, nil

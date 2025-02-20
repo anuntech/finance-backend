@@ -20,13 +20,12 @@ type CreateTransactionController struct {
 	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
 }
 
-func NewCreateTransactionController(createTransactionRepository usecase.CreateTransactionRepository, findMemberByIdRepository *member_repository.FindMemberByIdRepository) *CreateTransactionController {
+func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
-		CreateTransactionRepository: createTransactionRepository,
-		Validate:                    validate,
-		FindMemberByIdRepository:    findMemberByIdRepository,
+		Validate:                 validate,
+		FindMemberByIdRepository: findMemberByIdRepository,
 	}
 }
 
@@ -77,7 +76,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction, err := createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating transaction",
+			Error: "error creating transaction: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 
@@ -89,32 +88,23 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	transaction.CreatedBy = userObjectID
 
-	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	assignedTo, err := primitive.ObjectIDFromHex(body.AssignedTo)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace ID format",
+			Error: "invalid assignedTo ID format",
 		}, http.StatusBadRequest)
 	}
-
-	member, err := c.FindMemberByIdRepository.Find(workspaceId, userObjectID)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding member",
-		}, http.StatusInternalServerError)
+	if err := c.validateAssignedMember(r, assignedTo); err != nil {
+		return err
 	}
+	transaction.AssignedTo = assignedTo
 
-	if member == nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "AssignedTo is not a member of the workspace",
-		}, http.StatusNotFound)
-	}
-
-	transaction, err = c.CreateTransactionRepository.Create(transaction)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating transaction",
-		}, http.StatusInternalServerError)
-	}
+	// transaction, err = c.CreateTransactionRepository.Create(transaction)
+	// if err != nil {
+	// 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+	// 		Error: "error creating transaction",
+	// 	}, http.StatusInternalServerError)
+	// }
 
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
@@ -125,7 +115,7 @@ func createTransaction(body *CreateTransactionBody) (*models.Transaction, error)
 	}
 
 	parseDate := func(date string) (time.Time, error) {
-		return time.Parse(time.RFC3339, date)
+		return time.Parse("2006-01-02", date)
 	}
 
 	categoryId, err := convertID(body.CategoryId)
@@ -196,4 +186,28 @@ func createTransaction(body *CreateTransactionBody) (*models.Transaction, error)
 		ConfirmationDate: confirmationDate,
 		DueDate:          dueDate,
 	}, nil
+}
+
+func (c *CreateTransactionController) validateAssignedMember(r presentationProtocols.HttpRequest, assignedTo primitive.ObjectID) *presentationProtocols.HttpResponse {
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	member, err := c.FindMemberByIdRepository.Find(workspaceId, assignedTo)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding member",
+		}, http.StatusInternalServerError)
+	}
+
+	if member == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "AssignedTo is not a member of the workspace",
+		}, http.StatusNotFound)
+	}
+
+	return nil
 }
