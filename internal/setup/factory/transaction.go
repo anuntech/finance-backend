@@ -5,5 +5,6 @@ import (
 )
 
 func MakeCreateTransactionController() *transaction.CreateTransactionController {
-	return transaction.NewCreateTransactionController()
+	// return transaction.NewCreateTransactionController()
+	return nil
 }

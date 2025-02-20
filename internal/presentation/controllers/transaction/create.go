@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -13,14 +14,16 @@ import (
 )
 
 type CreateTransactionController struct {
-	Validate *validator.Validate
+	Validate                    *validator.Validate
+	CreateTransactionRepository usecase.CreateTransactionRepository
 }
 
-func NewCreateTransactionController() *CreateTransactionController {
+func NewCreateTransactionController(createTransactionRepository usecase.CreateTransactionRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
-		Validate: validate,
+		CreateTransactionRepository: createTransactionRepository,
+		Validate:                    validate,
 	}
 }
 
@@ -68,23 +71,82 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	// transaction := models.Transaction{
-	// 	Name:        body.Name,
-	// 	Description: body.Description,
-	// }
+	transaction, err := createTransaction(&body)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error creating transaction",
+		}, http.StatusInternalServerError)
+	}
 
-	// transaction, err := c.CreateTransactionRepository.Create(transaction)
-	// if err != nil {
-	// 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-	// 		Error: "error creating transaction",
-	// 	}, http.StatusInternalServerError)
-	// }
+	userObjectID, err := primitive.ObjectIDFromHex(r.Header.Get("userId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid user ID format",
+		}, http.StatusBadRequest)
+	}
 
-	return helpers.CreateResponse(body, http.StatusCreated)
+	transaction.CreatedBy = userObjectID
+
+	transaction, err = c.CreateTransactionRepository.Create(transaction)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error creating transaction",
+		}, http.StatusInternalServerError)
+	}
+
+	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
 
-func CreateTransaction(body *CreateTransactionBody) (models.Transaction, error) {
-	transaction := models.Transaction{
+func createTransaction(body *CreateTransactionBody) (*models.Transaction, error) {
+	convertID := func(id string) (primitive.ObjectID, error) {
+		return primitive.ObjectIDFromHex(id)
+	}
+
+	parseDate := func(date string) (time.Time, error) {
+		return time.Parse(time.RFC3339, date)
+	}
+
+	categoryId, err := convertID(body.CategoryId)
+	if err != nil {
+		return nil, err
+	}
+
+	subCategoryId, err := convertID(body.SubCategoryId)
+	if err != nil {
+		return nil, err
+	}
+
+	tagId, err := convertID(body.TagId)
+	if err != nil {
+		return nil, err
+	}
+
+	subTagId, err := convertID(body.SubTagId)
+	if err != nil {
+		return nil, err
+	}
+
+	accountId, err := convertID(body.AccountId)
+	if err != nil {
+		return nil, err
+	}
+
+	registrationDate, err := parseDate(body.RegistrationDate)
+	if err != nil {
+		return nil, err
+	}
+
+	confirmationDate, err := parseDate(body.ConfirmationDate)
+	if err != nil {
+		return nil, err
+	}
+
+	dueDate, err := parseDate(body.DueDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
 		Type:        body.Type,
@@ -102,64 +164,14 @@ func CreateTransaction(body *CreateTransactionBody) (models.Transaction, error) 
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,
 		},
-		IsConfirmed: body.IsConfirmed,
-	}
-
-	categoryId, err := primitive.ObjectIDFromHex(body.CategoryId)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.CategoryId = categoryId
-
-	subCategoryId, err := primitive.ObjectIDFromHex(body.SubCategoryId)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.SubCategoryId = subCategoryId
-
-	tagId, err := primitive.ObjectIDFromHex(body.TagId)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.TagId = tagId
-
-	subTagId, err := primitive.ObjectIDFromHex(body.SubTagId)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.SubTagId = subTagId
-
-	accountId, err := primitive.ObjectIDFromHex(body.AccountId)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.AccountId = accountId
-
-	registrationDate, err := time.Parse(time.RFC3339, body.RegistrationDate)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.RegistrationDate = registrationDate
-
-	confirmationDate, err := time.Parse(time.RFC3339, body.ConfirmationDate)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.ConfirmationDate = confirmationDate
-
-	dueDate, err := time.Parse(time.RFC3339, body.DueDate)
-	if err != nil {
-		return models.Transaction{}, err
-	}
-
-	transaction.DueDate = dueDate
-
-	return transaction, nil
+		IsConfirmed:      body.IsConfirmed,
+		CategoryId:       categoryId,
+		SubCategoryId:    subCategoryId,
+		TagId:            tagId,
+		SubTagId:         subTagId,
+		AccountId:        accountId,
+		RegistrationDate: registrationDate,
+		ConfirmationDate: confirmationDate,
+		DueDate:          dueDate,
+	}, nil
 }
