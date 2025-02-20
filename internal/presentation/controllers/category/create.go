@@ -38,7 +38,7 @@ type subCategoryCategory struct {
 type CreateCategoryBody struct {
 	Name          string                `json:"name" validate:"required,min=3,max=255"`
 	SubCategories []subCategoryCategory `json:"subCategories" validate:"dive"`
-	Type          string                `json:"type" validate:"required,oneof=recipe expense tag"`
+	Type          string                `json:"type" validate:"required,oneof=RECIPE EXPENSE TAG"`
 	Icon          string                `json:"icon" validate:"required,min=1,max=50"`
 }
 

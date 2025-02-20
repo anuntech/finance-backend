@@ -30,7 +30,7 @@ func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *pr
 
 	categoryType := r.UrlParams.Get("type")
 
-	allowedTypes := []string{"recipe", "expense", "tag", ""}
+	allowedTypes := []string{"RECIPE", "EXPENSE", "TAG", ""}
 	if !slices.Contains(allowedTypes, categoryType) {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid category type",
