@@ -7,6 +7,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -16,14 +17,16 @@ import (
 type CreateTransactionController struct {
 	Validate                    *validator.Validate
 	CreateTransactionRepository usecase.CreateTransactionRepository
+	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
 }
 
-func NewCreateTransactionController(createTransactionRepository usecase.CreateTransactionRepository) *CreateTransactionController {
+func NewCreateTransactionController(createTransactionRepository usecase.CreateTransactionRepository, findMemberByIdRepository *member_repository.FindMemberByIdRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
 		CreateTransactionRepository: createTransactionRepository,
 		Validate:                    validate,
+		FindMemberByIdRepository:    findMemberByIdRepository,
 	}
 }
 
@@ -32,7 +35,7 @@ type CreateTransactionBody struct {
 	Description string `json:"description" validate:"min=3,max=255"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
-	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30"`
+	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
 		Value    int `json:"value" validate:"required,min=0"`
 		Parts    int `json:"parts" validate:"min=0"`
@@ -48,11 +51,11 @@ type CreateTransactionBody struct {
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT"`
 	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02"`
 	IsConfirmed      bool   `json:"isConfirmed"`
-	CategoryId       string `json:"categoryId" validate:"required"`
-	SubCategoryId    string `json:"subCategoryId" validate:"required"`
-	TagId            string `json:"tagId" validate:"required"`
-	SubTagId         string `json:"subTagId" validate:"required"`
-	AccountId        string `json:"accountId" validate:"required"`
+	CategoryId       string `json:"categoryId" validate:"required,mongodb"`
+	SubCategoryId    string `json:"subCategoryId" validate:"required,mongodb"`
+	TagId            string `json:"tagId" validate:"required,mongodb"`
+	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
+	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02"`
 	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
 }
@@ -84,8 +87,27 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 			Error: "invalid user ID format",
 		}, http.StatusBadRequest)
 	}
-
 	transaction.CreatedBy = userObjectID
+
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	member, err := c.FindMemberByIdRepository.Find(workspaceId, userObjectID)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding member",
+		}, http.StatusInternalServerError)
+	}
+
+	if member == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "AssignedTo is not a member of the workspace",
+		}, http.StatusNotFound)
+	}
 
 	transaction, err = c.CreateTransactionRepository.Create(transaction)
 	if err != nil {
