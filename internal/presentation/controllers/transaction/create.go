@@ -108,12 +108,12 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	transaction.AssignedTo = assignedTo
 
-	// transaction, err = c.CreateTransactionRepository.Create(transaction)
-	// if err != nil {
-	// 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-	// 		Error: "error creating transaction",
-	// 	}, http.StatusInternalServerError)
-	// }
+	transaction, err = c.CreateTransactionRepository.Create(transaction)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error creating transaction",
+		}, http.StatusInternalServerError)
+	}
 
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
