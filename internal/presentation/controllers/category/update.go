@@ -29,7 +29,7 @@ func NewUpdateCategoryController(updateCategory usecase.UpdateCategoryRepository
 
 type UpdateCategoryBody struct {
 	Name string `json:"name" validate:"required,min=3,max=255"`
-	Type string `json:"type" validate:"required,oneof=recipe expense"`
+	Type string `json:"type" validate:"required,oneof=RECIPE EXPENSE TAG"`
 	Icon string `json:"icon" validate:"required,min=1,max=50"`
 }
 
