@@ -26,7 +26,7 @@ func NewCreateTransactionController() *CreateTransactionController {
 
 type CreateTransactionBody struct {
 	Name        string `json:"name" validate:"required,min=3,max=30"`
-	Description string `json:"description" validate:"required,min=3,max=255"`
+	Description string `json:"description" validate:"min=3,max=255"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30"`
@@ -39,8 +39,8 @@ type CreateTransactionBody struct {
 	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
-		InitialInstallment time.Month `json:"initialInstallment" validate:"min=0"`
-		Count              int        `json:"count" validate:"min=0"`
+		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
+		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT"`
 	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02"`
