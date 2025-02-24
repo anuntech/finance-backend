@@ -1,6 +1,7 @@
 package category_repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -31,7 +32,10 @@ func (r *ImportCategoriesRepository) Import(categories []models.Category, worksp
 		docs = append(docs, categories[i])
 	}
 
-	_, err := collection.InsertMany(helpers.Ctx, docs)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.InsertMany(ctx, docs)
 	if err != nil {
 		return nil, err
 	}

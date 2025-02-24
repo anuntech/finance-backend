@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,7 +32,10 @@ func (r *UpdateCategoryRepository) CreateSubCategory(subCategory *models.SubCate
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), bson.M{"_id": categoryId, "workspace_id": workspaceId}, update)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": categoryId, "workspace_id": workspaceId}, update)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +58,10 @@ func (r *UpdateCategoryRepository) DeleteSubCategory(subCategoryIds []primitive.
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), filter, update)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, filter, update)
 	return err
 }
 
@@ -71,7 +78,10 @@ func (r *UpdateCategoryRepository) UpdateCategory(category *models.Category) err
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), filter, update)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, filter, update)
 	return err
 }
 
@@ -91,7 +101,10 @@ func (r *UpdateCategoryRepository) UpdateSubCategory(subCategory *models.SubCate
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(), filter, update)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx, filter, update)
 	return err
 }
 
@@ -111,7 +124,10 @@ func (r *UpdateCategoryRepository) CreateSubCategories(subCategories []models.Su
 		},
 	}
 
-	_, err := collection.UpdateOne(context.Background(),
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.UpdateOne(ctx,
 		bson.M{"_id": categoryId, "workspace_id": workspaceId},
 		update)
 	if err != nil {

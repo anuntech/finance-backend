@@ -1,6 +1,8 @@
 package bank_repository
 
 import (
+	"context"
+
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,7 +28,11 @@ func (r *FindByIdMongoRepository) Find(id string) (*models.Bank, error) {
 		return nil, err
 	}
 	filter := bson.M{"_id": objectId}
-	cursor := collection.FindOne(helpers.Ctx, filter)
+
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	cursor := collection.FindOne(ctx, filter)
 	if cursor.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	}

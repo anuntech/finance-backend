@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -33,7 +34,10 @@ func (r *CreateCategoryRepository) Create(category *models.Category) (*models.Ca
 		Type:          category.Type,
 	}
 
-	_, err := collection.InsertOne(context.Background(), categoryToSave)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.InsertOne(ctx, categoryToSave)
 	if err != nil {
 		return nil, err
 	}

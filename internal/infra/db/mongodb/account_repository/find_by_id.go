@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,7 +24,10 @@ func (f *FindByIdMongoRepository) Find(id primitive.ObjectID, workspaceId primit
 	collection := f.Db.Collection("account")
 
 	filter := bson.M{"_id": id, "workspace_id": workspaceId}
-	cursor := collection.FindOne(context.Background(), filter)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	cursor := collection.FindOne(ctx, filter)
 	if cursor.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	}

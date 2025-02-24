@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -32,7 +33,10 @@ func (u *UpdateAccountMongoRepository) Update(id primitive.ObjectID, account *mo
 		},
 	}
 
-	result := collection.FindOneAndUpdate(context.Background(), bson.M{"_id": id}, update)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	result := collection.FindOneAndUpdate(ctx, bson.M{"_id": id}, update)
 	if result.Err() != nil {
 		return nil, result.Err()
 	}

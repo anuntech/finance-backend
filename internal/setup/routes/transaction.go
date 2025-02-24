@@ -16,4 +16,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("GET /transaction", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeGetTransactionController(workspaceDb)),
+			workspaceDb,
+		),
+	))
 }

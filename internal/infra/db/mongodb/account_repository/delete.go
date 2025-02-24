@@ -3,6 +3,7 @@ package account_repository
 import (
 	"context"
 
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,6 +23,9 @@ func (d *DeleteAccountMongoRepository) Delete(accountIds []primitive.ObjectID, w
 	collection := d.Db.Collection("account")
 
 	filter := bson.M{"_id": bson.M{"$in": accountIds}, "workspace_id": workspaceId}
-	_, err := collection.DeleteMany(context.Background(), filter)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.DeleteMany(ctx, filter)
 	return err
 }

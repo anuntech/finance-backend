@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -26,7 +27,9 @@ func (r *CreateTransactionRepository) Create(transaction *models.Transaction) (*
 	transaction.CreatedAt = time.Now()
 	transaction.UpdatedAt = time.Now()
 
-	_, err := collection.InsertOne(context.Background(), transaction)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+	_, err := collection.InsertOne(ctx, transaction)
 	if err != nil {
 		return nil, err
 	}

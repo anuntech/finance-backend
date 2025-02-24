@@ -17,3 +17,8 @@ func MakeCreateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 
 	return transaction.NewCreateTransactionController(findMemberByIdRepository, createTransactionRepository, findAccountByIdRepository, findCategoryByIdRepository)
 }
+
+func MakeGetTransactionController(workspaceDb *mongo.Database) *transaction.GetTransactionController {
+	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(workspaceDb)
+	return transaction.NewGetTransactionController(findTransactionsByWorkspaceIdAndMonthRepository)
+}

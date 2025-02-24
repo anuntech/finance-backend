@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,7 +24,10 @@ func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(workspaceId primiti
 	collection := f.Db.Collection("account")
 
 	filter := bson.M{"workspace_id": workspaceId}
-	cursor, err := collection.Find(context.Background(), filter)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

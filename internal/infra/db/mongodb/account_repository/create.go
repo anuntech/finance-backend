@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -32,7 +33,10 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 		Balance:     account.Balance,
 	}
 
-	_, err := collection.InsertOne(context.Background(), accountToSave)
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.InsertOne(ctx, accountToSave)
 	if err != nil {
 		return nil, err
 	}
