@@ -73,7 +73,7 @@ func (r *UpdateCategoryRepository) UpdateCategory(category *models.Category) err
 		"$set": bson.M{
 			"name":       category.Name,
 			"icon":       category.Icon,
-			"updated_at": time.Now(),
+			"updated_at": time.Now().UTC(),
 			"type":       category.Type,
 		},
 	}

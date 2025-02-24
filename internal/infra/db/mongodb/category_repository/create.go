@@ -26,8 +26,8 @@ func (r *CreateCategoryRepository) Create(category *models.Category) (*models.Ca
 	categoryToSave := &models.Category{
 		Id:            primitive.NewObjectID(),
 		Name:          category.Name,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		CreatedAt:     time.Now().UTC(),
+		UpdatedAt:     time.Now().UTC(),
 		WorkspaceId:   category.WorkspaceId,
 		SubCategories: category.SubCategories,
 		Icon:          category.Icon,

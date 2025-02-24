@@ -67,7 +67,7 @@ func decodeToken(tokenStr string, encryptionKey []byte) (map[string]interface{},
 }
 
 func validateClaims(payload map[string]interface{}) error {
-	now := time.Now().Unix()
+	now := time.Now().UTC().Unix()
 
 	if exp, ok := payload["exp"].(float64); ok {
 		if now > int64(exp) {

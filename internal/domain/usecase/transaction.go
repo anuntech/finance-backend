@@ -19,3 +19,11 @@ type FindTransactionsByWorkspaceIdInputRepository struct {
 type FindTransactionsByWorkspaceIdRepository interface {
 	Find(data *FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error)
 }
+
+type FindTransactionByIdRepository interface {
+	Find(transactionId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Transaction, error)
+}
+
+type UpdateTransactionRepository interface {
+	Update(transactionId primitive.ObjectID, transaction *models.Transaction) (*models.Transaction, error)
+}

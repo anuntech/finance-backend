@@ -24,8 +24,8 @@ func (r *CreateTransactionRepository) Create(transaction *models.Transaction) (*
 	collection := r.Db.Collection("transaction")
 
 	transaction.Id = primitive.NewObjectID()
-	transaction.CreatedAt = time.Now()
-	transaction.UpdatedAt = time.Now()
+	transaction.CreatedAt = time.Now().UTC()
+	transaction.UpdatedAt = time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()

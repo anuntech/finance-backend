@@ -27,8 +27,8 @@ func (r *ImportCategoriesRepository) Import(categories []models.Category, worksp
 	for i := range categories {
 		categories[i].Id = primitive.NewObjectID()
 		categories[i].WorkspaceId = workspaceId
-		categories[i].CreatedAt = time.Now()
-		categories[i].UpdatedAt = time.Now()
+		categories[i].CreatedAt = time.Now().UTC()
+		categories[i].UpdatedAt = time.Now().UTC()
 		docs = append(docs, categories[i])
 	}
 

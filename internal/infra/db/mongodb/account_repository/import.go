@@ -31,8 +31,8 @@ func (r *ImportAccountsMongoRepository) Import(accounts []models.AccountInput, w
 			Balance:     accounts[i].Balance,
 			BankId:      accounts[i].BankId,
 			WorkspaceId: workspaceId,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
 		}
 		docs = append(docs, account)
 	}

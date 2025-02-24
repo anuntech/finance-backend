@@ -26,8 +26,8 @@ func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*mo
 	accountToSave := models.Account{
 		Id:          primitive.NewObjectID(),
 		Name:        account.Name,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 		WorkspaceId: account.WorkspaceId,
 		BankId:      account.BankId,
 		Balance:     account.Balance,

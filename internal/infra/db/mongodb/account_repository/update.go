@@ -29,7 +29,7 @@ func (u *UpdateAccountMongoRepository) Update(id primitive.ObjectID, account *mo
 			"name":       account.Name,
 			"bank_id":    account.BankId,
 			"balance":    account.Balance,
-			"updated_at": time.Now(),
+			"updated_at": time.Now().UTC(),
 		},
 	}
 

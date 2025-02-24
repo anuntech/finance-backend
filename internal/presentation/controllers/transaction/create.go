@@ -143,7 +143,8 @@ func (c *CreateTransactionController) createTransaction(body *CreateTransactionB
 	}
 
 	parseDate := func(date string) (time.Time, error) {
-		return time.Parse("2006-01-02", date)
+		location := time.UTC
+		return time.ParseInLocation("2006-01-02T15:04:05", date, location)
 	}
 
 	categoryId, err := convertID(body.CategoryId)
