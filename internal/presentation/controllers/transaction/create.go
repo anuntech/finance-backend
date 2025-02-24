@@ -54,7 +54,7 @@ type CreateTransactionBody struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
 		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
-	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT"`
+	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed      bool   `json:"isConfirmed"`
 	CategoryId       string `json:"categoryId" validate:"required,mongodb"`

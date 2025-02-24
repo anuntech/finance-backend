@@ -40,7 +40,7 @@ type CreateAccountControllerResponse struct {
 
 type CreateAccountControllerBody struct {
 	Name    string  `validate:"required,min=3,max=255"`
-	Balance float64 `validate:"required"`
+	Balance float64 `validate:"min=0"`
 	BankId  string  `validate:"required"`
 }
 
