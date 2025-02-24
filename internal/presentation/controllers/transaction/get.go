@@ -1,24 +1,29 @@
 package transaction
 
 import (
+	"log"
 	"net/http"
 	"net/url"
-	"slices"
 	"strconv"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GetTransactionController struct {
 	FindTransactionsByWorkspaceIdAndMonthRepository usecase.FindTransactionsByWorkspaceIdRepository
+	Validator                                       *validator.Validate
 }
 
 func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository) *GetTransactionController {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
 	return &GetTransactionController{
 		FindTransactionsByWorkspaceIdAndMonthRepository: findManyByUserIdAndWorkspaceId,
+		Validator: validate,
 	}
 }
 
@@ -46,34 +51,33 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
-func (c *GetTransactionController) getFilters(header *url.Values) (*usecase.FindTransactionsByWorkspaceIdInputRepository, *presentationProtocols.HttpResponse) {
-	categoryType := header.Get("type")
-	allowedTypes := []string{"RECIPE", "EXPENSE", ""}
-	if !slices.Contains(allowedTypes, categoryType) {
-		return nil, helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid category type",
-		}, http.StatusBadRequest)
+type FilterParams struct {
+	Month int    `json:"month" validate:"omitempty,min=1,max=12,required_with=Year"`
+	Year  int    `json:"year" validate:"omitempty,min=1,max=9999,required_with=Month"`
+	Type  string `json:"type" validate:"omitempty,oneof=RECIPE EXPENSE"`
+}
+
+func (c *GetTransactionController) getFilters(urlQueries *url.Values) (*usecase.FindTransactionsByWorkspaceIdInputRepository, *presentationProtocols.HttpResponse) {
+	monthInt, _ := strconv.Atoi(urlQueries.Get("month"))
+	yearInt, _ := strconv.Atoi(urlQueries.Get("year"))
+
+	params := &FilterParams{
+		Month: monthInt,
+		Year:  yearInt,
+		Type:  urlQueries.Get("type"),
 	}
 
-	month := header.Get("month") // for dueDate and confirmationDate
-	monthInt, err := strconv.Atoi(month)
-	if monthInt < 1 || monthInt > 12 || err != nil {
+	err := c.Validator.Struct(params)
+	if err != nil {
+		log.Printf("Validation error: %v", err)
 		return nil, helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid month",
-		}, http.StatusBadRequest)
-	}
-
-	year := header.Get("year")
-	yearInt, err := strconv.Atoi(year)
-	if yearInt < 1800 || yearInt > 9999 || err != nil {
-		return nil, helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid year",
+			Error: err.Error(),
 		}, http.StatusBadRequest)
 	}
 
 	return &usecase.FindTransactionsByWorkspaceIdInputRepository{
 		Month: monthInt,
 		Year:  yearInt,
-		Type:  categoryType,
+		Type:  params.Type,
 	}, nil
 }

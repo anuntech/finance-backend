@@ -30,23 +30,28 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
-		"$or": []bson.M{
+	}
+	if filters.Type != "" {
+		filter["type"] = filters.Type
+	}
+
+	if filters.Month != 0 {
+		filter["$or"] = []bson.M{
 			{
 				"due_date": bson.M{
 					"$gte": startOfMonth,
 					"$lt":  endOfMonth,
 				},
+				"is_confirmed": false,
 			},
 			{
 				"confirmation_date": bson.M{
 					"$gte": startOfMonth,
 					"$lt":  endOfMonth,
 				},
+				"is_confirmed": true,
 			},
-		},
-	}
-	if filters.Type != "" {
-		filter["type"] = filters.Type
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
