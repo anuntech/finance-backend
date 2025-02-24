@@ -12,7 +12,7 @@ import (
 var Timeout = 10 * time.Second
 
 func MongoHelper(URI string, databaseName string) *mongo.Database {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	clientOptions := options.Client().ApplyURI(URI)

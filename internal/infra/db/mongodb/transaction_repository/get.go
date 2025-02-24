@@ -2,6 +2,7 @@ package transaction_repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -20,22 +21,32 @@ func NewTransactionRepository(db *mongo.Database) *TransactionRepository {
 }
 
 func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error) {
-	collection := r.db.Collection("transactions")
+	collection := r.db.Collection("transaction")
 
 	startOfMonth := time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
+	log.Println(filters.Type)
+
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
-		"due_date": bson.M{
-			"$gte": startOfMonth,
-			"$lt":  endOfMonth,
+		"$or": []bson.M{
+			{
+				"due_date": bson.M{
+					"$gte": startOfMonth,
+					"$lt":  endOfMonth,
+				},
+			},
+			{
+				"confirmation_date": bson.M{
+					"$gte": startOfMonth,
+					"$lt":  endOfMonth,
+				},
+			},
 		},
-		"confirmation_date": bson.M{
-			"$gte": startOfMonth,
-			"$lt":  endOfMonth,
-		},
-		"type": filters.Type,
+	}
+	if filters.Type != "" {
+		filter["type"] = filters.Type
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)

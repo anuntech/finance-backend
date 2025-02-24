@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 
@@ -29,7 +30,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	filters, errHttp := c.getFilters(r.Header)
+	filters, errHttp := c.getFilters(&r.UrlParams)
 	if errHttp != nil {
 		return errHttp
 	}
@@ -45,7 +46,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
-func (c *GetTransactionController) getFilters(header http.Header) (*usecase.FindTransactionsByWorkspaceIdInputRepository, *presentationProtocols.HttpResponse) {
+func (c *GetTransactionController) getFilters(header *url.Values) (*usecase.FindTransactionsByWorkspaceIdInputRepository, *presentationProtocols.HttpResponse) {
 	categoryType := header.Get("type")
 	allowedTypes := []string{"RECIPE", "EXPENSE", ""}
 	if !slices.Contains(allowedTypes, categoryType) {
