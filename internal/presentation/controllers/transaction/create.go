@@ -55,15 +55,15 @@ type CreateTransactionBody struct {
 		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT"`
-	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02"`
+	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed      bool   `json:"isConfirmed"`
 	CategoryId       string `json:"categoryId" validate:"required,mongodb"`
 	SubCategoryId    string `json:"subCategoryId" validate:"required,mongodb"`
 	TagId            string `json:"tagId" validate:"required,mongodb"`
 	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
-	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02"`
-	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
+	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02T15:04:05Z,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -144,7 +144,7 @@ func (c *CreateTransactionController) createTransaction(body *CreateTransactionB
 
 	parseDate := func(date string) (time.Time, error) {
 		location := time.UTC
-		return time.ParseInLocation("2006-01-02T15:04:05", date, location)
+		return time.ParseInLocation("2006-01-02T15:04:05Z", date, location)
 	}
 
 	categoryId, err := convertID(body.CategoryId)
