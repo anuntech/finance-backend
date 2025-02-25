@@ -22,3 +22,13 @@ func MakeGetTransactionController(workspaceDb *mongo.Database) *transaction.GetT
 	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(workspaceDb)
 	return transaction.NewGetTransactionController(findTransactionsByWorkspaceIdAndMonthRepository)
 }
+
+func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *transaction.UpdateTransactionController {
+	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
+	updateTransactionRepository := transaction_repository.NewUpdateTransactionRepository(db)
+	findMemberByIdRepository := member_repository.NewFindMemberByIdRepository(workspaceDb)
+	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
+	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+
+	return transaction.NewUpdateTransactionController(updateTransactionRepository, findTransactionByIdRepository, findMemberByIdRepository, findAccountByIdRepository, findCategoryByIdRepository)
+}

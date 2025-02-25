@@ -63,7 +63,7 @@ type CreateTransactionBody struct {
 	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02T15:04:05Z,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
+	ConfirmationDate string `json:"confirmationDate" validate:"omitempty,excluded_if=IsConfirmed false,required_if=IsConfirmed true,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -177,9 +177,12 @@ func (c *CreateTransactionController) createTransaction(body *CreateTransactionB
 		return nil, err
 	}
 
-	confirmationDate, err := parseDate(body.ConfirmationDate)
-	if err != nil {
-		return nil, err
+	var confirmationDate time.Time
+	if body.IsConfirmed {
+		confirmationDate, err = parseDate(body.ConfirmationDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	dueDate, err := parseDate(body.DueDate)

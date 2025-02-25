@@ -23,4 +23,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("PUT /transaction/{id}", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeUpdateTransactionController(workspaceDb, db)),
+			workspaceDb,
+		),
+	))
 }

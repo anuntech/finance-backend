@@ -3,10 +3,12 @@ package transaction
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -17,15 +19,21 @@ type UpdateTransactionController struct {
 	UpdateTransactionRepository usecase.UpdateTransactionRepository
 	Validate                    *validator.Validate
 	FindTransactionById         usecase.FindTransactionByIdRepository
+	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository   usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository  usecase.FindCategoryByIdRepository
 }
 
-func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionRepository, findTransactionById usecase.FindTransactionByIdRepository) *UpdateTransactionController {
+func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionRepository, findTransactionById usecase.FindTransactionByIdRepository, findMemberByIdRepository *member_repository.FindMemberByIdRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *UpdateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &UpdateTransactionController{
 		UpdateTransactionRepository: updateTransaction,
 		Validate:                    validate,
 		FindTransactionById:         findTransactionById,
+		FindMemberByIdRepository:    findMemberByIdRepository,
+		FindAccountByIdRepository:   findAccountByIdRepository,
+		FindCategoryByIdRepository:  findCategoryByIdRepository,
 	}
 }
 
@@ -56,7 +64,7 @@ type UpdateTransactionBody struct {
 	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate string `json:"confirmationDate" validate:"datetime=2006-01-02T15:04:05Z,excluded_if=IsConfirmed false,required_if=IsConfirmed true"`
+	ConfirmationDate string `json:"confirmationDate" validate:"omitempty,excluded_if=IsConfirmed false,required_if=IsConfirmed true,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -119,12 +127,28 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusInternalServerError)
 	}
 
-	transaction.AssignedTo = transactionIdsParsed.AssignedTo
 	transaction.TagId = transactionIdsParsed.TagId
 	transaction.SubTagId = transactionIdsParsed.SubTagId
 	transaction.AccountId = transactionIdsParsed.AccountId
 	transaction.RegistrationDate = transactionIdsParsed.RegistrationDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
+
+	if err := c.validateAssignedMember(workspaceId, transactionIdsParsed.AssignedTo); err != nil {
+		return err
+	}
+	transaction.AssignedTo = transactionIdsParsed.AssignedTo
+
+	if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+		return err
+	}
+
+	if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
+		return err
+	}
+
+	if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
+		return err
+	}
 
 	transactionUpdated, err := c.UpdateTransactionRepository.Update(transactionId, transaction)
 	if err != nil {
@@ -176,9 +200,12 @@ func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionB
 		return nil, err
 	}
 
-	confirmationDate, err := parseDate(body.ConfirmationDate)
-	if err != nil {
-		return nil, err
+	var confirmationDate time.Time
+	if body.IsConfirmed {
+		confirmationDate, err = parseDate(body.ConfirmationDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	dueDate, err := parseDate(body.DueDate)
@@ -214,4 +241,100 @@ func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionB
 		ConfirmationDate: confirmationDate,
 		DueDate:          dueDate,
 	}, nil
+}
+
+func (c *UpdateTransactionController) validateAssignedMember(workspaceId primitive.ObjectID, assignedTo primitive.ObjectID) *presentationProtocols.HttpResponse {
+	member, err := c.FindMemberByIdRepository.Find(workspaceId, assignedTo)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding member",
+		}, http.StatusInternalServerError)
+	}
+
+	if member == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "AssignedTo is not a member of the workspace",
+		}, http.StatusNotFound)
+	}
+
+	return nil
+}
+
+func (c *UpdateTransactionController) validateAccount(workspaceId primitive.ObjectID, accountId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	account, err := c.FindAccountByIdRepository.Find(accountId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding account",
+		}, http.StatusInternalServerError)
+	}
+
+	if account == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "account not found",
+		}, http.StatusNotFound)
+	}
+
+	return nil
+}
+
+func (c *UpdateTransactionController) validateCategory(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, transactionType string, subCategoryId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding category",
+		}, http.StatusInternalServerError)
+	}
+
+	if category == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "category not found",
+		}, http.StatusNotFound)
+	}
+
+	if !strings.EqualFold(category.Type, transactionType) {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "category type does not match transaction type",
+		}, http.StatusBadRequest)
+	}
+
+	for _, subCategory := range category.SubCategories {
+		if subCategory.Id == subCategoryId {
+			return nil
+		}
+	}
+
+	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+		Error: "sub category not found",
+	}, http.StatusNotFound)
+}
+
+func (c *UpdateTransactionController) validateTag(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, subCategoryId primitive.ObjectID) *presentationProtocols.HttpResponse {
+	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding tag",
+		}, http.StatusInternalServerError)
+	}
+
+	if category == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "tag not found",
+		}, http.StatusNotFound)
+	}
+
+	if !strings.EqualFold(category.Type, "TAG") {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "tag type does not match transaction type",
+		}, http.StatusBadRequest)
+	}
+
+	for _, subCategory := range category.SubCategories {
+		if subCategory.Id == subCategoryId {
+			return nil
+		}
+	}
+
+	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+		Error: "sub tag not found",
+	}, http.StatusNotFound)
 }
