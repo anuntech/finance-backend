@@ -26,11 +26,8 @@ func main() {
 	handler := middlewares.CorsMiddleware(setup.Server())
 
 	sm := http.Server{
-		Addr:         ":" + port,
-		Handler:      handler,
-		IdleTimeout:  60 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Addr:    ":" + port,
+		Handler: handler,
 	}
 
 	go func() {
