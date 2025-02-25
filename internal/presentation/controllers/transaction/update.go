@@ -39,7 +39,7 @@ func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionR
 
 type UpdateTransactionBody struct {
 	Name        string `json:"name" validate:"required,min=3,max=30"`
-	Description string `json:"description" validate:"min=3,max=255"`
+	Description string `json:"description" validate:"omitempty,max=255"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
@@ -64,7 +64,7 @@ type UpdateTransactionBody struct {
 	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate string `json:"confirmationDate" validate:"omitempty,excluded_if=IsConfirmed false,required_if=IsConfirmed true,datetime=2006-01-02T15:04:05Z"`
+	ConfirmationDate string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
