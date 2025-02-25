@@ -37,8 +37,8 @@ func NewCreateTransactionController(findMemberByIdRepository *member_repository.
 }
 
 type CreateTransactionBody struct {
-	Name        string `json:"name" validate:"required,min=3,max=30"`
-	Description string `json:"description" validate:"min=3,max=255"`
+	Name        string `json:"name,omitempty" validate:"required,min=3,max=30"`
+	Description string `json:"description,omitempty" validate:"omitempty,min=3,max=255"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
@@ -54,7 +54,7 @@ type CreateTransactionBody struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
 		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
-	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
+	} `json:"repeatSettings,omitempty" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed      bool   `json:"isConfirmed"`
 	CategoryId       string `json:"categoryId" validate:"required,mongodb"`
@@ -63,7 +63,7 @@ type CreateTransactionBody struct {
 	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate string `json:"confirmationDate" validate:"omitempty,excluded_if=IsConfirmed false,required_if=IsConfirmed true,datetime=2006-01-02T15:04:05Z"`
+	ConfirmationDate string `json:"confirmationDate,omitempty" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {

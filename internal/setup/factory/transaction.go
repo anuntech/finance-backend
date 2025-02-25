@@ -32,3 +32,8 @@ func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 
 	return transaction.NewUpdateTransactionController(updateTransactionRepository, findTransactionByIdRepository, findMemberByIdRepository, findAccountByIdRepository, findCategoryByIdRepository)
 }
+
+func MakeGetTransactionByIdController(workspaceDb *mongo.Database) *transaction.GetTransactionByIdController {
+	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(workspaceDb)
+	return transaction.NewGetTransactionByIdController(findTransactionByIdRepository)
+}
