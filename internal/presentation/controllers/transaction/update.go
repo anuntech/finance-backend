@@ -195,6 +195,11 @@ func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionB
 		return nil, err
 	}
 
+	assignedTo, err := convertID(body.AssignedTo)
+	if err != nil {
+		return nil, err
+	}
+
 	registrationDate, err := parseDate(body.RegistrationDate)
 	if err != nil {
 		return nil, err
@@ -218,6 +223,7 @@ func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionB
 		Description: body.Description,
 		Type:        body.Type,
 		Supplier:    body.Supplier,
+		AssignedTo:  assignedTo,
 		Balance: models.TransactionBalance{
 			Value:    body.Balance.Value,
 			Parts:    body.Balance.Parts,
