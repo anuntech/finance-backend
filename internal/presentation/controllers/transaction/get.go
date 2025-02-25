@@ -48,6 +48,10 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
+	for i, j := 0, len(transactions)-1; i < j; i, j = i+1, j-1 {
+		transactions[i], transactions[j] = transactions[j], transactions[i]
+	}
+
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
