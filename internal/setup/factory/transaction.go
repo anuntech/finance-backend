@@ -37,3 +37,8 @@ func MakeGetTransactionByIdController(workspaceDb *mongo.Database) *transaction.
 	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(workspaceDb)
 	return transaction.NewGetTransactionByIdController(findTransactionByIdRepository)
 }
+
+func MakeDeleteTransactionController(db *mongo.Database) *transaction.DeleteTransactionController {
+	deleteTransactionRepository := transaction_repository.NewDeleteTransactionRepository(db)
+	return transaction.NewDeleteTransactionController(deleteTransactionRepository)
+}

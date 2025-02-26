@@ -30,4 +30,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("DELETE /transaction", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeDeleteTransactionController(db)),
+			workspaceDb,
+		),
+	))
 }

@@ -67,10 +67,15 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 
 	transaction, err := c.FindTransactionById.Find(transactionId, workspaceId)
-	if err != nil {
+	if transaction == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "transaction not found",
 		}, http.StatusNotFound)
+	}
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding transaction",
+		}, http.StatusInternalServerError)
 	}
 
 	transaction.Name = body.Name

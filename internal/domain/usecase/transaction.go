@@ -27,3 +27,7 @@ type FindTransactionByIdRepository interface {
 type UpdateTransactionRepository interface {
 	Update(transactionId primitive.ObjectID, transaction *models.Transaction) (*models.Transaction, error)
 }
+
+type DeleteTransactionRepository interface {
+	Delete(transactionIds []primitive.ObjectID, workspaceId primitive.ObjectID) error
+}
