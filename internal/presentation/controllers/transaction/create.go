@@ -44,11 +44,11 @@ type TransactionBody struct {
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
-		Value    int `json:"value" validate:"required,min=0"`
-		Parts    int `json:"parts" validate:"min=0"`
-		Labor    int `json:"labor" validate:"min=0"`
-		Discount int `json:"discount" validate:"min=0"`
-		Interest int `json:"interest" validate:"min=0"`
+		Value    int  `json:"value" validate:"required,min=0"`
+		Parts    *int `json:"parts" validate:"omitempty,min=0"`
+		Labor    *int `json:"labor" validate:"omitempty,min=0"`
+		Discount *int `json:"discount" validate:"omitempty,min=0"`
+		Interest *int `json:"interest" validate:"omitempty,min=0"`
 	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
