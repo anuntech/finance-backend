@@ -39,7 +39,7 @@ type Transaction struct {
 	SubTagId         primitive.ObjectID        `bson:"sub_tag_id" json:"subTagId"`
 	AccountId        primitive.ObjectID        `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                 `bson:"registration_date" json:"registrationDate"`
-	ConfirmationDate time.Time                 `bson:"confirmation_date" json:"confirmationDate,omitempty"`
+	ConfirmationDate *time.Time                `bson:"confirmation_date" json:"confirmationDate,omitempty"`
 	IsOverdue        bool                      `bson:"-" json:"isOverdue"`
 	CreatedAt        time.Time                 `bson:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time                 `bson:"updated_at" json:"updatedAt"`

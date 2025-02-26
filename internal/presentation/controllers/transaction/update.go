@@ -244,7 +244,7 @@ func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionB
 		SubTagId:         subTagId,
 		AccountId:        accountId,
 		RegistrationDate: registrationDate,
-		ConfirmationDate: confirmationDate,
+		ConfirmationDate: &confirmationDate,
 		DueDate:          dueDate,
 	}, nil
 }

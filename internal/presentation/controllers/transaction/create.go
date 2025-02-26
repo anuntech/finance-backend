@@ -177,12 +177,16 @@ func (c *CreateTransactionController) createTransaction(body *CreateTransactionB
 		return nil, err
 	}
 
-	var confirmationDate time.Time
+	var confirmationDate *time.Time
 	if body.IsConfirmed {
-		confirmationDate, err = parseDate(body.ConfirmationDate)
+		confirmationDateParsed, err := parseDate(body.ConfirmationDate)
 		if err != nil {
 			return nil, err
 		}
+
+		confirmationDate = &confirmationDateParsed
+	} else {
+		confirmationDate = nil
 	}
 
 	dueDate, err := parseDate(body.DueDate)
