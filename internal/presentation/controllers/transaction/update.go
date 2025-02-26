@@ -213,7 +213,7 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 
 	var confirmationDate time.Time
 	if body.IsConfirmed {
-		confirmationDate, err = parseDate(body.ConfirmationDate)
+		confirmationDate, err = parseDate(*body.ConfirmationDate)
 		if err != nil {
 			return nil, err
 		}
