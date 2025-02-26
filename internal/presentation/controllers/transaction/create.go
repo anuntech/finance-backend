@@ -187,20 +187,24 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
-	var tagId primitive.ObjectID
+	var tagId *primitive.ObjectID
 	if body.TagId != "" {
-		tagId, err = convertID(body.TagId)
+		tagIdParsed, err := convertID(body.TagId)
 		if err != nil {
 			return nil, err
 		}
+
+		tagId = &tagIdParsed
 	}
 
-	var subTagId primitive.ObjectID
+	var subTagId *primitive.ObjectID
 	if body.SubTagId != "" {
-		subTagId, err = convertID(body.SubTagId)
+		subTagIdParsed, err := convertID(body.SubTagId)
 		if err != nil {
 			return nil, err
 		}
+
+		subTagId = &subTagIdParsed
 	}
 
 	accountId, err := convertID(body.AccountId)
@@ -251,8 +255,8 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,
-		TagId:            &tagId,
-		SubTagId:         &subTagId,
+		TagId:            tagId,
+		SubTagId:         subTagId,
 		AccountId:        accountId,
 		RegistrationDate: registrationDate,
 		ConfirmationDate: confirmationDate,
