@@ -85,7 +85,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		Interest: body.Balance.Interest,
 	}
 	transaction.Frequency = body.Frequency
-	transaction.RepeatSettings = models.TransactionRepeatSettings{
+	transaction.RepeatSettings = &models.TransactionRepeatSettings{
 		InitialInstallment: body.RepeatSettings.InitialInstallment,
 		Count:              body.RepeatSettings.Count,
 		Interval:           body.RepeatSettings.Interval,
@@ -238,7 +238,7 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 			Interest: body.Balance.Interest,
 		},
 		Frequency: body.Frequency,
-		RepeatSettings: models.TransactionRepeatSettings{
+		RepeatSettings: &models.TransactionRepeatSettings{
 			InitialInstallment: body.RepeatSettings.InitialInstallment,
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,

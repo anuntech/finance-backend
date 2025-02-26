@@ -247,7 +247,7 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 			Interest: body.Balance.Interest,
 		},
 		Frequency: body.Frequency,
-		RepeatSettings: models.TransactionRepeatSettings{
+		RepeatSettings: &models.TransactionRepeatSettings{
 			InitialInstallment: body.RepeatSettings.InitialInstallment,
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,
