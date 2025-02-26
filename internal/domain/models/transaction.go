@@ -35,8 +35,8 @@ type Transaction struct {
 	IsConfirmed      bool                      `bson:"is_confirmed" json:"isConfirmed"`
 	CategoryId       primitive.ObjectID        `bson:"category_id" json:"categoryId"`
 	SubCategoryId    primitive.ObjectID        `bson:"sub_category_id" json:"subCategoryId"`
-	TagId            primitive.ObjectID        `bson:"tag_id" json:"tagId"`
-	SubTagId         primitive.ObjectID        `bson:"sub_tag_id" json:"subTagId"`
+	TagId            *primitive.ObjectID       `bson:"tag_id" json:"tagId,omitempty"`
+	SubTagId         *primitive.ObjectID       `bson:"sub_tag_id" json:"subTagId,omitempty"`
 	AccountId        primitive.ObjectID        `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                 `bson:"registration_date" json:"registrationDate"`
 	ConfirmationDate *time.Time                `bson:"confirmation_date" json:"confirmationDate,omitempty"`

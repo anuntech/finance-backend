@@ -140,13 +140,15 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
-			errChan <- err
-		}
-	}()
+	if transaction.TagId != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := c.validateTag(workspaceId, *transaction.TagId, *transaction.SubTagId); err != nil {
+				errChan <- err
+			}
+		}()
+	}
 
 	wg.Wait()
 	close(errChan)
@@ -249,8 +251,8 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,
-		TagId:            tagId,
-		SubTagId:         subTagId,
+		TagId:            &tagId,
+		SubTagId:         &subTagId,
 		AccountId:        accountId,
 		RegistrationDate: registrationDate,
 		ConfirmationDate: confirmationDate,

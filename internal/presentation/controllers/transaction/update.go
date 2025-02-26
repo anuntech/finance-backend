@@ -133,13 +133,15 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
-			errChan <- err
-		}
-	}()
+	if transaction.TagId != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := c.validateTag(workspaceId, *transaction.TagId, *transaction.SubTagId); err != nil {
+				errChan <- err
+			}
+		}()
+	}
 
 	wg.Wait()
 	close(errChan)
@@ -178,14 +180,20 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
-	tagId, err := convertID(body.TagId)
-	if err != nil {
-		return nil, err
+	var tagId primitive.ObjectID
+	if body.TagId != "" {
+		tagId, err = convertID(body.TagId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	subTagId, err := convertID(body.SubTagId)
-	if err != nil {
-		return nil, err
+	var subTagId primitive.ObjectID
+	if body.SubTagId != "" {
+		subTagId, err = convertID(body.SubTagId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	accountId, err := convertID(body.AccountId)
@@ -238,8 +246,8 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,
-		TagId:            tagId,
-		SubTagId:         subTagId,
+		TagId:            &tagId,
+		SubTagId:         &subTagId,
 		AccountId:        accountId,
 		RegistrationDate: registrationDate,
 		ConfirmationDate: &confirmationDate,
