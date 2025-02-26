@@ -44,11 +44,11 @@ type TransactionBody struct {
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
-		Value    int  `json:"value" validate:"required,min=0"`
-		Parts    *int `json:"parts" validate:"omitempty,min=0"`
-		Labor    *int `json:"labor" validate:"omitempty,min=0"`
-		Discount *int `json:"discount" validate:"omitempty,min=0"`
-		Interest *int `json:"interest" validate:"omitempty,min=0"`
+		Value    int `json:"value" validate:"required,min=0"`
+		Parts    int `json:"parts" validate:"omitempty,min=0"`
+		Labor    int `json:"labor" validate:"omitempty,min=0"`
+		Discount int `json:"discount" validate:"omitempty,min=0"`
+		Interest int `json:"interest" validate:"omitempty,min=0"`
 	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
@@ -234,18 +234,6 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
-	getValue := func(ptr *int) int {
-		if ptr != nil {
-			return *ptr
-		}
-		return 0
-	}
-
-	parts := getValue(body.Balance.Parts)
-	labor := getValue(body.Balance.Labor)
-	discount := getValue(body.Balance.Discount)
-	interest := getValue(body.Balance.Interest)
-
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
@@ -253,10 +241,10 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		Supplier:    body.Supplier,
 		Balance: models.TransactionBalance{
 			Value:    body.Balance.Value,
-			Parts:    parts,
-			Labor:    labor,
-			Discount: discount,
-			Interest: interest,
+			Parts:    body.Balance.Parts,
+			Labor:    body.Balance.Labor,
+			Discount: body.Balance.Discount,
+			Interest: body.Balance.Interest,
 		},
 		Frequency: body.Frequency,
 		RepeatSettings: &models.TransactionRepeatSettings{
