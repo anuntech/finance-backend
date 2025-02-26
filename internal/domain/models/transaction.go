@@ -7,11 +7,11 @@ import (
 )
 
 type TransactionBalance struct {
-	Value    int  `bson:"value" json:"value"`
-	Parts    *int `bson:"parts" json:"parts"`       // increase
-	Labor    *int `bson:"labor" json:"labor"`       // increase
-	Discount *int `bson:"discount" json:"discount"` // decrease
-	Interest *int `bson:"interest" json:"interest"` // increase
+	Value    int `bson:"value" json:"value"`
+	Parts    int `bson:"parts" json:"parts"`       // increase
+	Labor    int `bson:"labor" json:"labor"`       // increase
+	Discount int `bson:"discount" json:"discount"` // decrease
+	Interest int `bson:"interest" json:"interest"` // increase
 }
 
 type TransactionRepeatSettings struct {

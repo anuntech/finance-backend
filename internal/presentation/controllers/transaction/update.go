@@ -79,10 +79,10 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.Supplier = body.Supplier
 	transaction.Balance = models.TransactionBalance{
 		Value:    body.Balance.Value,
-		Parts:    body.Balance.Parts,
-		Labor:    body.Balance.Labor,
-		Discount: body.Balance.Discount,
-		Interest: body.Balance.Interest,
+		Parts:    transaction.Balance.Parts,
+		Labor:    transaction.Balance.Labor,
+		Discount: transaction.Balance.Discount,
+		Interest: transaction.Balance.Interest,
 	}
 	transaction.Frequency = body.Frequency
 	transaction.RepeatSettings = &models.TransactionRepeatSettings{
@@ -224,6 +224,18 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
+	getValue := func(ptr *int) int {
+		if ptr != nil {
+			return *ptr
+		}
+		return 0
+	}
+
+	parts := getValue(body.Balance.Parts)
+	labor := getValue(body.Balance.Labor)
+	discount := getValue(body.Balance.Discount)
+	interest := getValue(body.Balance.Interest)
+
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
@@ -232,10 +244,10 @@ func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (
 		AssignedTo:  assignedTo,
 		Balance: models.TransactionBalance{
 			Value:    body.Balance.Value,
-			Parts:    body.Balance.Parts,
-			Labor:    body.Balance.Labor,
-			Discount: body.Balance.Discount,
-			Interest: body.Balance.Interest,
+			Parts:    parts,
+			Labor:    labor,
+			Discount: discount,
+			Interest: interest,
 		},
 		Frequency: body.Frequency,
 		RepeatSettings: &models.TransactionRepeatSettings{

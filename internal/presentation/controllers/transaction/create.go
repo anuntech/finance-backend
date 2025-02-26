@@ -234,6 +234,18 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
+	getValue := func(ptr *int) int {
+		if ptr != nil {
+			return *ptr
+		}
+		return 0
+	}
+
+	parts := getValue(body.Balance.Parts)
+	labor := getValue(body.Balance.Labor)
+	discount := getValue(body.Balance.Discount)
+	interest := getValue(body.Balance.Interest)
+
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
@@ -241,10 +253,10 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		Supplier:    body.Supplier,
 		Balance: models.TransactionBalance{
 			Value:    body.Balance.Value,
-			Parts:    body.Balance.Parts,
-			Labor:    body.Balance.Labor,
-			Discount: body.Balance.Discount,
-			Interest: body.Balance.Interest,
+			Parts:    parts,
+			Labor:    labor,
+			Discount: discount,
+			Interest: interest,
 		},
 		Frequency: body.Frequency,
 		RepeatSettings: &models.TransactionRepeatSettings{
