@@ -185,14 +185,20 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		return nil, err
 	}
 
-	tagId, err := convertID(body.TagId)
-	if err != nil {
-		return nil, err
+	var tagId primitive.ObjectID
+	if body.TagId != "" {
+		tagId, err = convertID(body.TagId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	subTagId, err := convertID(body.SubTagId)
-	if err != nil {
-		return nil, err
+	var subTagId primitive.ObjectID
+	if body.SubTagId != "" {
+		subTagId, err = convertID(body.SubTagId)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	accountId, err := convertID(body.AccountId)
