@@ -25,7 +25,8 @@ type Transaction struct {
 	Name             string                     `bson:"name" json:"name"`
 	Description      string                     `bson:"description" json:"description,omitempty"`
 	CreatedBy        primitive.ObjectID         `bson:"created_by" json:"createdBy"` // email
-	Type             string                     `bson:"type" json:"type"`            // EXPENSE, RECIPE
+	Invoice          string                     `bson:"invoice" json:"invoice,omitempty"`
+	Type             string                     `bson:"type" json:"type"` // EXPENSE, RECIPE
 	Supplier         string                     `bson:"supplier" json:"supplier"`
 	AssignedTo       primitive.ObjectID         `bson:"assigned_to" json:"assignedTo"`
 	Balance          TransactionBalance         `bson:"balance" json:"balance"`

@@ -38,8 +38,9 @@ func NewCreateTransactionController(findMemberByIdRepository *member_repository.
 }
 
 type TransactionBody struct {
-	Name        string `json:"name" validate:"required,min=3,max=30"`
+	Name        string `json:"name" validate:"required,min=2,max=30"`
 	Description string `json:"description" validate:"omitempty,max=255"`
+	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
@@ -237,6 +238,7 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
+		Invoice:     body.Invoice,
 		Type:        body.Type,
 		Supplier:    body.Supplier,
 		Balance: models.TransactionBalance{
