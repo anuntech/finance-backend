@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -36,7 +37,7 @@ func NewCreateTransactionController(findMemberByIdRepository *member_repository.
 	}
 }
 
-type CreateTransactionBody struct {
+type TransactionBody struct {
 	Name        string `json:"name" validate:"required,min=3,max=30"`
 	Description string `json:"description" validate:"omitempty,max=255"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
@@ -59,15 +60,15 @@ type CreateTransactionBody struct {
 	IsConfirmed      bool   `json:"isConfirmed"`
 	CategoryId       string `json:"categoryId" validate:"required,mongodb"`
 	SubCategoryId    string `json:"subCategoryId" validate:"required,mongodb"`
-	TagId            string `json:"tagId" validate:"required,mongodb"`
-	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
+	TagId            string `json:"tagId" validate:"omitempty,mongodb"`
+	SubTagId         string `json:"subTagId" validate:"omitempty,mongodb,required_with=TagId,excluded_unless=TagId"`
 	AccountId        string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body CreateTransactionBody
+	var body TransactionBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid body request",
@@ -110,21 +111,48 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	transaction.WorkspaceId = workspaceId
 
-	if err := c.validateAssignedMember(workspaceId, assignedTo); err != nil {
-		return err
-	}
-	transaction.AssignedTo = assignedTo
+	errChan := make(chan *presentationProtocols.HttpResponse, 4)
+	var wg sync.WaitGroup
 
-	if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
-		return err
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateAssignedMember(workspaceId, assignedTo); err != nil {
+			errChan <- err
+			return
+		}
+		transaction.AssignedTo = assignedTo
+	}()
 
-	if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
-		return err
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+			errChan <- err
+		}
+	}()
 
-	if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
-		return err
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
+			errChan <- err
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
+			errChan <- err
+		}
+	}()
+
+	wg.Wait()
+	close(errChan)
+
+	if len(errChan) > 0 {
+		return <-errChan
 	}
 
 	transaction, err = c.CreateTransactionRepository.Create(transaction)
@@ -137,7 +165,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
 
-func (c *CreateTransactionController) createTransaction(body *CreateTransactionBody) (*models.Transaction, error) {
+func (c *CreateTransactionController) createTransaction(body *TransactionBody) (*models.Transaction, error) {
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}

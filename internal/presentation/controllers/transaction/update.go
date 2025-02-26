@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -37,38 +38,8 @@ func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionR
 	}
 }
 
-type UpdateTransactionBody struct {
-	Name        string `json:"name" validate:"required,min=3,max=30"`
-	Description string `json:"description" validate:"omitempty,max=255"`
-	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
-	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
-	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
-	Balance     struct {
-		Value    int `json:"value" validate:"required,min=0"`
-		Parts    int `json:"parts" validate:"min=0"`
-		Labor    int `json:"labor" validate:"min=0"`
-		Discount int `json:"discount" validate:"min=0"`
-		Interest int `json:"interest" validate:"min=0"`
-	} `json:"balance" validate:"required"`
-	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
-	RepeatSettings struct {
-		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
-		Count              int        `json:"count" validate:"min=2"`
-		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
-	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
-	DueDate          string `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	IsConfirmed      bool   `json:"isConfirmed"`
-	CategoryId       string `json:"categoryId" validate:"required,mongodb"`
-	SubCategoryId    string `json:"subCategoryId" validate:"required,mongodb"`
-	TagId            string `json:"tagId" validate:"required,mongodb"`
-	SubTagId         string `json:"subTagId" validate:"required,mongodb"`
-	AccountId        string `json:"accountId" validate:"required,mongodb"`
-	RegistrationDate string `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
-}
-
 func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body UpdateTransactionBody
+	var body TransactionBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid body request",
@@ -133,21 +104,48 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.RegistrationDate = transactionIdsParsed.RegistrationDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
 
-	if err := c.validateAssignedMember(workspaceId, transactionIdsParsed.AssignedTo); err != nil {
-		return err
-	}
-	transaction.AssignedTo = transactionIdsParsed.AssignedTo
+	errChan := make(chan *presentationProtocols.HttpResponse, 4)
+	var wg sync.WaitGroup
 
-	if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
-		return err
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateAssignedMember(workspaceId, transactionIdsParsed.AssignedTo); err != nil {
+			errChan <- err
+			return
+		}
+		transaction.AssignedTo = transactionIdsParsed.AssignedTo
+	}()
 
-	if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
-		return err
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+			errChan <- err
+		}
+	}()
 
-	if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
-		return err
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
+			errChan <- err
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := c.validateTag(workspaceId, transaction.TagId, transaction.SubTagId); err != nil {
+			errChan <- err
+		}
+	}()
+
+	wg.Wait()
+	close(errChan)
+
+	if len(errChan) > 0 {
+		return <-errChan
 	}
 
 	transactionUpdated, err := c.UpdateTransactionRepository.Update(transactionId, transaction)
@@ -160,7 +158,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	return helpers.CreateResponse(transactionUpdated, http.StatusOK)
 }
 
-func (c *UpdateTransactionController) createTransaction(body *UpdateTransactionBody) (*models.Transaction, error) {
+func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (*models.Transaction, error) {
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}
