@@ -10,17 +10,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type GetCategorysController struct {
-	FindCategorysByWorkspaceIdRepository usecase.FindCategorysByWorkspaceIdRepository
+type GetCategoriesController struct {
+	FindCategoriesByWorkspaceIdRepository usecase.FindCategoriesByWorkspaceIdRepository
 }
 
-func NewGetCategorysController(findManyByUserIdAndWorkspaceId usecase.FindCategorysByWorkspaceIdRepository) *GetCategorysController {
-	return &GetCategorysController{
-		FindCategorysByWorkspaceIdRepository: findManyByUserIdAndWorkspaceId,
+func NewGetCategoriesController(findManyByUserIdAndWorkspaceId usecase.FindCategoriesByWorkspaceIdRepository) *GetCategoriesController {
+	return &GetCategoriesController{
+		FindCategoriesByWorkspaceIdRepository: findManyByUserIdAndWorkspaceId,
 	}
 }
 
-func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
+func (c *GetCategoriesController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -37,7 +37,7 @@ func (c *GetCategorysController) Handle(r presentationProtocols.HttpRequest) *pr
 		}, http.StatusBadRequest)
 	}
 
-	categories, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, categoryType)
+	categories, err := c.FindCategoriesByWorkspaceIdRepository.Find(workspaceId, categoryType)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when retrieving categories",

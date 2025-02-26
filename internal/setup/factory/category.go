@@ -11,13 +11,13 @@ import (
 func MakeCreateCategoryController(db *mongo.Database) *controllers.CreateCategoryController {
 	createCategory := category_repository.NewCreateCategoryRepository(db)
 	findAccountById := account_repository.NewFindByIdMongoRepository(db)
-	findCategorysByWorkspaceId := category_repository.NewFindCategorysByWorkspaceIdRepository(db)
+	findCategorysByWorkspaceId := category_repository.NewFindCategoriesByWorkspaceIdRepository(db)
 	return controllers.NewCreateCategoryController(createCategory, findAccountById, findCategorysByWorkspaceId)
 }
 
-func MakeGetCategorysController(db *mongo.Database) *controllers.GetCategorysController {
-	findCategorysByWorkspaceId := category_repository.NewFindCategorysByWorkspaceIdRepository(db)
-	return controllers.NewGetCategorysController(findCategorysByWorkspaceId)
+func MakeGetCategorysController(db *mongo.Database) *controllers.GetCategoriesController {
+	findCategorysByWorkspaceId := category_repository.NewFindCategoriesByWorkspaceIdRepository(db)
+	return controllers.NewGetCategoriesController(findCategorysByWorkspaceId)
 }
 
 func MakeCreateSubCategoryController(db *mongo.Database) *controllers_category.CreateSubCategoryController {
@@ -55,7 +55,7 @@ func MakeUpdateSubCategoryController(db *mongo.Database) *controllers_category.U
 
 func MakeImportCategoryController(db *mongo.Database) *controllers.ImportCategoryController {
 	importCategory := category_repository.NewImportCategoriesRepository(db)
-	findCategorysByWorkspaceId := category_repository.NewFindCategorysByWorkspaceIdRepository(db)
+	findCategorysByWorkspaceId := category_repository.NewFindCategoriesByWorkspaceIdRepository(db)
 	return controllers.NewImportCategoryController(importCategory, findCategorysByWorkspaceId)
 }
 

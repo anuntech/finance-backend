@@ -9,7 +9,7 @@ type CreateCategoryRepository interface {
 	Create(category *models.Category) (*models.Category, error)
 }
 
-type FindCategorysByWorkspaceIdRepository interface {
+type FindCategoriesByWorkspaceIdRepository interface {
 	Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error)
 }
 

@@ -13,18 +13,18 @@ import (
 )
 
 type ImportCategoryController struct {
-	ImportCategoriesRepository           usecase.ImportCategoriesRepository
-	Validate                             *validator.Validate
-	FindCategorysByWorkspaceIdRepository usecase.FindCategorysByWorkspaceIdRepository
+	ImportCategoriesRepository            usecase.ImportCategoriesRepository
+	Validate                              *validator.Validate
+	FindCategoriesByWorkspaceIdRepository usecase.FindCategoriesByWorkspaceIdRepository
 }
 
-func NewImportCategoryController(importUseCase usecase.ImportCategoriesRepository, findCategorys usecase.FindCategorysByWorkspaceIdRepository) *ImportCategoryController {
+func NewImportCategoryController(importUseCase usecase.ImportCategoriesRepository, findCategorys usecase.FindCategoriesByWorkspaceIdRepository) *ImportCategoryController {
 	validate := validator.New()
 
 	return &ImportCategoryController{
-		ImportCategoriesRepository:           importUseCase,
-		Validate:                             validate,
-		FindCategorysByWorkspaceIdRepository: findCategorys,
+		ImportCategoriesRepository:            importUseCase,
+		Validate:                              validate,
+		FindCategoriesByWorkspaceIdRepository: findCategorys,
 	}
 }
 
@@ -61,7 +61,7 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	currentCategories, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, "")
+	currentCategories, err := c.FindCategoriesByWorkspaceIdRepository.Find(workspaceId, "")
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "erro ao buscar categorias existentes",

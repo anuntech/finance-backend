@@ -10,17 +10,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FindCategorysByWorkspaceIdRepository struct {
+type FindCategoriesByWorkspaceIdRepository struct {
 	Db *mongo.Database
 }
 
-func NewFindCategorysByWorkspaceIdRepository(db *mongo.Database) *FindCategorysByWorkspaceIdRepository {
-	return &FindCategorysByWorkspaceIdRepository{
+func NewFindCategoriesByWorkspaceIdRepository(db *mongo.Database) *FindCategoriesByWorkspaceIdRepository {
+	return &FindCategoriesByWorkspaceIdRepository{
 		Db: db,
 	}
 }
 
-func (r *FindCategorysByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error) {
+func (r *FindCategoriesByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error) {
 	collection := r.Db.Collection("category")
 
 	filter := bson.M{"workspace_id": workspaceId}

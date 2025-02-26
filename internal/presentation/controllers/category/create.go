@@ -13,20 +13,20 @@ import (
 )
 
 type CreateCategoryController struct {
-	CreateCategoryRepository             usecase.CreateCategoryRepository
-	Validate                             *validator.Validate
-	FindAccountById                      usecase.FindAccountByIdRepository
-	FindCategorysByWorkspaceIdRepository usecase.FindCategorysByWorkspaceIdRepository
+	CreateCategoryRepository              usecase.CreateCategoryRepository
+	Validate                              *validator.Validate
+	FindAccountById                       usecase.FindAccountByIdRepository
+	FindCategoriesByWorkspaceIdRepository usecase.FindCategoriesByWorkspaceIdRepository
 }
 
-func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategorysByWorkspaceIdRepository) *CreateCategoryController {
+func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategoriesByWorkspaceIdRepository) *CreateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateCategoryController{
-		CreateCategoryRepository:             createCategory,
-		Validate:                             validate,
-		FindAccountById:                      findAccountById,
-		FindCategorysByWorkspaceIdRepository: findCategorysByWorkspaceId,
+		CreateCategoryRepository:              createCategory,
+		Validate:                              validate,
+		FindAccountById:                       findAccountById,
+		FindCategoriesByWorkspaceIdRepository: findCategorysByWorkspaceId,
 	}
 }
 
@@ -64,7 +64,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	categorys, err := c.FindCategorysByWorkspaceIdRepository.Find(workspaceId, body.Type)
+	categorys, err := c.FindCategoriesByWorkspaceIdRepository.Find(workspaceId, body.Type)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding categories",
