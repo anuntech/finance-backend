@@ -49,7 +49,7 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: helpers.GetErrorMessages(c.Validate, err),
 		}, http.StatusUnprocessableEntity)
 	}
 

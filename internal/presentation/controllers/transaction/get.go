@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -73,9 +72,8 @@ func (c *GetTransactionController) getFilters(urlQueries *url.Values) (*usecase.
 
 	err := c.Validator.Struct(params)
 	if err != nil {
-		log.Printf("Validation error: %v", err)
 		return nil, helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: helpers.GetErrorMessages(c.Validator, err),
 		}, http.StatusBadRequest)
 	}
 

@@ -13,12 +13,14 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type CreateTransactionController struct {
 	Validate                    *validator.Validate
+	Translator                  ut.Translator
 	CreateTransactionRepository usecase.CreateTransactionRepository
 	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
 	FindAccountByIdRepository   usecase.FindAccountByIdRepository
@@ -78,7 +80,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body validation: " + err.Error(),
+			Error: helpers.GetErrorMessages(c.Validate, err),
 		}, http.StatusBadRequest)
 	}
 
