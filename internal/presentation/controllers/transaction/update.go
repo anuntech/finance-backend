@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
@@ -96,7 +95,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		Interval:           body.RepeatSettings.Interval,
 	}
 
-	transactionIdsParsed, err := c.createTransaction(&body)
+	transactionIdsParsed, err := createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating transaction",
@@ -163,105 +162,6 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 
 	return helpers.CreateResponse(transactionUpdated, http.StatusOK)
-}
-
-func (c *UpdateTransactionController) createTransaction(body *TransactionBody) (*models.Transaction, error) {
-	convertID := func(id string) (primitive.ObjectID, error) {
-		return primitive.ObjectIDFromHex(id)
-	}
-
-	parseDate := func(date string) (time.Time, error) {
-		location := time.UTC
-		return time.ParseInLocation("2006-01-02T15:04:05Z", date, location)
-	}
-
-	categoryId, err := convertID(body.CategoryId)
-	if err != nil {
-		return nil, err
-	}
-
-	subCategoryId, err := convertID(body.SubCategoryId)
-	if err != nil {
-		return nil, err
-	}
-
-	var tagId *primitive.ObjectID
-	if body.TagId != "" {
-		tagIdParsed, err := convertID(body.TagId)
-		if err != nil {
-			return nil, err
-		}
-
-		tagId = &tagIdParsed
-	}
-
-	var subTagId *primitive.ObjectID
-	if body.SubTagId != "" {
-		subTagIdParsed, err := convertID(body.SubTagId)
-		if err != nil {
-			return nil, err
-		}
-
-		subTagId = &subTagIdParsed
-	}
-
-	accountId, err := convertID(body.AccountId)
-	if err != nil {
-		return nil, err
-	}
-
-	assignedTo, err := convertID(body.AssignedTo)
-	if err != nil {
-		return nil, err
-	}
-
-	registrationDate, err := parseDate(body.RegistrationDate)
-	if err != nil {
-		return nil, err
-	}
-
-	var confirmationDate time.Time
-	if body.IsConfirmed {
-		confirmationDate, err = parseDate(*body.ConfirmationDate)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	dueDate, err := parseDate(body.DueDate)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.Transaction{
-		Name:        body.Name,
-		Description: body.Description,
-		Type:        body.Type,
-		Supplier:    body.Supplier,
-		AssignedTo:  assignedTo,
-		Balance: models.TransactionBalance{
-			Value:    body.Balance.Value,
-			Parts:    body.Balance.Parts,
-			Labor:    body.Balance.Labor,
-			Discount: body.Balance.Discount,
-			Interest: body.Balance.Interest,
-		},
-		Frequency: body.Frequency,
-		RepeatSettings: &models.TransactionRepeatSettings{
-			InitialInstallment: body.RepeatSettings.InitialInstallment,
-			Count:              body.RepeatSettings.Count,
-			Interval:           body.RepeatSettings.Interval,
-		},
-		IsConfirmed:      body.IsConfirmed,
-		CategoryId:       categoryId,
-		SubCategoryId:    subCategoryId,
-		TagId:            tagId,
-		SubTagId:         subTagId,
-		AccountId:        accountId,
-		RegistrationDate: registrationDate,
-		ConfirmationDate: &confirmationDate,
-		DueDate:          dueDate,
-	}, nil
 }
 
 func (c *UpdateTransactionController) validateAssignedMember(workspaceId primitive.ObjectID, assignedTo primitive.ObjectID) *presentationProtocols.HttpResponse {

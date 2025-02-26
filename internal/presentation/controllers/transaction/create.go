@@ -45,11 +45,11 @@ type TransactionBody struct {
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
-		Value    int `json:"value" validate:"required,min=0"`
-		Parts    int `json:"parts" validate:"omitempty,min=0"`
-		Labor    int `json:"labor" validate:"omitempty,min=0"`
-		Discount int `json:"discount" validate:"omitempty,min=0"`
-		Interest int `json:"interest" validate:"omitempty,min=0"`
+		Value    float64 `json:"value" validate:"required,min=0.01"`
+		Parts    float64 `json:"parts" validate:"omitempty,min=0.01"`
+		Labor    float64 `json:"labor" validate:"omitempty,min=0.01"`
+		Discount float64 `json:"discount" validate:"omitempty,min=0.01"`
+		Interest float64 `json:"interest" validate:"omitempty,min=0.01"`
 	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
@@ -82,7 +82,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	transaction, err := c.createTransaction(&body)
+	transaction, err := createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating transaction: " + err.Error(),
@@ -168,7 +168,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }
 
-func (c *CreateTransactionController) createTransaction(body *TransactionBody) (*models.Transaction, error) {
+func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}
@@ -208,6 +208,11 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		subTagId = &subTagIdParsed
 	}
 
+	assignedTo, err := convertID(body.AssignedTo)
+	if err != nil {
+		return nil, err
+	}
+
 	accountId, err := convertID(body.AccountId)
 	if err != nil {
 		return nil, err
@@ -241,6 +246,7 @@ func (c *CreateTransactionController) createTransaction(body *TransactionBody) (
 		Invoice:     body.Invoice,
 		Type:        body.Type,
 		Supplier:    body.Supplier,
+		AssignedTo:  assignedTo,
 		Balance: models.TransactionBalance{
 			Value:    body.Balance.Value,
 			Parts:    body.Balance.Parts,
