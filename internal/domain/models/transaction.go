@@ -22,6 +22,11 @@ type TransactionRepeatSettings struct {
 	Interval           string     `bson:"interval" json:"interval,omitempty"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY
 }
 
+type TransactionTags struct {
+	TagId    primitive.ObjectID `bson:"tag_id" json:"tagId"`
+	SubTagId primitive.ObjectID `bson:"sub_tag_id" json:"subTagId"`
+}
+
 type Transaction struct {
 	Id               primitive.ObjectID         `bson:"_id" json:"id"`
 	Name             string                     `bson:"name" json:"name"`
@@ -38,8 +43,7 @@ type Transaction struct {
 	IsConfirmed      bool                       `bson:"is_confirmed" json:"isConfirmed"`
 	CategoryId       primitive.ObjectID         `bson:"category_id" json:"categoryId"`
 	SubCategoryId    primitive.ObjectID         `bson:"sub_category_id" json:"subCategoryId"`
-	TagId            *primitive.ObjectID        `bson:"tag_id" json:"tagId"`
-	SubTagId         *primitive.ObjectID        `bson:"sub_tag_id" json:"subTagId"`
+	Tags             []TransactionTags          `bson:"tags" json:"tags"`
 	AccountId        primitive.ObjectID         `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                  `bson:"registration_date" json:"registrationDate"`
 	ConfirmationDate *time.Time                 `bson:"confirmation_date" json:"confirmationDate,omitempty"`

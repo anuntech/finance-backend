@@ -104,8 +104,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusInternalServerError)
 	}
 
-	transaction.TagId = transactionIdsParsed.TagId
-	transaction.SubTagId = transactionIdsParsed.SubTagId
+	transaction.Tags = transactionIdsParsed.Tags
 	transaction.AccountId = transactionIdsParsed.AccountId
 	transaction.RegistrationDate = transactionIdsParsed.RegistrationDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
@@ -139,15 +138,15 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}()
 
-	if transaction.TagId != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := c.validateTag(workspaceId, *transaction.TagId, *transaction.SubTagId); err != nil {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, tag := range transaction.Tags {
+			if err := c.validateTag(workspaceId, tag.TagId, tag.SubTagId); err != nil {
 				errChan <- err
 			}
-		}()
-	}
+		}
+	}()
 
 	wg.Wait()
 	close(errChan)

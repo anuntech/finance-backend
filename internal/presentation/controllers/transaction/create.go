@@ -61,12 +61,14 @@ type TransactionBody struct {
 		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
-	DueDate          string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	IsConfirmed      bool    `json:"isConfirmed"`
-	CategoryId       string  `json:"categoryId" validate:"required,mongodb"`
-	SubCategoryId    string  `json:"subCategoryId" validate:"required,mongodb"`
-	TagId            string  `json:"tagId" validate:"omitempty,mongodb"`
-	SubTagId         string  `json:"subTagId" validate:"required_with=TagId,excluded_if=TagId '',omitempty,mongodb"`
+	DueDate       string `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	IsConfirmed   bool   `json:"isConfirmed"`
+	CategoryId    string `json:"categoryId" validate:"required,mongodb"`
+	SubCategoryId string `json:"subCategoryId" validate:"required,mongodb"`
+	Tags          []struct {
+		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
+		SubTagId string `json:"subTagId" validate:"required_with=TagId,excluded_if=TagId '',omitempty,mongodb"`
+	} `json:"tags" validate:"omitempty"`
 	AccountId        string  `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
@@ -145,15 +147,15 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}()
 
-	if transaction.TagId != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := c.validateTag(workspaceId, *transaction.TagId, *transaction.SubTagId); err != nil {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, tag := range transaction.Tags {
+			if err := c.validateTag(workspaceId, tag.TagId, tag.SubTagId); err != nil {
 				errChan <- err
 			}
-		}()
-	}
+		}
+	}()
 
 	wg.Wait()
 	close(errChan)
@@ -192,24 +194,33 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 		return nil, err
 	}
 
-	var tagId *primitive.ObjectID
-	if body.TagId != "" {
-		tagIdParsed, err := convertID(body.TagId)
-		if err != nil {
-			return nil, err
+	var tags = []models.TransactionTags{}
+
+	for _, tag := range body.Tags {
+		var tagId primitive.ObjectID
+		if tag.TagId != "" {
+			tagIdParsed, err := convertID(tag.TagId)
+			if err != nil {
+				return nil, err
+			}
+
+			tagId = tagIdParsed
 		}
 
-		tagId = &tagIdParsed
-	}
+		var subTagId primitive.ObjectID
+		if tag.SubTagId != "" {
+			subTagIdParsed, err := convertID(tag.SubTagId)
+			if err != nil {
+				return nil, err
+			}
 
-	var subTagId *primitive.ObjectID
-	if body.SubTagId != "" {
-		subTagIdParsed, err := convertID(body.SubTagId)
-		if err != nil {
-			return nil, err
+			subTagId = subTagIdParsed
 		}
 
-		subTagId = &subTagIdParsed
+		tags = append(tags, models.TransactionTags{
+			TagId:    tagId,
+			SubTagId: subTagId,
+		})
 	}
 
 	assignedTo, err := convertID(body.AssignedTo)
@@ -269,8 +280,7 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,
-		TagId:            tagId,
-		SubTagId:         subTagId,
+		Tags:             tags,
 		AccountId:        accountId,
 		RegistrationDate: registrationDate,
 		ConfirmationDate: confirmationDate,
