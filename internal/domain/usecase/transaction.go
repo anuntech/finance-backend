@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -17,7 +18,7 @@ type FindTransactionsByWorkspaceIdInputRepository struct {
 }
 
 type FindTransactionsByWorkspaceIdRepository interface {
-	Find(data *FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error)
+	Find(data *helpers.GlobalFilterParams) ([]models.Transaction, error)
 }
 
 type FindTransactionByIdRepository interface {
