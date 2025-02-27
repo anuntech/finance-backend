@@ -107,6 +107,8 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.AccountId = transactionIdsParsed.AccountId
 	transaction.RegistrationDate = transactionIdsParsed.RegistrationDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
+	transaction.DiscountPercentage = transactionIdsParsed.DiscountPercentage
+	transaction.InterestPercentage = transactionIdsParsed.InterestPercentage
 
 	errChan := make(chan *presentationProtocols.HttpResponse, 4)
 	var wg sync.WaitGroup
