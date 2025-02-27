@@ -47,11 +47,13 @@ type TransactionBody struct {
 	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
-		Value    float64 `json:"value" validate:"required,min=0.01"`
-		Parts    float64 `json:"parts" validate:"omitempty,min=0.01"`
-		Labor    float64 `json:"labor" validate:"omitempty,min=0.01"`
-		Discount float64 `json:"discount" validate:"omitempty,min=0.01"`
-		Interest float64 `json:"interest" validate:"omitempty,min=0.01"`
+		Value              float64 `json:"value" validate:"required,min=0.01"`
+		Parts              float64 `json:"parts" validate:"omitempty,min=0.01"`
+		Labor              float64 `json:"labor" validate:"omitempty,min=0.01"`
+		Discount           float64 `json:"discount" validate:"omitempty,min=0.01"`
+		Interest           float64 `json:"interest" validate:"omitempty,min=0.01"`
+		DiscountPercentage float64 `json:"discountPercentage" validate:"omitempty,min=0.01,max=100"`
+		InterestPercentage float64 `json:"interestPercentage" validate:"omitempty,min=0.01,max=100"`
 	} `json:"balance" validate:"required"`
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
@@ -59,17 +61,15 @@ type TransactionBody struct {
 		Count              int        `json:"count" validate:"min=2"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
-	DueDate            string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	IsConfirmed        bool    `json:"isConfirmed"`
-	CategoryId         string  `json:"categoryId" validate:"required,mongodb"`
-	SubCategoryId      string  `json:"subCategoryId" validate:"required,mongodb"`
-	TagId              string  `json:"tagId" validate:"omitempty,mongodb"`
-	SubTagId           string  `json:"subTagId" validate:"required_with=TagId,excluded_if=TagId '',omitempty,mongodb"`
-	AccountId          string  `json:"accountId" validate:"required,mongodb"`
-	RegistrationDate   string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate   *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
-	DiscountPercentage float64 `json:"discountPercentage" validate:"omitempty,min=0.01,max=100"`
-	InterestPercentage float64 `json:"interestPercentage" validate:"omitempty,min=0.01,max=100"`
+	DueDate          string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	IsConfirmed      bool    `json:"isConfirmed"`
+	CategoryId       string  `json:"categoryId" validate:"required,mongodb"`
+	SubCategoryId    string  `json:"subCategoryId" validate:"required,mongodb"`
+	TagId            string  `json:"tagId" validate:"omitempty,mongodb"`
+	SubTagId         string  `json:"subTagId" validate:"required_with=TagId,excluded_if=TagId '',omitempty,mongodb"`
+	AccountId        string  `json:"accountId" validate:"required,mongodb"`
+	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -252,11 +252,13 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 		Supplier:    body.Supplier,
 		AssignedTo:  assignedTo,
 		Balance: models.TransactionBalance{
-			Value:    body.Balance.Value,
-			Parts:    body.Balance.Parts,
-			Labor:    body.Balance.Labor,
-			Discount: body.Balance.Discount,
-			Interest: body.Balance.Interest,
+			Value:              body.Balance.Value,
+			Parts:              body.Balance.Parts,
+			Labor:              body.Balance.Labor,
+			Discount:           body.Balance.Discount,
+			Interest:           body.Balance.Interest,
+			DiscountPercentage: body.Balance.DiscountPercentage,
+			InterestPercentage: body.Balance.InterestPercentage,
 		},
 		Frequency: body.Frequency,
 		RepeatSettings: &models.TransactionRepeatSettings{
@@ -264,17 +266,15 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,
 		},
-		IsConfirmed:        body.IsConfirmed,
-		CategoryId:         categoryId,
-		SubCategoryId:      subCategoryId,
-		TagId:              tagId,
-		SubTagId:           subTagId,
-		AccountId:          accountId,
-		RegistrationDate:   registrationDate,
-		ConfirmationDate:   confirmationDate,
-		DueDate:            dueDate,
-		DiscountPercentage: body.DiscountPercentage,
-		InterestPercentage: body.InterestPercentage,
+		IsConfirmed:      body.IsConfirmed,
+		CategoryId:       categoryId,
+		SubCategoryId:    subCategoryId,
+		TagId:            tagId,
+		SubTagId:         subTagId,
+		AccountId:        accountId,
+		RegistrationDate: registrationDate,
+		ConfirmationDate: confirmationDate,
+		DueDate:          dueDate,
 	}, nil
 }
 

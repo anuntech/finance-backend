@@ -82,11 +82,13 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.Type = body.Type
 	transaction.Supplier = body.Supplier
 	transaction.Balance = models.TransactionBalance{
-		Value:    body.Balance.Value,
-		Parts:    transaction.Balance.Parts,
-		Labor:    transaction.Balance.Labor,
-		Discount: transaction.Balance.Discount,
-		Interest: transaction.Balance.Interest,
+		Value:              body.Balance.Value,
+		Parts:              body.Balance.Parts,
+		Labor:              body.Balance.Labor,
+		Discount:           body.Balance.Discount,
+		Interest:           body.Balance.Interest,
+		DiscountPercentage: body.Balance.DiscountPercentage,
+		InterestPercentage: body.Balance.InterestPercentage,
 	}
 	transaction.Frequency = body.Frequency
 	transaction.RepeatSettings = &models.TransactionRepeatSettings{
@@ -107,8 +109,6 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.AccountId = transactionIdsParsed.AccountId
 	transaction.RegistrationDate = transactionIdsParsed.RegistrationDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
-	transaction.DiscountPercentage = transactionIdsParsed.DiscountPercentage
-	transaction.InterestPercentage = transactionIdsParsed.InterestPercentage
 
 	errChan := make(chan *presentationProtocols.HttpResponse, 4)
 	var wg sync.WaitGroup
