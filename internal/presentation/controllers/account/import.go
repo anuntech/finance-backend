@@ -54,7 +54,9 @@ func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	currentAccounts, err := c.FindAccountByWorkspaceIdRepository.Find(workspaceId)
+	currentAccounts, err := c.FindAccountByWorkspaceIdRepository.Find(&helpers.GlobalFilterParams{
+		WorkspaceId: workspaceId,
+	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "erro ao buscar contas existentes",

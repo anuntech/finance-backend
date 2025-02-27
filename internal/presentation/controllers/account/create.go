@@ -85,7 +85,9 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(workspaceId)
+	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(&helpers.GlobalFilterParams{
+		WorkspaceId: workspaceId,
+	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error ocurred when finding accounts: " + err.Error(),

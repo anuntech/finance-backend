@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -10,7 +11,7 @@ type CreateAccountRepository interface {
 }
 
 type FindAccountByWorkspaceIdRepository interface {
-	Find(primitive.ObjectID) ([]models.Account, error)
+	Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Account, error)
 }
 
 type FindAccountByIdRepository interface {

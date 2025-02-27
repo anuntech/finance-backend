@@ -5,8 +5,8 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -20,10 +20,10 @@ func NewFindManyByUserIdAndWorkspaceIdMongoRepository(db *mongo.Database) *FindM
 	}
 }
 
-func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(workspaceId primitive.ObjectID) ([]models.Account, error) {
+func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Account, error) {
 	collection := f.Db.Collection("account")
 
-	filter := bson.M{"workspace_id": workspaceId}
+	filter := bson.M{"workspace_id": globalFilters.WorkspaceId}
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
