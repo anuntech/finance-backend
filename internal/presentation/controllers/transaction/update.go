@@ -133,9 +133,13 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := c.validateCategory(workspaceId, transaction.CategoryId, transaction.Type, transaction.SubCategoryId); err != nil {
+		if transaction.CategoryId == nil {
+			return
+		}
+		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
 			errChan <- err
 		}
+
 	}()
 
 	wg.Add(1)

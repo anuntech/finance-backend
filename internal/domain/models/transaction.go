@@ -41,8 +41,8 @@ type Transaction struct {
 	RepeatSettings   *TransactionRepeatSettings `bson:"repeat_settings" json:"repeatSettings,omitempty"`
 	DueDate          time.Time                  `bson:"due_date" json:"dueDate"`
 	IsConfirmed      bool                       `bson:"is_confirmed" json:"isConfirmed"`
-	CategoryId       primitive.ObjectID         `bson:"category_id" json:"categoryId"`
-	SubCategoryId    primitive.ObjectID         `bson:"sub_category_id" json:"subCategoryId"`
+	CategoryId       *primitive.ObjectID        `bson:"category_id" json:"categoryId"`
+	SubCategoryId    *primitive.ObjectID        `bson:"sub_category_id" json:"subCategoryId"`
 	Tags             []TransactionTags          `bson:"tags" json:"tags"`
 	AccountId        primitive.ObjectID         `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                  `bson:"registration_date" json:"registrationDate"`
