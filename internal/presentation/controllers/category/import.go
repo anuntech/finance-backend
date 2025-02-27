@@ -7,24 +7,25 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ImportCategoryController struct {
-	ImportCategoriesRepository            usecase.ImportCategoriesRepository
-	Validate                              *validator.Validate
-	FindCategoriesByWorkspaceIdRepository usecase.FindCategoriesByWorkspaceIdRepository
+	ImportCategoriesRepository usecase.ImportCategoriesRepository
+	Validate                   *validator.Validate
+	FindCategoriesRepository   usecase.FindCategoriesRepository
 }
 
-func NewImportCategoryController(importUseCase usecase.ImportCategoriesRepository, findCategorys usecase.FindCategoriesByWorkspaceIdRepository) *ImportCategoryController {
+func NewImportCategoryController(importUseCase usecase.ImportCategoriesRepository, findCategorys usecase.FindCategoriesRepository) *ImportCategoryController {
 	validate := validator.New()
 
 	return &ImportCategoryController{
-		ImportCategoriesRepository:            importUseCase,
-		Validate:                              validate,
-		FindCategoriesByWorkspaceIdRepository: findCategorys,
+		ImportCategoriesRepository: importUseCase,
+		Validate:                   validate,
+		FindCategoriesRepository:   findCategorys,
 	}
 }
 
@@ -61,7 +62,9 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	currentCategories, err := c.FindCategoriesByWorkspaceIdRepository.Find(workspaceId, "")
+	currentCategories, err := c.FindCategoriesRepository.Find(&presentationHelpers.GlobalFilterParams{
+		WorkspaceId: workspaceId,
+	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "erro ao buscar categorias existentes",

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -9,8 +10,8 @@ type CreateCategoryRepository interface {
 	Create(category *models.Category) (*models.Category, error)
 }
 
-type FindCategoriesByWorkspaceIdRepository interface {
-	Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error)
+type FindCategoriesRepository interface {
+	Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Category, error)
 }
 
 type UpdateCategoryRepository interface {

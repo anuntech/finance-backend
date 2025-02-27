@@ -7,26 +7,27 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type CreateCategoryController struct {
-	CreateCategoryRepository              usecase.CreateCategoryRepository
-	Validate                              *validator.Validate
-	FindAccountById                       usecase.FindAccountByIdRepository
-	FindCategoriesByWorkspaceIdRepository usecase.FindCategoriesByWorkspaceIdRepository
+	CreateCategoryRepository usecase.CreateCategoryRepository
+	Validate                 *validator.Validate
+	FindAccountById          usecase.FindAccountByIdRepository
+	FindCategoriesRepository usecase.FindCategoriesRepository
 }
 
-func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategoriesByWorkspaceIdRepository) *CreateCategoryController {
+func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategoriesRepository) *CreateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateCategoryController{
-		CreateCategoryRepository:              createCategory,
-		Validate:                              validate,
-		FindAccountById:                       findAccountById,
-		FindCategoriesByWorkspaceIdRepository: findCategorysByWorkspaceId,
+		CreateCategoryRepository: createCategory,
+		Validate:                 validate,
+		FindAccountById:          findAccountById,
+		FindCategoriesRepository: findCategorysByWorkspaceId,
 	}
 }
 
@@ -64,7 +65,10 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	categorys, err := c.FindCategoriesByWorkspaceIdRepository.Find(workspaceId, body.Type)
+	categorys, err := c.FindCategoriesRepository.Find(&presentationHelpers.GlobalFilterParams{
+		WorkspaceId: workspaceId,
+		Type:        body.Type,
+	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding categories",

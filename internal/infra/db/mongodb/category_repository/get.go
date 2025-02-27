@@ -5,27 +5,27 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
+	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FindCategoriesByWorkspaceIdRepository struct {
+type FindCategoriesRepository struct {
 	Db *mongo.Database
 }
 
-func NewFindCategoriesByWorkspaceIdRepository(db *mongo.Database) *FindCategoriesByWorkspaceIdRepository {
-	return &FindCategoriesByWorkspaceIdRepository{
+func NewFindCategoriesRepository(db *mongo.Database) *FindCategoriesRepository {
+	return &FindCategoriesRepository{
 		Db: db,
 	}
 }
 
-func (r *FindCategoriesByWorkspaceIdRepository) Find(workspaceId primitive.ObjectID, categoryType string) ([]models.Category, error) {
+func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Category, error) {
 	collection := r.Db.Collection("category")
 
-	filter := bson.M{"workspace_id": workspaceId}
-	if categoryType != "" {
-		filter["type"] = categoryType
+	filter := bson.M{"workspace_id": globalFilters.WorkspaceId}
+	if globalFilters.Type != "" {
+		filter["type"] = globalFilters.Type
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
