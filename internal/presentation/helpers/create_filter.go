@@ -13,7 +13,7 @@ import (
 type GlobalFilterParams struct {
 	Month       int    `json:"month" validate:"required_with=Year,omitempty,min=1,max=12"`
 	Year        int    `json:"year" validate:"required_with=Month,omitempty,min=1,max=9999"`
-	Type        string `json:"type" validate:"omitempty,oneof=RECIPE EXPENSE"`
+	Type        string `json:"type" validate:"omitempty,oneof=RECIPE EXPENSE TAG"`
 	WorkspaceId primitive.ObjectID
 }
 
