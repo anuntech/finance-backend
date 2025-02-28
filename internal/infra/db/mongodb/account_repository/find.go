@@ -38,11 +38,8 @@ func (f *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(globalFilters *pres
 	}
 
 	for index, account := range accounts {
-		accounts[index].Balance = helpers.CalculateAccountBalance(&helpers.CalculateAccountBalanceParams{
-			Db:            f.Db,
-			GlobalFilters: globalFilters,
-			AccountId:     account.Id,
-		})
+		calculateAccountBalanceParams := helpers.NewCalculateAccountBalanceParams(f.Db, globalFilters, account.Id)
+		accounts[index].Balance = calculateAccountBalanceParams.CalculateAccountBalance()
 	}
 
 	return accounts, nil
