@@ -39,8 +39,7 @@ func (p *CalculateAccountBalanceParams) calculateDoNotRepeatAccountBalance() flo
 		"workspace_id": p.GlobalFilters.WorkspaceId,
 		"account_id":   p.AccountId,
 		"confirmation_date": bson.M{
-			"$gte": startOfMonth,
-			"$lt":  endOfMonth,
+			"$lt": endOfMonth,
 		},
 		"is_confirmed": true,
 		"frequency":    "DO_NOT_REPEAT",
