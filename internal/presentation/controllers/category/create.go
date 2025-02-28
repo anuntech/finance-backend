@@ -7,7 +7,6 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
-	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -65,7 +64,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusBadRequest)
 	}
 
-	categorys, err := c.FindCategoriesRepository.Find(&presentationHelpers.GlobalFilterParams{
+	categorys, err := c.FindCategoriesRepository.Find(&helpers.GlobalFilterParams{
 		WorkspaceId: workspaceId,
 		Type:        body.Type,
 	})
