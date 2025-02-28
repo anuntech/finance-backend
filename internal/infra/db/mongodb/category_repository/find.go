@@ -43,25 +43,27 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 		return nil, err
 	}
 
-	for index, category := range categories {
-		categories[index].Amount = r.calculateCategoryBalance(category.Id, globalFilters)
+	for _, category := range categories {
+		for i := range category.SubCategories {
+			category.SubCategories[i].Amount = r.calculateSubCategoryBalance(category.SubCategories[i].Id, globalFilters)
+		}
 	}
 
 	return categories, nil
 }
 
-func (c *FindCategoriesRepository) calculateCategoryBalance(categoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	return c.calculateDoNotRepeatCategoryBalance(categoryId, globalFilters)
+func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	return c.calculateDoNotRepeatSubCategoryBalance(subCategoryId, globalFilters)
 }
 
-func (c *FindCategoriesRepository) calculateDoNotRepeatCategoryBalance(categoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	collection := c.Db.Collection("transaction")
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	filter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-		"category_id":  categoryId,
+		"workspace_id":    globalFilters.WorkspaceId,
+		"sub_category_id": subCategoryId,
 		"$or": []bson.M{
 			{
 				"due_date": bson.M{
