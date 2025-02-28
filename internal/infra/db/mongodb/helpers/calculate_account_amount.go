@@ -49,33 +49,10 @@ func (p *CalculateAccountBalanceParams) calculateDoNotRepeatAccountBalance() flo
 		return 0.0
 	}
 
-	return p.calculateAccountBalance(cursor)
-}
-
-func (p *CalculateAccountBalanceParams) calculateAccountBalance(cursor *mongo.Cursor) float64 {
-	balance := 0.0
-
 	var transactions []models.Transaction
 	if err := cursor.All(context.Background(), &transactions); err != nil {
 		return 0.0
 	}
 
-	for _, transaction := range transactions {
-		switch transaction.Type {
-		case "EXPENSE":
-			balance -= transaction.Balance.Value
-			balance -= transaction.Balance.Parts
-			balance -= transaction.Balance.Labor
-			balance += transaction.Balance.Discount
-			balance -= transaction.Balance.Interest
-		case "RECIPE":
-			balance += transaction.Balance.Value
-			balance += transaction.Balance.Parts
-			balance += transaction.Balance.Labor
-			balance -= transaction.Balance.Discount
-			balance += transaction.Balance.Interest
-		}
-	}
-
-	return balance
+	return CalculateTransactionBalance(transactions)
 }
