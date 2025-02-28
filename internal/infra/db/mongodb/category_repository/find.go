@@ -2,11 +2,13 @@ package category_repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -41,5 +43,50 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 		return nil, err
 	}
 
+	for index, category := range categories {
+		categories[index].Amount = r.calculateCategoryBalance(category.Id, globalFilters)
+	}
+
 	return categories, nil
+}
+
+func (c *FindCategoriesRepository) calculateCategoryBalance(categoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	return c.calculateDoNotRepeatCategoryBalance(categoryId, globalFilters)
+}
+
+func (c *FindCategoriesRepository) calculateDoNotRepeatCategoryBalance(categoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	collection := c.Db.Collection("transaction")
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	filter := bson.M{
+		"workspace_id": globalFilters.WorkspaceId,
+		"category_id":  categoryId,
+		"$or": []bson.M{
+			{
+				"due_date": bson.M{
+					"$lt": endOfMonth,
+				},
+				"is_confirmed": false,
+			},
+			{
+				"confirmation_date": bson.M{
+					"$lt": endOfMonth,
+				},
+				"is_confirmed": true,
+			},
+		},
+		"frequency": "DO_NOT_REPEAT",
+	}
+	cursor, err := collection.Find(context.Background(), filter)
+	if err != nil {
+		return 0.0
+	}
+
+	var transactions []models.Transaction
+	if err := cursor.All(context.Background(), &transactions); err != nil {
+		return 0.0
+	}
+
+	return helpers.CalculateTransactionBalance(transactions)
 }
