@@ -39,6 +39,10 @@ func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(globalFilters *pres
 		return nil, err
 	}
 
+	if globalFilters.Month != 0 {
+		return accounts, nil
+	}
+
 	for index, account := range accounts {
 		accounts[index].Balance = c.calculateAccountBalance(account.Id, globalFilters)
 	}

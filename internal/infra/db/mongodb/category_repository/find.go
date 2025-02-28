@@ -43,6 +43,10 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 		return nil, err
 	}
 
+	if globalFilters.Month != 0 {
+		return categories, nil
+	}
+
 	for _, category := range categories {
 		for i := range category.SubCategories {
 			category.SubCategories[i].Amount = r.calculateSubCategoryBalance(category.SubCategories[i].Id, globalFilters)
