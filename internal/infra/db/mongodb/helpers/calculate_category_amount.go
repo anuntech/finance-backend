@@ -12,32 +12,32 @@ import (
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 )
 
-type CalculateAccountBalanceParams struct {
+type CalculateCategoryBalanceParams struct {
 	Db            *mongo.Database
 	GlobalFilters *helpers.GlobalFilterParams
-	AccountId     primitive.ObjectID
+	CategoryId    primitive.ObjectID
 }
 
-func NewCalculateAccountBalanceParams(db *mongo.Database, globalFilters *helpers.GlobalFilterParams, accountId primitive.ObjectID) *CalculateAccountBalanceParams {
-	return &CalculateAccountBalanceParams{
+func NewCalculateCategoryBalanceParams(db *mongo.Database, globalFilters *helpers.GlobalFilterParams, categoryId primitive.ObjectID) *CalculateCategoryBalanceParams {
+	return &CalculateCategoryBalanceParams{
 		Db:            db,
 		GlobalFilters: globalFilters,
-		AccountId:     accountId,
+		CategoryId:    categoryId,
 	}
 }
 
-func (p *CalculateAccountBalanceParams) CalculateAccountBalance() float64 {
-	return p.calculateDoNotRepeatAccountBalance()
+func (p *CalculateCategoryBalanceParams) CalculateCategoryBalance() float64 {
+	return p.calculateDoNotRepeatCategoryBalance()
 }
 
-func (p *CalculateAccountBalanceParams) calculateDoNotRepeatAccountBalance() float64 {
+func (p *CalculateCategoryBalanceParams) calculateDoNotRepeatCategoryBalance() float64 {
 	collection := p.Db.Collection("transaction")
 	startOfMonth := time.Date(p.GlobalFilters.Year, time.Month(p.GlobalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	filter := bson.M{
 		"workspace_id": p.GlobalFilters.WorkspaceId,
-		"account_id":   p.AccountId,
+		"category_id":  p.CategoryId,
 		"$or": []bson.M{
 			{
 				"due_date": bson.M{
