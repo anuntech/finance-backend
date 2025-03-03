@@ -57,7 +57,9 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 }
 
 func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	return c.calculateDoNotRepeatSubCategoryBalance(subCategoryId, globalFilters)
+	doNotRepeatBalance := c.calculateDoNotRepeatSubCategoryBalance(subCategoryId, globalFilters)
+	recurringBalance := c.calculateRecurringSubCategoryBalance(subCategoryId, globalFilters)
+	return doNotRepeatBalance + recurringBalance
 }
 
 func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
@@ -95,4 +97,43 @@ func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCat
 	}
 
 	return helpers.CalculateTransactionBalance(transactions)
+}
+
+func (c *FindCategoriesRepository) calculateRecurringSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	collection := c.Db.Collection("transaction")
+
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	filter := bson.M{
+		"workspace_id":    globalFilters.WorkspaceId,
+		"sub_category_id": subCategoryId,
+		"frequency":       "RECURRING",
+		"$or": []bson.M{
+			{
+				"due_date": bson.M{
+					"$lt": endOfMonth,
+				},
+				"is_confirmed": false,
+			},
+			{
+				"confirmation_date": bson.M{
+					"$lt": endOfMonth,
+				},
+				"is_confirmed": true,
+			},
+		},
+	}
+
+	cursor, err := collection.Find(context.Background(), filter)
+	if err != nil {
+		return 0.0
+	}
+
+	var recurringTransactions []models.Transaction
+	if err := cursor.All(context.Background(), &recurringTransactions); err != nil {
+		return 0.0
+	}
+
+	return helpers.CalculateRecurringTransactionsBalance(recurringTransactions, globalFilters.Year, globalFilters.Month)
 }
