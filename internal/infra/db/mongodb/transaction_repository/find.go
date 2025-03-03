@@ -2,7 +2,6 @@ package transaction_repository
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -26,8 +25,6 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	startOfMonth := time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
-	log.Println(filters.Type)
-
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
 	}
@@ -38,18 +35,38 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	if filters.Month != 0 {
 		filter["$or"] = []bson.M{
 			{
-				"due_date": bson.M{
-					"$gte": startOfMonth,
-					"$lt":  endOfMonth,
+				// "frequency": "DO_NOT_REPEAT",
+				"$or": []bson.M{
+					{
+						"$and": []bson.M{
+							{"is_confirmed": false},
+							{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+						},
+					},
+					{
+						"$and": []bson.M{
+							{"is_confirmed": true},
+							{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+						},
+					},
 				},
-				"is_confirmed": false,
 			},
 			{
-				"confirmation_date": bson.M{
-					"$gte": startOfMonth,
-					"$lt":  endOfMonth,
+				"frequency": "RECURRING",
+				"$or": []bson.M{
+					{
+						"$and": []bson.M{
+							{"is_confirmed": false},
+							{"due_date": bson.M{"$lt": endOfMonth}},
+						},
+					},
+					{
+						"$and": []bson.M{
+							{"is_confirmed": true},
+							{"confirmation_date": bson.M{"$lt": endOfMonth}},
+						},
+					},
 				},
-				"is_confirmed": true,
 			},
 		}
 	}
