@@ -9,13 +9,13 @@ import (
 
 func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountController {
 	accountRepository := account_repository.NewCreateAccountMongoRepository(db)
-	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
+	findManyByUserIdAndWorkspaceId := account_repository.NewFindAccountsRepository(db)
 	findBankById := bank_repository.NewFindByIdMongoRepository(db)
 	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId, findBankById)
 }
 
 func MakeGetAccountsController(db *mongo.Database) *controllers.GetAccountsController {
-	findManyByUserIdAndWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
+	findManyByUserIdAndWorkspaceId := account_repository.NewFindAccountsRepository(db)
 	return controllers.NewGetAccountsController(findManyByUserIdAndWorkspaceId)
 }
 
@@ -38,6 +38,6 @@ func MakeUpdateAccountController(db *mongo.Database) *controllers.UpdateAccountC
 
 func MakeImportAccountController(db *mongo.Database) *controllers.ImportAccountController {
 	importAccounts := account_repository.NewImportAccountsMongoRepository(db)
-	findAccountByWorkspaceId := account_repository.NewFindManyByUserIdAndWorkspaceIdMongoRepository(db)
+	findAccountByWorkspaceId := account_repository.NewFindAccountsRepository(db)
 	return controllers.NewImportAccountController(importAccounts, findAccountByWorkspaceId)
 }

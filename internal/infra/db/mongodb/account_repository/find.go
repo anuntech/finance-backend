@@ -12,17 +12,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FindManyByUserIdAndWorkspaceIdMongoRepository struct {
+type FindAccountsRepository struct {
 	Db *mongo.Database
 }
 
-func NewFindManyByUserIdAndWorkspaceIdMongoRepository(db *mongo.Database) *FindManyByUserIdAndWorkspaceIdMongoRepository {
-	return &FindManyByUserIdAndWorkspaceIdMongoRepository{
+func NewFindAccountsRepository(db *mongo.Database) *FindAccountsRepository {
+	return &FindAccountsRepository{
 		Db: db,
 	}
 }
 
-func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Account, error) {
+func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Account, error) {
 	collection := c.Db.Collection("account")
 
 	filter := bson.M{"workspace_id": globalFilters.WorkspaceId}
@@ -50,13 +50,13 @@ func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) Find(globalFilters *pres
 	return accounts, nil
 }
 
-func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	doNotRepeatBalance := c.calculateDoNotRepeatAccountBalance(accountId, globalFilters)
 	recurringBalance := c.calculateRecurringAccountBalance(accountId, globalFilters)
 	return doNotRepeatBalance + recurringBalance
 }
 
-func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) calculateDoNotRepeatAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindAccountsRepository) calculateDoNotRepeatAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	collection := c.Db.Collection("transaction")
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
@@ -93,7 +93,7 @@ func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) calculateDoNotRepeatAcco
 	return helpers.CalculateTransactionBalance(transactions)
 }
 
-func (c *FindManyByUserIdAndWorkspaceIdMongoRepository) calculateRecurringAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindAccountsRepository) calculateRecurringAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	collection := c.Db.Collection("transaction")
 
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
