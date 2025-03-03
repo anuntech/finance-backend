@@ -68,24 +68,37 @@ func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCat
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	filter := bson.M{
-		"workspace_id":    globalFilters.WorkspaceId,
-		"sub_category_id": subCategoryId,
-		"$or": []bson.M{
-			{
-				"due_date": bson.M{
-					"$lt": endOfMonth,
+		"workspace_id": globalFilters.WorkspaceId,
+
+		"$and": []bson.M{
+			{"$or": []bson.M{
+				{"sub_category_id": subCategoryId},
+				{"tags.sub_tag_id": subCategoryId},
+			}},
+			{"$or": []bson.M{
+				{"$and": []bson.M{
+					{
+						"due_date": bson.M{
+							"$lt": endOfMonth,
+						},
+						"is_confirmed": false,
+					},
+				}},
+				{
+					"$and": []bson.M{
+						{
+							"confirmation_date": bson.M{
+								"$lt": endOfMonth,
+							},
+							"is_confirmed": true,
+						},
+					},
 				},
-				"is_confirmed": false,
-			},
-			{
-				"confirmation_date": bson.M{
-					"$lt": endOfMonth,
-				},
-				"is_confirmed": true,
-			},
+			}},
 		},
 		"frequency": "DO_NOT_REPEAT",
 	}
+
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
 		return 0.0
@@ -106,22 +119,33 @@ func (c *FindCategoriesRepository) calculateRecurringSubCategoryBalance(subCateg
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	filter := bson.M{
-		"workspace_id":    globalFilters.WorkspaceId,
-		"sub_category_id": subCategoryId,
-		"frequency":       "RECURRING",
+		"workspace_id": globalFilters.WorkspaceId,
+		"frequency":    "RECURRING",
 		"$or": []bson.M{
-			{
-				"due_date": bson.M{
-					"$lt": endOfMonth,
+			{"$or": []bson.M{
+				{"sub_category_id": subCategoryId},
+				{"tags.sub_tag_id": subCategoryId},
+			}},
+			{"$or": []bson.M{
+				{"$and": []bson.M{
+					{
+						"due_date": bson.M{
+							"$lt": endOfMonth,
+						},
+						"is_confirmed": false,
+					},
+				}},
+				{
+					"$and": []bson.M{
+						{
+							"confirmation_date": bson.M{
+								"$lt": endOfMonth,
+							},
+							"is_confirmed": true,
+						},
+					},
 				},
-				"is_confirmed": false,
-			},
-			{
-				"confirmation_date": bson.M{
-					"$lt": endOfMonth,
-				},
-				"is_confirmed": true,
-			},
+			}},
 		},
 	}
 
