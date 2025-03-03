@@ -12,14 +12,14 @@ import (
 func BankRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.Database) {
 	server.Handle("GET /bank", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
-			adapters.AdaptRoute(factory.MakeGetBanksController(db)),
+			middlewares.AllowCacheHeader(adapters.AdaptRoute(factory.MakeGetBanksController(db))),
 			workspaceDb,
 		),
 	))
 
 	server.Handle("GET /bank/{id}", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
-			adapters.AdaptRoute(factory.MakeGetBankByIdController(db)),
+			middlewares.AllowCacheHeader(adapters.AdaptRoute(factory.MakeGetBankByIdController(db))),
 			workspaceDb,
 		),
 	))
