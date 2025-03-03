@@ -153,9 +153,22 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		seenTags := make(map[string]bool)
+
 		for _, tag := range transaction.Tags {
+			compositeKey := tag.TagId.Hex() + "|" + tag.SubTagId.Hex()
+
+			if seenTags[compositeKey] {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "duplicate tag detected: " + compositeKey,
+				}, http.StatusBadRequest)
+				return
+			}
+			seenTags[compositeKey] = true
+
 			if err := c.validateTag(workspaceId, tag.TagId, tag.SubTagId); err != nil {
 				errChan <- err
+				return
 			}
 		}
 	}()
