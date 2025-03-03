@@ -49,20 +49,20 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 
 	for _, category := range categories {
 		for i := range category.SubCategories {
-			category.SubCategories[i].Amount = r.calculateSubCategoryBalance(category.SubCategories[i].Id, globalFilters)
+			category.SubCategories[i].Amount = r.calculateAllSubCategoryBalance(category.SubCategories[i].Id, globalFilters)
 		}
 	}
 
 	return categories, nil
 }
 
-func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateDoNotRepeatSubCategoryBalance(subCategoryId, globalFilters)
-	recurringBalance := c.calculateRecurringSubCategoryBalance(subCategoryId, globalFilters)
+func (c *FindCategoriesRepository) calculateAllSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	doNotRepeatBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "DO_NOT_REPEAT")
+	recurringBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "RECURRING")
 	return doNotRepeatBalance + recurringBalance
 }
 
-func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
 	collection := c.Db.Collection("transaction")
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
@@ -96,7 +96,7 @@ func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCat
 				},
 			}},
 		},
-		"frequency": "DO_NOT_REPEAT",
+		"frequency": frequency,
 	}
 
 	cursor, err := collection.Find(context.Background(), filter)
@@ -109,55 +109,11 @@ func (c *FindCategoriesRepository) calculateDoNotRepeatSubCategoryBalance(subCat
 		return 0.0
 	}
 
-	return helpers.CalculateTransactionBalance(transactions)
-}
-
-func (c *FindCategoriesRepository) calculateRecurringSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	collection := c.Db.Collection("transaction")
-
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-	filter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-		"frequency":    "RECURRING",
-		"$or": []bson.M{
-			{"$or": []bson.M{
-				{"sub_category_id": subCategoryId},
-				{"tags.sub_tag_id": subCategoryId},
-			}},
-			{"$or": []bson.M{
-				{"$and": []bson.M{
-					{
-						"due_date": bson.M{
-							"$lt": endOfMonth,
-						},
-						"is_confirmed": false,
-					},
-				}},
-				{
-					"$and": []bson.M{
-						{
-							"confirmation_date": bson.M{
-								"$lt": endOfMonth,
-							},
-							"is_confirmed": true,
-						},
-					},
-				},
-			}},
-		},
+	switch frequency {
+	case "DO_NOT_REPEAT":
+		return helpers.CalculateTransactionBalance(transactions)
+	case "RECURRING":
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	}
-
-	cursor, err := collection.Find(context.Background(), filter)
-	if err != nil {
-		return 0.0
-	}
-
-	var recurringTransactions []models.Transaction
-	if err := cursor.All(context.Background(), &recurringTransactions); err != nil {
-		return 0.0
-	}
-
-	return helpers.CalculateRecurringTransactionsBalance(recurringTransactions, globalFilters.Year, globalFilters.Month)
+	return 0.0
 }

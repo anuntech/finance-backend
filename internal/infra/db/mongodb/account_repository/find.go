@@ -44,19 +44,19 @@ func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalF
 	}
 
 	for index, account := range accounts {
-		accounts[index].Balance = c.calculateAccountBalance(account.Id, globalFilters)
+		accounts[index].Balance = c.calculateAllAccountBalance(account.Id, globalFilters)
 	}
 
 	return accounts, nil
 }
 
-func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateDoNotRepeatAccountBalance(accountId, globalFilters)
-	recurringBalance := c.calculateRecurringAccountBalance(accountId, globalFilters)
+func (c *FindAccountsRepository) calculateAllAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	doNotRepeatBalance := c.calculateAccountBalance(accountId, globalFilters, "DO_NOT_REPEAT")
+	recurringBalance := c.calculateAccountBalance(accountId, globalFilters, "RECURRING")
 	return doNotRepeatBalance + recurringBalance
 }
 
-func (c *FindAccountsRepository) calculateDoNotRepeatAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
 	collection := c.Db.Collection("transaction")
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
@@ -78,7 +78,7 @@ func (c *FindAccountsRepository) calculateDoNotRepeatAccountBalance(accountId pr
 				"is_confirmed": true,
 			},
 		},
-		"frequency": "DO_NOT_REPEAT",
+		"frequency": frequency,
 	}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
@@ -90,44 +90,11 @@ func (c *FindAccountsRepository) calculateDoNotRepeatAccountBalance(accountId pr
 		return 0.0
 	}
 
-	return helpers.CalculateTransactionBalance(transactions)
-}
-
-func (c *FindAccountsRepository) calculateRecurringAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	collection := c.Db.Collection("transaction")
-
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-	filter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-		"account_id":   accountId,
-		"frequency":    "RECURRING",
-		"$or": []bson.M{
-			{
-				"due_date": bson.M{
-					"$lt": endOfMonth,
-				},
-				"is_confirmed": false,
-			},
-			{
-				"confirmation_date": bson.M{
-					"$lt": endOfMonth,
-				},
-				"is_confirmed": true,
-			},
-		},
+	switch frequency {
+	case "DO_NOT_REPEAT":
+		return helpers.CalculateTransactionBalance(transactions)
+	case "RECURRING":
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	}
-
-	cursor, err := collection.Find(context.Background(), filter)
-	if err != nil {
-		return 0.0
-	}
-
-	var recurringTransactions []models.Transaction
-	if err := cursor.All(context.Background(), &recurringTransactions); err != nil {
-		return 0.0
-	}
-
-	return helpers.CalculateRecurringTransactionsBalance(recurringTransactions, globalFilters.Year, globalFilters.Month)
+	return 0.0
 }
