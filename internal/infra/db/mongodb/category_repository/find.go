@@ -43,7 +43,7 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 		return nil, err
 	}
 
-	if globalFilters.Month != 0 {
+	if globalFilters.Month == 0 {
 		return categories, nil
 	}
 
