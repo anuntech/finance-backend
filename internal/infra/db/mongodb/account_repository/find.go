@@ -53,7 +53,9 @@ func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalF
 func (c *FindAccountsRepository) calculateAllAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	doNotRepeatBalance := c.calculateAccountBalance(accountId, globalFilters, "DO_NOT_REPEAT")
 	recurringBalance := c.calculateAccountBalance(accountId, globalFilters, "RECURRING")
-	return doNotRepeatBalance + recurringBalance
+	repeatBalance := c.calculateAccountBalance(accountId, globalFilters, "REPEAT")
+
+	return doNotRepeatBalance + recurringBalance + repeatBalance
 }
 
 func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
@@ -95,6 +97,9 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
+	case "REPEAT":
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	}
+
 	return 0.0
 }

@@ -59,7 +59,9 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 func (c *FindCategoriesRepository) calculateAllSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
 	doNotRepeatBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "DO_NOT_REPEAT")
 	recurringBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "RECURRING")
-	return doNotRepeatBalance + recurringBalance
+	repeatBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "REPEAT")
+
+	return doNotRepeatBalance + recurringBalance + repeatBalance
 }
 
 func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
@@ -114,6 +116,8 @@ func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId pri
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
+	case "REPEAT":
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	}
 	return 0.0
 }
