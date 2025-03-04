@@ -30,7 +30,7 @@ func repeatMonthlyTransaction(t *models.Transaction, refDate time.Time, year int
 	monthsBetween := MonthsBetween(refDate, year, month)
 
 	if monthsBetween >= t.RepeatSettings.Count {
-		return float64(t.RepeatSettings.Count) * CalculateOneTransactionBalance(t)
+		return float64(t.RepeatSettings.Count+int(t.RepeatSettings.InitialInstallment)) * CalculateOneTransactionBalance(t)
 	}
 
 	return (float64(monthsBetween) + 1) * CalculateOneTransactionBalance(t)
