@@ -8,13 +8,13 @@ func CalculateTransactionBalance(transactions []models.Transaction) float64 {
 	var balance float64
 
 	for _, transaction := range transactions {
-		balance += CalculateOneTransactionBalance(transaction)
+		balance += CalculateOneTransactionBalance(&transaction)
 	}
 
 	return balance
 }
 
-func CalculateOneTransactionBalance(transaction models.Transaction) float64 {
+func CalculateOneTransactionBalance(transaction *models.Transaction) float64 {
 	var balance float64
 
 	switch transaction.Type {

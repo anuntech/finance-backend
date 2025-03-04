@@ -18,7 +18,7 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 
 		months := MonthsBetween(refDate, year, month)
 
-		balance += (float64(months) + 1) * CalculateOneTransactionBalance(t)
+		balance += (float64(months) + 1) * CalculateOneTransactionBalance(&t)
 	}
 
 	return balance
