@@ -67,7 +67,7 @@ type TransactionBody struct {
 	SubCategoryId *string `json:"subCategoryId" validate:"omitempty,mongodb"`
 	Tags          []struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
-		SubTagId string `json:"subTagId" validate:"required_with=TagId,excluded_if=TagId '',omitempty,mongodb"`
+		SubTagId string `json:"subTagId" validate:"excluded_if=TagId '',omitempty,mongodb"`
 	} `json:"tags" validate:"omitempty"`
 	AccountId        string  `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
