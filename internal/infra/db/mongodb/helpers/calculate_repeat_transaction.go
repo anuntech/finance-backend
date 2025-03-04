@@ -18,8 +18,8 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 
 		monthsBetween := MonthsBetween(refDate, year, month)
 
-		if monthsBetween > t.RepeatSettings.Count {
-			balance += (float64(t.RepeatSettings.Count) + 1) * CalculateOneTransactionBalance(t)
+		if monthsBetween >= t.RepeatSettings.Count {
+			balance += float64(t.RepeatSettings.Count) * CalculateOneTransactionBalance(t)
 			continue
 		}
 
