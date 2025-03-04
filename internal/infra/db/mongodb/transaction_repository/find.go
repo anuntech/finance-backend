@@ -101,10 +101,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 func computeInstallmentDueDate(initial time.Time, interval string, offset int) time.Time {
 	switch interval {
-	case "DAILY":
-		return initial.AddDate(0, 0, offset)
-	case "WEEKLY":
-		return initial.AddDate(0, 0, 7*offset)
+	// case "DAILY":
+	// 	return initial.AddDate(0, 0, offset)
+	// case "WEEKLY":
+	// 	return initial.AddDate(0, 0, 7*offset)
 	case "MONTHLY":
 		return initial.AddDate(0, offset, 0)
 	case "QUARTERLY":
