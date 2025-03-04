@@ -33,9 +33,24 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	}
 
 	if filters.Month != 0 {
+		orRepeatAndRecurringLogic := []bson.M{
+			{
+				"$and": []bson.M{
+					{"is_confirmed": false},
+					{"due_date": bson.M{"$lt": endOfMonth}},
+				},
+			},
+			{
+				"$and": []bson.M{
+					{"is_confirmed": true},
+					{"confirmation_date": bson.M{"$lt": endOfMonth}},
+				},
+			},
+		}
+
 		filter["$or"] = []bson.M{
 			{
-				// "frequency": "DO_NOT_REPEAT",
+				"frequency": "DO_NOT_REPEAT",
 				"$or": []bson.M{
 					{
 						"$and": []bson.M{
@@ -53,20 +68,11 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 			},
 			{
 				"frequency": "RECURRING",
-				"$or": []bson.M{
-					{
-						"$and": []bson.M{
-							{"is_confirmed": false},
-							{"due_date": bson.M{"$lt": endOfMonth}},
-						},
-					},
-					{
-						"$and": []bson.M{
-							{"is_confirmed": true},
-							{"confirmation_date": bson.M{"$lt": endOfMonth}},
-						},
-					},
-				},
+				"$or":       orRepeatAndRecurringLogic,
+			},
+			{
+				"frequency": "REPEAT",
+				"$or":       orRepeatAndRecurringLogic,
 			},
 		}
 	}
