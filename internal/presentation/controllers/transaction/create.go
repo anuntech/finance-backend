@@ -69,7 +69,7 @@ type TransactionBody struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
 		SubTagId string `json:"subTagId" validate:"excluded_if=TagId '',omitempty,mongodb"`
 	} `json:"tags" validate:"omitempty"`
-	AccountId        string  `json:"accountId" validate:"required,mongodb"`
+	AccountId        *string `json:"accountId" validate:"omitempty,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
@@ -134,7 +134,10 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+		if transaction.AccountId == nil {
+			return
+		}
+		if err := c.validateAccount(workspaceId, *transaction.AccountId); err != nil {
 			errChan <- err
 		}
 	}()
@@ -254,9 +257,14 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 		return nil, err
 	}
 
-	accountId, err := convertID(body.AccountId)
-	if err != nil {
-		return nil, err
+	var accountId *primitive.ObjectID
+	if body.AccountId != nil {
+		accountIdParsed, err := convertID(*body.AccountId)
+		if err != nil {
+			return nil, err
+		}
+
+		accountId = &accountIdParsed
 	}
 
 	registrationDate, err := parseDate(body.RegistrationDate)

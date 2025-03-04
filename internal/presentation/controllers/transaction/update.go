@@ -125,7 +125,10 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := c.validateAccount(workspaceId, transaction.AccountId); err != nil {
+		if transaction.AccountId == nil {
+			return
+		}
+		if err := c.validateAccount(workspaceId, *transaction.AccountId); err != nil {
 			errChan <- err
 		}
 	}()

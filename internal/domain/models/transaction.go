@@ -44,7 +44,7 @@ type Transaction struct {
 	CategoryId       *primitive.ObjectID        `bson:"category_id" json:"categoryId"`
 	SubCategoryId    *primitive.ObjectID        `bson:"sub_category_id" json:"subCategoryId"`
 	Tags             []TransactionTags          `bson:"tags" json:"tags"`
-	AccountId        primitive.ObjectID         `bson:"account_id" json:"accountId"`
+	AccountId        *primitive.ObjectID        `bson:"account_id" json:"accountId"`
 	RegistrationDate time.Time                  `bson:"registration_date" json:"registrationDate"`
 	ConfirmationDate *time.Time                 `bson:"confirmation_date" json:"confirmationDate,omitempty"`
 	IsOverdue        bool                       `bson:"-" json:"isOverdue"`
