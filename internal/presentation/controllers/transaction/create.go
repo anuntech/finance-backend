@@ -44,7 +44,7 @@ type TransactionBody struct {
 	Description string `json:"description" validate:"omitempty,max=255"`
 	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
-	Supplier    string `json:"supplier" validate:"required,min=3,max=30"`
+	Supplier    string `json:"supplier" validate:"omitempty,min=3,max=30"`
 	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
 		Value              float64 `json:"value" validate:"required,min=0.01"`
