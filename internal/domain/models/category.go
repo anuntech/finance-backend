@@ -14,11 +14,12 @@ type SubCategoryCategory struct {
 }
 
 type Category struct {
-	Id            primitive.ObjectID    `json:"id" bson:"_id"`
-	Name          string                `json:"name" bson:"name"`
-	Amount        float64               `json:"amount" bson:"-"`
-	Type          string                `json:"type" bson:"type"`
-	Icon          string                `json:"icon" bson:"icon"`
+	Id     primitive.ObjectID `json:"id" bson:"_id"`
+	Name   string             `json:"name" bson:"name"`
+	Amount float64            `json:"amount" bson:"-"`
+	Type   string             `json:"type" bson:"type"` // EXPENSE, RECIPE, TAG, PERSONALIZED
+	Icon   string             `json:"icon" bson:"icon"`
+	// PersonalizedType string              `json:"personalizedType" bson:"personalized_type"` // NUMBER | TEXT | PHONE_NUMBER
 	SubCategories []SubCategoryCategory `json:"subCategories" bson:"sub_categories"`
 	CreatedAt     time.Time             `json:"createdAt" bson:"created_at"`
 	UpdatedAt     time.Time             `json:"updatedAt" bson:"updated_at"`

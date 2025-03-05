@@ -19,6 +19,7 @@ type TransactionBalance struct {
 type TransactionRepeatSettings struct {
 	InitialInstallment time.Month `bson:"initial_installment" json:"initialInstallment,omitempty"`
 	Count              int        `bson:"count" json:"count,omitempty"`
+	CurrentCount       int        `bson:"-" json:"currentCount,omitempty"`
 	Interval           string     `bson:"interval" json:"interval,omitempty"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY
 }
 
@@ -27,9 +28,16 @@ type TransactionTags struct {
 	SubTagId primitive.ObjectID `bson:"sub_tag_id" json:"subTagId"`
 }
 
+// type TransactionPersonalized struct {
+// 	PersonalizedId primitive.ObjectID `bson:"personalized_id" json:"personalizedId"`
+// 	Value          float64            `bson:"value" json:"value"`
+// }
+
 type Transaction struct {
 	Id               primitive.ObjectID         `bson:"_id" json:"id"`
 	Name             string                     `bson:"name" json:"name"`
+	MainId           *primitive.ObjectID        `bson:"main_id" json:"mainId"`
+	MainCount        *int                       `bson:"main_count" json:"mainCount"`
 	Description      string                     `bson:"description" json:"description,omitempty"`
 	CreatedBy        primitive.ObjectID         `bson:"created_by" json:"createdBy"` // email
 	Invoice          string                     `bson:"invoice" json:"invoice,omitempty"`
@@ -51,4 +59,5 @@ type Transaction struct {
 	CreatedAt        time.Time                  `bson:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time                  `bson:"updated_at" json:"updatedAt"`
 	WorkspaceId      primitive.ObjectID         `bson:"workspace_id" json:"workspaceId"`
+	// Personalized     []TransactionPersonalized  `bson:"personalizeds" json:"personalizeds"`
 }
