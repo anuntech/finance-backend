@@ -275,6 +275,10 @@ func (c *UpdateTransactionController) validateTag(workspaceId primitive.ObjectID
 		}
 	}
 
+	if subCategoryId == primitive.NilObjectID {
+		return nil
+	}
+
 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 		Error: "sub tag not found",
 	}, http.StatusNotFound)
