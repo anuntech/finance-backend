@@ -2,6 +2,7 @@ package account_repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -98,6 +99,7 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	case "REPEAT":
+		fmt.Println(transactions)
 		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	}
 
