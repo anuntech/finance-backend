@@ -144,7 +144,7 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 					// Atualiza a transação para exibir apenas a parcela atual...
 					tx.DueDate = installmentDueDate
 					// E ajusta a quantidade de parcelas restantes (por exemplo, se eram 3 e estamos na 2ª, então resta 2 parcelas)
-					tx.RepeatSettings.Count = tx.RepeatSettings.Count - i + 1
+					tx.RepeatSettings.CurrentCount = i
 					valid = true
 					break
 				}
