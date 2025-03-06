@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
@@ -58,7 +59,7 @@ type TransactionBody struct {
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
-		Count              int        `json:"count" validate:"min=2"`
+		Count              int        `json:"count" validate:"min=2,max=60"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate       string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
@@ -194,6 +195,10 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 }
 
 func createTransaction(body *TransactionBody) (*models.Transaction, error) {
+	if body.Frequency == "REPEAT" && int(body.RepeatSettings.InitialInstallment) >= body.RepeatSettings.Count {
+		return nil, errors.New("initialInstallment must be less than count")
+	}
+
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}
