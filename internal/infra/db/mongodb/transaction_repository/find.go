@@ -133,31 +133,41 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 
 		switch tx.Frequency {
 		case "REPEAT":
-			if tx.RepeatSettings != nil {
-				valid := false
+			valid := false
 
-				// Começa da parcela definida pelo initialInstallment e itera até o número total de parcelas.
-				for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
-					// Como a primeira parcela usa o DueDate original,
-					// usamos (i-1) como offset para calcular a data da parcela.
+			for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
+				// Como a primeira parcela usa o DueDate original,
+				// usamos (i-1) como offset para calcular a data da parcela.
 
-					installmentDueDate := computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
+				installmentDueDate := computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
 
-					// Verifica se o vencimento da parcela está dentro do período desejado.
-					if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
-						// Atualiza a transação para exibir apenas a parcela atual...
-						tx.DueDate = installmentDueDate
-						// E ajusta a quantidade de parcelas restantes (por exemplo, se eram 3 e estamos na 2ª, então resta 2 parcelas)
-						tx.RepeatSettings.CurrentCount = i
-						valid = true
-						break
+				// Verifica se o vencimento da parcela está dentro do período desejado.
+				if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
+					// Atualiza a transação para exibir apenas a parcela atual...
+					tx.DueDate = installmentDueDate
+
+					// Sincroniza o ConfirmationDate se a transação estiver confirmada
+					if tx.IsConfirmed && tx.ConfirmationDate != nil {
+						// Mantém a mesma hora do dia do ConfirmationDate original
+						origHour, origMin, origSec := tx.ConfirmationDate.Clock()
+						newConfDate := installmentDueDate
+						newConfDate = time.Date(
+							newConfDate.Year(), newConfDate.Month(), newConfDate.Day(),
+							origHour, origMin, origSec, 0, newConfDate.Location(),
+						)
+						tx.ConfirmationDate = &newConfDate
 					}
-				}
 
-				// Se nenhuma parcela se encaixar no período, a transação não deverá ser exibida.
-				if !valid {
-					continue
+					// E ajusta a quantidade de parcelas restantes (por exemplo, se eram 3 e estamos na 2ª, então resta 2 parcelas)
+					tx.RepeatSettings.CurrentCount = i
+					valid = true
+					break
 				}
+			}
+
+			// Se nenhuma parcela se encaixar no período, a transação não deverá ser exibida.
+			if !valid {
+				continue
 			}
 		case "RECURRING":
 			if tx.RepeatSettings == nil {
@@ -178,6 +188,22 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 
 			// Incrementa em 1 porque a primeira parcela é considerada 1, não 0
 			tx.RepeatSettings.CurrentCount = months + 1
+
+			// Atualiza o DueDate para refletir o mês atual
+			newDueDate := computeInstallmentDueDate(tx.DueDate, tx.RepeatSettings.Interval, months)
+			tx.DueDate = newDueDate
+
+			// Sincroniza o ConfirmationDate se a transação estiver confirmada
+			if tx.IsConfirmed && tx.ConfirmationDate != nil {
+				// Mantém a mesma hora do dia do ConfirmationDate original
+				origHour, origMin, origSec := tx.ConfirmationDate.Clock()
+				newConfDate := newDueDate
+				newConfDate = time.Date(
+					newConfDate.Year(), newConfDate.Month(), newConfDate.Day(),
+					origHour, origMin, origSec, 0, newConfDate.Location(),
+				)
+				tx.ConfirmationDate = &newConfDate
+			}
 		}
 
 		filtered = append(filtered, tx)
