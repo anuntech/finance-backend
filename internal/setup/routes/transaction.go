@@ -37,4 +37,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /transaction/edit", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeCreateEditTransactionController(workspaceDb, db)),
+			workspaceDb,
+		),
+	))
 }

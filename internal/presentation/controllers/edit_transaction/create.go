@@ -177,7 +177,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		return <-errChan
 	}
 
-	transaction, err := c.FindTransactionById.Find(transactionParsed.Id, workspaceId)
+	transaction, err := c.FindTransactionById.Find(*transactionParsed.MainId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding transaction",

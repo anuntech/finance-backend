@@ -3,8 +3,10 @@ package factory
 import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/account_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/category_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/edit_transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
+	"github.com/anuntech/finance-backend/internal/presentation/controllers/edit_transaction"
 	"github.com/anuntech/finance-backend/internal/presentation/controllers/transaction"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -41,4 +43,14 @@ func MakeGetTransactionByIdController(workspaceDb *mongo.Database) *transaction.
 func MakeDeleteTransactionController(db *mongo.Database) *transaction.DeleteTransactionController {
 	deleteTransactionRepository := transaction_repository.NewDeleteTransactionRepository(db)
 	return transaction.NewDeleteTransactionController(deleteTransactionRepository)
+}
+
+func MakeCreateEditTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *edit_transaction.CreateEditTransactionController {
+	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
+	createEditTransactionRepository := edit_transaction_repository.NewCreateEditTransactionRepository(db)
+	findMemberByIdRepository := member_repository.NewFindMemberByIdRepository(workspaceDb)
+	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
+	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+
+	return edit_transaction.NewCreateEditTransactionController(findMemberByIdRepository, createEditTransactionRepository, findAccountByIdRepository, findCategoryByIdRepository, findTransactionByIdRepository)
 }

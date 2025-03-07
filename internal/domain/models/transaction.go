@@ -36,8 +36,8 @@ type TransactionTags struct {
 type Transaction struct {
 	Id               primitive.ObjectID         `bson:"_id" json:"id"`
 	Name             string                     `bson:"name" json:"name"`
-	MainId           *primitive.ObjectID        `bson:"main_id" json:"mainId"`
-	MainCount        *int                       `bson:"main_count" json:"mainCount"`
+	MainId           *primitive.ObjectID        `bson:"main_id" json:"mainId,omitempty"`
+	MainCount        *int                       `bson:"main_count" json:"mainCount,omitempty"`
 	Description      string                     `bson:"description" json:"description,omitempty"`
 	CreatedBy        primitive.ObjectID         `bson:"created_by" json:"createdBy"` // email
 	Invoice          string                     `bson:"invoice" json:"invoice,omitempty"`
