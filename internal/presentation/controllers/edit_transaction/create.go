@@ -43,7 +43,7 @@ type TransactionBody struct {
 	Name        string `json:"name" validate:"required,min=2,max=30"`
 	Description string `json:"description" validate:"omitempty,max=255"`
 	MainId      string `json:"mainId" validate:"required,mongodb"`
-	MainCount   int    `json:"mainCount" validate:"required,min=1"`
+	MainCount   int    `json:"mainCount" validate:"required,min=1,max=322"`
 	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"omitempty,min=3,max=30"`
