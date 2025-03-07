@@ -190,7 +190,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		}, http.StatusNotFound)
 	}
 
-	if transaction.RepeatSettings.Count < *transactionParsed.MainCount {
+	if transaction.Frequency == "REPEAT" && transaction.RepeatSettings.Count < *transactionParsed.MainCount {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "transaction MainCount is less than the main total count",
 		}, http.StatusBadRequest)
