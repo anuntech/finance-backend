@@ -41,12 +41,14 @@ func NewCreateTransactionController(findMemberByIdRepository *member_repository.
 }
 
 type TransactionBody struct {
-	Name        string `json:"name" validate:"required,min=2,max=30"`
-	Description string `json:"description" validate:"omitempty,max=255"`
-	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
-	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
-	Supplier    string `json:"supplier" validate:"omitempty,min=3,max=30"`
-	AssignedTo  string `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
+	Name        string  `json:"name" validate:"required,min=2,max=30"`
+	MainId      *string `json:"mainId" validate:"required_with=MainCount,omitempty,mongodb"`
+	MainCount   *int    `json:"mainCount" validate:"required_with=MainId,omitempty,min=1,max=322"`
+	Description string  `json:"description" validate:"omitempty,max=255"`
+	Invoice     string  `json:"invoice" validate:"omitempty,min=2,max=50"`
+	Type        string  `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
+	Supplier    string  `json:"supplier" validate:"omitempty,min=3,max=30"`
+	AssignedTo  string  `json:"assignedTo" validate:"required,min=3,max=30,mongodb"`
 	Balance     struct {
 		Value              float64 `json:"value" validate:"required,min=0.01"`
 		Parts              float64 `json:"parts" validate:"omitempty,min=0.01"`
@@ -70,7 +72,7 @@ type TransactionBody struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
 		SubTagId string `json:"subTagId" validate:"excluded_if=TagId '',omitempty,mongodb"`
 	} `json:"tags" validate:"omitempty"`
-	AccountId        *string `json:"accountId" validate:"omitempty,mongodb"`
+	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
