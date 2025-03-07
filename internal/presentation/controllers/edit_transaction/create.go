@@ -9,7 +9,6 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -19,27 +18,29 @@ import (
 )
 
 type CreateEditTransactionController struct {
-	Validate                    *validator.Validate
-	Translator                  ut.Translator
-	CreateTransactionRepository usecase.CreateTransactionRepository
-	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
-	FindAccountByIdRepository   usecase.FindAccountByIdRepository
-	FindCategoryByIdRepository  usecase.FindCategoryByIdRepository
+	Validate                        *validator.Validate
+	Translator                      ut.Translator
+	CreateEditTransactionRepository usecase.CreateEditTransactionRepository
+	FindMemberByIdRepository        *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository       usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository      usecase.FindCategoryByIdRepository
+	FindTransactionById             usecase.FindTransactionByIdRepository
 }
 
-func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *CreateEditTransactionController {
+func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createEditTransactionRepository usecase.CreateEditTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findTransactionById usecase.FindTransactionByIdRepository) *CreateEditTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateEditTransactionController{
-		Validate:                    validate,
-		FindMemberByIdRepository:    findMemberByIdRepository,
-		CreateTransactionRepository: createTransactionRepository,
-		FindAccountByIdRepository:   findAccountByIdRepository,
-		FindCategoryByIdRepository:  findCategoryByIdRepository,
+		Validate:                        validate,
+		FindMemberByIdRepository:        findMemberByIdRepository,
+		CreateEditTransactionRepository: createEditTransactionRepository,
+		FindAccountByIdRepository:       findAccountByIdRepository,
+		FindCategoryByIdRepository:      findCategoryByIdRepository,
+		FindTransactionById:             findTransactionById,
 	}
 }
 
-type TransactionBody struct {
+type EditTransactionBody struct {
 	Name        string `json:"name" validate:"required,min=2,max=30"`
 	Description string `json:"description" validate:"omitempty,max=255"`
 	MainId      string `json:"mainId" validate:"required,mongodb"`
@@ -65,13 +66,13 @@ type TransactionBody struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
 		SubTagId string `json:"subTagId" validate:"excluded_if=TagId '',omitempty,mongodb"`
 	} `json:"tags" validate:"omitempty"`
-	AccountId        *string `json:"accountId" validate:"omitempty,mongodb"`
+	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
 
 func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body TransactionBody
+	var body EditTransactionBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid body request",
@@ -84,7 +85,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		}, http.StatusBadRequest)
 	}
 
-	transaction, err := createTransaction(&body)
+	transactionParsed, err := createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error creating transaction: " + err.Error(),
@@ -97,7 +98,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 			Error: "invalid user ID format",
 		}, http.StatusBadRequest)
 	}
-	transaction.CreatedBy = userObjectID
+	transactionParsed.CreatedBy = userObjectID
 
 	assignedTo, err := primitive.ObjectIDFromHex(body.AssignedTo)
 	if err != nil {
@@ -112,7 +113,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 			Error: "invalid workspace ID format",
 		}, http.StatusBadRequest)
 	}
-	transaction.WorkspaceId = workspaceId
+	transactionParsed.WorkspaceId = workspaceId
 
 	errChan := make(chan *presentationProtocols.HttpResponse, 4)
 	var wg sync.WaitGroup
@@ -124,16 +125,13 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 			errChan <- err
 			return
 		}
-		transaction.AssignedTo = assignedTo
+		transactionParsed.AssignedTo = assignedTo
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if transaction.AccountId == nil {
-			return
-		}
-		if err := c.validateAccount(workspaceId, *transaction.AccountId); err != nil {
+		if err := c.validateAccount(workspaceId, *transactionParsed.AccountId); err != nil {
 			errChan <- err
 		}
 	}()
@@ -141,10 +139,10 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if transaction.CategoryId == nil {
+		if transactionParsed.CategoryId == nil {
 			return
 		}
-		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
+		if err := c.validateCategory(workspaceId, *transactionParsed.CategoryId, transactionParsed.Type, *transactionParsed.SubCategoryId); err != nil {
 			errChan <- err
 		}
 	}()
@@ -154,7 +152,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		defer wg.Done()
 		seenTags := make(map[string]bool)
 
-		for _, tag := range transaction.Tags {
+		for _, tag := range transactionParsed.Tags {
 			compositeKey := tag.TagId.Hex() + "|" + tag.SubTagId.Hex()
 
 			if seenTags[compositeKey] {
@@ -179,17 +177,36 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		return <-errChan
 	}
 
-	transaction, err = c.CreateTransactionRepository.Create(transaction)
+	transaction, err := c.FindTransactionById.Find(transactionParsed.Id, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating transaction",
+			Error: "error finding transaction",
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(transaction, http.StatusCreated)
+	if transaction == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "transaction not found",
+		}, http.StatusNotFound)
+	}
+
+	if transaction.RepeatSettings.Count < *transactionParsed.MainCount {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "transaction MainCount is less than the main total count",
+		}, http.StatusBadRequest)
+	}
+
+	response, err := c.CreateEditTransactionRepository.Create(transactionParsed)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error creating edit transaction",
+		}, http.StatusInternalServerError)
+	}
+
+	return helpers.CreateResponse(response, http.StatusCreated)
 }
 
-func createTransaction(body *TransactionBody) (*models.Transaction, error) {
+func createTransaction(body *EditTransactionBody) (*models.Transaction, error) {
 	convertID := func(id string) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(id)
 	}
