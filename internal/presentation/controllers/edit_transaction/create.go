@@ -18,25 +18,29 @@ import (
 )
 
 type CreateEditTransactionController struct {
-	Validate                        *validator.Validate
-	Translator                      ut.Translator
-	CreateEditTransactionRepository usecase.CreateEditTransactionRepository
-	FindMemberByIdRepository        *member_repository.FindMemberByIdRepository
-	FindAccountByIdRepository       usecase.FindAccountByIdRepository
-	FindCategoryByIdRepository      usecase.FindCategoryByIdRepository
-	FindTransactionById             usecase.FindTransactionByIdRepository
+	Validate                          *validator.Validate
+	Translator                        ut.Translator
+	CreateEditTransactionRepository   usecase.CreateEditTransactionRepository
+	FindMemberByIdRepository          *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository         usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository        usecase.FindCategoryByIdRepository
+	FindTransactionById               usecase.FindTransactionByIdRepository
+	FindByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository
+	UpdateEditTransactionRepository   usecase.UpdateEditTransactionRepository
 }
 
-func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createEditTransactionRepository usecase.CreateEditTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findTransactionById usecase.FindTransactionByIdRepository) *CreateEditTransactionController {
+func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createEditTransactionRepository usecase.CreateEditTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findTransactionById usecase.FindTransactionByIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, updateEditTransactionRepository usecase.UpdateEditTransactionRepository) *CreateEditTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateEditTransactionController{
-		Validate:                        validate,
-		FindMemberByIdRepository:        findMemberByIdRepository,
-		CreateEditTransactionRepository: createEditTransactionRepository,
-		FindAccountByIdRepository:       findAccountByIdRepository,
-		FindCategoryByIdRepository:      findCategoryByIdRepository,
-		FindTransactionById:             findTransactionById,
+		Validate:                          validate,
+		FindMemberByIdRepository:          findMemberByIdRepository,
+		CreateEditTransactionRepository:   createEditTransactionRepository,
+		FindAccountByIdRepository:         findAccountByIdRepository,
+		FindCategoryByIdRepository:        findCategoryByIdRepository,
+		FindTransactionById:               findTransactionById,
+		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
+		UpdateEditTransactionRepository:   updateEditTransactionRepository,
 	}
 }
 
@@ -194,6 +198,24 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "transaction MainCount is less than the main total count",
 		}, http.StatusBadRequest)
+	}
+
+	editTransaction, err := c.FindByIdEditTransactionRepository.Find(*transactionParsed.MainId, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error finding edit transaction",
+		}, http.StatusInternalServerError)
+	}
+
+	if editTransaction != nil {
+		response, err := c.UpdateEditTransactionRepository.Update(transactionParsed)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error updating edit transaction: " + err.Error(),
+			}, http.StatusInternalServerError)
+		}
+
+		return helpers.CreateResponse(response, http.StatusCreated)
 	}
 
 	response, err := c.CreateEditTransactionRepository.Create(transactionParsed)
