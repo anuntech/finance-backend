@@ -3,6 +3,7 @@ package transaction
 import (
 	"net/http"
 
+	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -13,14 +14,16 @@ import (
 type GetTransactionController struct {
 	FindTransactionsByWorkspaceIdAndMonthRepository usecase.FindTransactionsByWorkspaceIdRepository
 	Validator                                       *validator.Validate
+	FindByIdEditTransactionRepository               usecase.FindByIdEditTransactionRepository
 }
 
-func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository) *GetTransactionController {
+func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository) *GetTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &GetTransactionController{
 		FindTransactionsByWorkspaceIdAndMonthRepository: findManyByUserIdAndWorkspaceId,
-		Validator: validate,
+		Validator:                         validate,
+		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
 	}
 }
 
@@ -48,5 +51,34 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		transactions[i], transactions[j] = transactions[j], transactions[i]
 	}
 
+	transactions, err = c.ReplaceTransactionIfEditRepeat(transactions)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when replacing transactions",
+		}, http.StatusInternalServerError)
+	}
+
 	return helpers.CreateResponse(transactions, http.StatusOK)
+}
+
+func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
+	for i, transaction := range transactions {
+		editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.WorkspaceId)
+		if err != nil {
+			return nil, err
+		}
+
+		if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
+			repeatSettings := *transaction.RepeatSettings
+			frequency := transaction.Frequency
+
+			transactions[i] = *editTransaction
+			transactions[i].Frequency = frequency
+			transactions[i].RepeatSettings = &repeatSettings
+			transactions[i].MainCount = nil
+			transactions[i].MainId = nil
+		}
+	}
+
+	return transactions, nil
 }

@@ -20,9 +20,11 @@ func MakeCreateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	return transaction.NewCreateTransactionController(findMemberByIdRepository, createTransactionRepository, findAccountByIdRepository, findCategoryByIdRepository)
 }
 
-func MakeGetTransactionController(workspaceDb *mongo.Database) *transaction.GetTransactionController {
-	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(workspaceDb)
-	return transaction.NewGetTransactionController(findTransactionsByWorkspaceIdAndMonthRepository)
+func MakeGetTransactionController(db *mongo.Database) *transaction.GetTransactionController {
+	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(db)
+	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
+
+	return transaction.NewGetTransactionController(findTransactionsByWorkspaceIdAndMonthRepository, findByIdEditTransactionRepository)
 }
 
 func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *transaction.UpdateTransactionController {
@@ -37,11 +39,13 @@ func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 
 func MakeGetTransactionByIdController(workspaceDb *mongo.Database) *transaction.GetTransactionByIdController {
 	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(workspaceDb)
+
 	return transaction.NewGetTransactionByIdController(findTransactionByIdRepository)
 }
 
 func MakeDeleteTransactionController(db *mongo.Database) *transaction.DeleteTransactionController {
 	deleteTransactionRepository := transaction_repository.NewDeleteTransactionRepository(db)
+
 	return transaction.NewDeleteTransactionController(deleteTransactionRepository)
 }
 
@@ -54,5 +58,13 @@ func MakeCreateEditTransactionController(workspaceDb *mongo.Database, db *mongo.
 	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	updateEditTransactionRepository := edit_transaction_repository.NewUpdateEditTransactionRepository(db)
 
-	return edit_transaction.NewCreateEditTransactionController(findMemberByIdRepository, createEditTransactionRepository, findAccountByIdRepository, findCategoryByIdRepository, findTransactionByIdRepository, findByIdEditTransactionRepository, updateEditTransactionRepository)
+	return edit_transaction.NewCreateEditTransactionController(
+		findMemberByIdRepository,
+		createEditTransactionRepository,
+		findAccountByIdRepository,
+		findCategoryByIdRepository,
+		findTransactionByIdRepository,
+		findByIdEditTransactionRepository,
+		updateEditTransactionRepository,
+	)
 }

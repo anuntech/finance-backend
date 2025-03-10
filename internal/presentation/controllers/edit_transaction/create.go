@@ -200,6 +200,12 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		}, http.StatusBadRequest)
 	}
 
+	if transaction.Frequency == "DO_NOT_REPEAT" {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "transaction frequency is DO_NOT_REPEAT",
+		}, http.StatusBadRequest)
+	}
+
 	editTransaction, err := c.FindByIdEditTransactionRepository.Find(*transactionParsed.MainId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

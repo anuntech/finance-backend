@@ -20,10 +20,10 @@ func NewFindByIdEditTransactionRepository(db *mongo.Database) *FindByIdEditTrans
 	}
 }
 
-func (r *FindByIdEditTransactionRepository) Find(id primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Transaction, error) {
+func (r *FindByIdEditTransactionRepository) Find(mainId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Transaction, error) {
 	collection := r.Db.Collection("edit_transaction")
 
-	filter := bson.M{"main_id": id, "workspace_id": workspaceId}
+	filter := bson.M{"main_id": mainId, "workspace_id": workspaceId}
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
