@@ -30,5 +30,11 @@ func (r *DeleteTransactionRepository) Delete(transactionIds []primitive.ObjectID
 		return err
 	}
 
+	editTransactionCollection := r.Db.Collection("edit_transaction")
+	_, err = editTransactionCollection.DeleteMany(ctx, bson.M{"main_id": bson.M{"$in": transactionIds}})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
