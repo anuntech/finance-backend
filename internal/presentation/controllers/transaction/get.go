@@ -5,7 +5,6 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
-	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -73,14 +72,14 @@ func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions [
 			repeatSettings := *transaction.RepeatSettings
 			frequency := transaction.Frequency
 			totalBalance := transaction.TotalBalance
+			balance := transaction.Balance
 
 			transactions[i] = *editTransaction
 			transactions[i].Frequency = frequency
 			transactions[i].RepeatSettings = &repeatSettings
 			transactions[i].MainCount = nil
 			transactions[i].MainId = nil
-			balance := infraHelpers.CalculateOneTransactionBalance(&transactions[i])
-			transactions[i].Balance.Value = balance
+			transactions[i].Balance = balance
 			transactions[i].TotalBalance = totalBalance
 		}
 	}
