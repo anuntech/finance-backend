@@ -1,58 +1,13 @@
 package helpers
 
 import (
-	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
-	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func ReplaceEditTransactions(transactions []models.Transaction, db *mongo.Database, globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Transaction, error) {
-	if db == nil {
-		return transactions, nil
-	}
-
-	editCollection := db.Collection("edit_transaction")
-
-	for i, transaction := range transactions {
-		if transaction.RepeatSettings != nil {
-			transaction.RepeatSettings.CurrentCount = CalculateCurrentCount(transaction, globalFilters.Year, globalFilters.Month)
-			transactions[i].RepeatSettings.CurrentCount = transaction.RepeatSettings.CurrentCount
-		}
-
-		result := editCollection.FindOne(context.Background(), bson.M{"main_id": transaction.Id, "workspace_id": transaction.WorkspaceId})
-
-		if result.Err() == mongo.ErrNoDocuments {
-			continue
-		}
-
-		if result.Err() != nil {
-			return nil, result.Err()
-		}
-
-		var editTransaction models.Transaction
-		if err := result.Decode(&editTransaction); err != nil {
-			return nil, err
-		}
-
-		if transaction.RepeatSettings != nil {
-			fmt.Println("transaction.RepeatSettings.CurrentCount", transaction.RepeatSettings.CurrentCount)
-
-			if editTransaction.MainCount != nil && transaction.RepeatSettings.CurrentCount == *editTransaction.MainCount {
-				transactions[i].Balance = editTransaction.Balance
-			}
-		}
-	}
-
-	return transactions, nil
-}
-
 // CalculateCurrentCount calcula em qual parcela (count) a transação está com base no intervalo da repetição e nas datas
-func CalculateCurrentCount(transaction models.Transaction, year int, month int) int {
+func CalculateCurrentCount(transaction *models.Transaction, year int, month int) int {
 	if transaction.RepeatSettings == nil {
 		return 0
 	}

@@ -92,18 +92,13 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 		return 0.0
 	}
 
-	transactions, err = helpers.ReplaceEditTransactions(transactions, c.Db, globalFilters)
-	if err != nil {
-		return 0.0
-	}
-
 	switch frequency {
 	case "DO_NOT_REPEAT":
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
 	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	}
 
 	return 0.0

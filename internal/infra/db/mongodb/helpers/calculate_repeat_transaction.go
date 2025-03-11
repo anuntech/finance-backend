@@ -1,14 +1,33 @@
 package helpers
 
 import (
+	"context"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int) float64 {
+func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database) float64 {
 	var balance float64
 	for _, t := range transactions {
+		editCollection := db.Collection("edit_transaction")
+		var editTransaction models.Transaction
+
+		result := editCollection.FindOne(context.Background(), bson.M{
+			"main_id":      t.Id,
+			"workspace_id": t.WorkspaceId,
+			"main_count":   CalculateCurrentCount(&t, year, month),
+		})
+
+		if result.Err() == nil && result.Decode(&editTransaction) == nil {
+			// If an edited transaction exists for this count, use its full balance
+			oneRepeatToRemove := CalculateOneTransactionBalance(&t) / float64(t.RepeatSettings.Count)
+			balance += CalculateOneTransactionBalance(&editTransaction) - oneRepeatToRemove
+		}
+
+		// Otherwise, calculate normally based on interval
 		var refDate time.Time
 		if !t.IsConfirmed {
 			refDate = t.DueDate
