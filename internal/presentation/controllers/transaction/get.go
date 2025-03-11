@@ -72,14 +72,16 @@ func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions [
 		if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
 			repeatSettings := *transaction.RepeatSettings
 			frequency := transaction.Frequency
+			totalBalance := transaction.TotalBalance
 
 			transactions[i] = *editTransaction
 			transactions[i].Frequency = frequency
 			transactions[i].RepeatSettings = &repeatSettings
 			transactions[i].MainCount = nil
 			transactions[i].MainId = nil
-			balance := infraHelpers.CalculateOneTransactionBalance(editTransaction)
-			transactions[i].RepeatBalance = &balance
+			balance := infraHelpers.CalculateOneTransactionBalance(&transactions[i])
+			transactions[i].Balance.Value = balance
+			transactions[i].TotalBalance = totalBalance
 		}
 	}
 

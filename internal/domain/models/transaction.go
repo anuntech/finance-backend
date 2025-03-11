@@ -45,7 +45,7 @@ type Transaction struct {
 	Supplier         string                     `bson:"supplier" json:"supplier"`
 	AssignedTo       primitive.ObjectID         `bson:"assigned_to" json:"assignedTo"`
 	Balance          TransactionBalance         `bson:"balance" json:"balance"`
-	RepeatBalance    *float64                   `bson:"-" json:"repeatBalance,omitempty"`
+	TotalBalance     float64                    `bson:"-" json:"totalBalance,omitempty"`
 	Frequency        string                     `bson:"frequency" json:"frequency"` // DO_NOT_REPEAT | RECURRING | REPEAT
 	RepeatSettings   *TransactionRepeatSettings `bson:"repeat_settings" json:"repeatSettings,omitempty"`
 	DueDate          time.Time                  `bson:"due_date" json:"dueDate"`

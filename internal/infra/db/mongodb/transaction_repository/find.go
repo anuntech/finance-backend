@@ -160,8 +160,9 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 
 					// E ajusta a quantidade de parcelas restantes (por exemplo, se eram 3 e estamos na 2ª, então resta 2 parcelas)
 					tx.RepeatSettings.CurrentCount = i
-					balance := helpers.CalculateOneTransactionBalance(&tx) / float64(tx.RepeatSettings.Count)
-					tx.RepeatBalance = &balance
+					balance := helpers.CalculateOneTransactionBalance(&tx)
+					tx.Balance.Value = balance / float64(tx.RepeatSettings.Count)
+					tx.TotalBalance = balance
 					valid = true
 					break
 				}
