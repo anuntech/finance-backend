@@ -8,8 +8,6 @@ import (
 
 type TransactionBalance struct {
 	Value              float64 `bson:"value" json:"value"`
-	Parts              float64 `bson:"parts" json:"parts"`                            // increase
-	Labor              float64 `bson:"labor" json:"labor"`                            // increase
 	Discount           float64 `bson:"discount" json:"discount"`                      // decrease
 	Interest           float64 `bson:"interest" json:"interest"`                      // increase
 	DiscountPercentage float64 `bson:"discount_percentage" json:"discountPercentage"` // decrease

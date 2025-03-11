@@ -20,14 +20,10 @@ func CalculateOneTransactionBalance(transaction *models.Transaction) float64 {
 	switch transaction.Type {
 	case "EXPENSE":
 		balance -= transaction.Balance.Value
-		balance -= transaction.Balance.Parts
-		balance -= transaction.Balance.Labor
 		balance += transaction.Balance.Discount
 		balance -= transaction.Balance.Interest
 	case "RECIPE":
 		balance += transaction.Balance.Value
-		balance += transaction.Balance.Parts
-		balance += transaction.Balance.Labor
 		balance -= transaction.Balance.Discount
 		balance += transaction.Balance.Interest
 	}
