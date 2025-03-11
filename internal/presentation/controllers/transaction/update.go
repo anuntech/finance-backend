@@ -83,8 +83,6 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.Supplier = body.Supplier
 	transaction.Balance = models.TransactionBalance{
 		Value:              body.Balance.Value,
-		Parts:              body.Balance.Parts,
-		Labor:              body.Balance.Labor,
 		Discount:           body.Balance.Discount,
 		Interest:           body.Balance.Interest,
 		DiscountPercentage: body.Balance.DiscountPercentage,

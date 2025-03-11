@@ -348,8 +348,6 @@ func createTransaction(body *EditTransactionBody) (*models.Transaction, error) {
 		AssignedTo:  assignedTo,
 		Balance: models.TransactionBalance{
 			Value:              body.Balance.Value,
-			Parts:              body.Balance.Parts,
-			Labor:              body.Balance.Labor,
 			Discount:           body.Balance.Discount,
 			Interest:           body.Balance.Interest,
 			DiscountPercentage: body.Balance.DiscountPercentage,
