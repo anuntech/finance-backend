@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -9,7 +8,6 @@ import (
 
 func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int) float64 {
 	var balance float64
-	fmt.Println(transactions)
 	for _, t := range transactions {
 		var refDate time.Time
 		if !t.IsConfirmed {
@@ -36,12 +34,11 @@ func repeatMonthlyTransaction(t *models.Transaction, refDate time.Time, year int
 
 	effectiveInstallment := int(t.RepeatSettings.InitialInstallment) + monthsBetween
 
-	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
-
 	if effectiveInstallment >= t.RepeatSettings.Count {
 		return CalculateOneTransactionBalance(t)
 	}
 
+	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
 	return installmentValue * float64(effectiveInstallment)
 }
 
@@ -50,12 +47,11 @@ func repeatYearlyTransaction(t *models.Transaction, refDate time.Time, year int)
 
 	effectiveInstallment := int(t.RepeatSettings.InitialInstallment) + yearsBetween
 
-	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
-
 	if effectiveInstallment >= t.RepeatSettings.Count {
 		return CalculateOneTransactionBalance(t)
 	}
 
+	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
 	return installmentValue * float64(effectiveInstallment)
 }
 
@@ -64,11 +60,10 @@ func repeatQuarterlyTransaction(t *models.Transaction, refDate time.Time, year i
 
 	effectiveInstallment := int(t.RepeatSettings.InitialInstallment) + quartersBetween
 
-	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
-
 	if effectiveInstallment >= t.RepeatSettings.Count {
 		return CalculateOneTransactionBalance(t)
 	}
 
+	installmentValue := CalculateOneTransactionBalance(t) / float64(t.RepeatSettings.Count)
 	return installmentValue * float64(effectiveInstallment)
 }
