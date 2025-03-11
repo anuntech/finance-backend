@@ -63,7 +63,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
 	for i, transaction := range transactions {
-		editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.WorkspaceId)
+		editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
 		if err != nil {
 			return nil, err
 		}

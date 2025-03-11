@@ -12,6 +12,7 @@ import (
 func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database) float64 {
 	var balance float64
 	for _, t := range transactions {
+
 		editCollection := db.Collection("edit_transaction")
 		var editTransaction models.Transaction
 

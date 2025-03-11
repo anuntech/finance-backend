@@ -206,7 +206,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		}, http.StatusBadRequest)
 	}
 
-	editTransaction, err := c.FindByIdEditTransactionRepository.Find(*transactionParsed.MainId, workspaceId)
+	editTransaction, err := c.FindByIdEditTransactionRepository.Find(*transactionParsed.MainId, *transactionParsed.MainCount, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error finding edit transaction",

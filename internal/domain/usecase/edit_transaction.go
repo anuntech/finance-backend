@@ -10,7 +10,7 @@ type CreateEditTransactionRepository interface {
 }
 
 type FindByIdEditTransactionRepository interface {
-	Find(mainId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Transaction, error)
+	Find(mainId primitive.ObjectID, mainCount int, workspaceId primitive.ObjectID) (*models.Transaction, error)
 }
 
 type UpdateEditTransactionRepository interface {
