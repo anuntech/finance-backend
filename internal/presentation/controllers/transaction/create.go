@@ -43,7 +43,7 @@ func NewCreateTransactionController(findMemberByIdRepository *member_repository.
 type TransactionBody struct {
 	Name        string  `json:"name" validate:"required,min=2,max=30"`
 	MainId      *string `json:"mainId" validate:"required_with=MainCount,omitempty,mongodb"`
-	MainCount   *int    `json:"mainCount" validate:"required_with=MainId,omitempty,min=1,max=322"`
+	MainCount   *int    `json:"mainCount" validate:"required_with=MainId,omitempty,min=1,max=367"`
 	Description string  `json:"description" validate:"omitempty,max=255"`
 	Invoice     string  `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string  `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
@@ -61,7 +61,7 @@ type TransactionBody struct {
 	Frequency      string `json:"frequency" validate:"oneof=DO_NOT_REPEAT RECURRING REPEAT"`
 	RepeatSettings struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
-		Count              int        `json:"count" validate:"min=2,max=60"`
+		Count              int        `json:"count" validate:"min=2,max=367"`
 		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate       string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
