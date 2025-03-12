@@ -97,7 +97,7 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 	case "DO_NOT_REPEAT":
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
 	case "REPEAT":
 		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	}
@@ -124,8 +124,7 @@ func (c *FindAccountsRepository) calculateAccountCurrentBalance(accountId primit
 		"confirmation_date": bson.M{
 			"$lt": endOfMonth,
 		},
-		"is_confirmed": true,
-		"frequency":    frequency,
+		"frequency": frequency,
 	}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
@@ -141,7 +140,7 @@ func (c *FindAccountsRepository) calculateAccountCurrentBalance(accountId primit
 	case "DO_NOT_REPEAT":
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
 	case "REPEAT":
 		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	}

@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -10,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CalculateRecurringTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database) float64 {
+func CalculateRecurringTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database, isConfirmed bool) float64 {
 	var balance float64
 	for _, t := range transactions {
 		// Check for edited transactions
@@ -39,14 +38,18 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 				if err := cursor.All(context.Background(), &editTransactions); err == nil && len(editTransactions) > 0 {
 					// Apply the balance adjustments for each edit
 					for _, editTransaction := range editTransactions {
-						// Calculate the value of one installment in the original transaction
 						oneRecurringValue := CalculateOneTransactionBalance(&t)
+						if isConfirmed {
+							if editTransaction.IsConfirmed {
+								balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+							} else {
+								balance -= oneRecurringValue
+							}
+							continue
+						}
 
-						// Add the edited transaction balance and remove the original installment value
 						balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
 					}
-
-					fmt.Println("balance", balance)
 
 				}
 			}

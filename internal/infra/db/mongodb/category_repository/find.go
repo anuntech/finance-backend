@@ -115,7 +115,7 @@ func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId pri
 	case "DO_NOT_REPEAT":
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
 	case "REPEAT":
 		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	}
