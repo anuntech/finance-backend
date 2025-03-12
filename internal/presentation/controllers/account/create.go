@@ -68,8 +68,8 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 	bank, err := c.FindBankById.Find(bankId.Hex())
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "bank not found",
-		}, http.StatusNotFound)
+			Error: "an error occurred when finding bank",
+		}, http.StatusInternalServerError)
 	}
 
 	if bank == nil {
