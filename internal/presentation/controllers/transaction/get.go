@@ -73,12 +73,12 @@ func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions [
 			frequency := transaction.Frequency
 			totalBalance := transaction.TotalBalance
 			balance := transaction.Balance
-			mainId := transaction.MainId
+			id := transaction.Id
 
 			transactions[i] = *editTransaction
 			transactions[i].Frequency = frequency
 			transactions[i].RepeatSettings = &repeatSettings
-			transactions[i].Id = *mainId
+			transactions[i].Id = id
 			transactions[i].MainCount = nil
 			transactions[i].MainId = nil
 			if transactions[i].Frequency == "DO_NOT_REPEAT" {
