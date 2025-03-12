@@ -1,14 +1,58 @@
 package helpers
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CalculateRecurringTransactionsBalance(transactions []models.Transaction, year int, month int) float64 {
+func CalculateRecurringTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database) float64 {
 	var balance float64
 	for _, t := range transactions {
+		// Check for edited transactions
+		if db != nil {
+			editCollection := db.Collection("edit_transaction")
+
+			// Get the current count for this transaction in the specified month
+			var refDate time.Time
+			if !t.IsConfirmed {
+				refDate = t.DueDate
+			} else {
+				refDate = *t.ConfirmationDate
+			}
+			currentCount := MonthsBetween(refDate, year, month) + 1
+
+			// Find all edits for this transaction with main_count <= currentCount
+			cursor, err := editCollection.Find(context.Background(), bson.M{
+				"main_id":      t.Id,
+				"workspace_id": t.WorkspaceId,
+				"main_count":   bson.M{"$lte": currentCount},
+			})
+
+			// Process each edit if we found any
+			if err == nil {
+				var editTransactions []models.Transaction
+				if err := cursor.All(context.Background(), &editTransactions); err == nil && len(editTransactions) > 0 {
+					// Apply the balance adjustments for each edit
+					for _, editTransaction := range editTransactions {
+						// Calculate the value of one installment in the original transaction
+						oneRecurringValue := CalculateOneTransactionBalance(&t)
+
+						// Add the edited transaction balance and remove the original installment value
+						balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+					}
+
+					fmt.Println("balance", balance)
+
+				}
+			}
+		}
+
+		// If no edits were found or there was an error, calculate normally
 		var refDate time.Time
 		if !t.IsConfirmed {
 			refDate = t.DueDate
@@ -17,7 +61,6 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 		}
 
 		months := MonthsBetween(refDate, year, month)
-
 		balance += (float64(months) + 1) * CalculateOneTransactionBalance(&t)
 	}
 

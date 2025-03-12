@@ -45,6 +45,7 @@ func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalF
 
 	for index, account := range accounts {
 		accounts[index].Balance = c.calculateAllAccountBalance(account.Id, globalFilters)
+		accounts[index].CurrentBalance = c.calculateAllAccountCurrentBalance(account.Id, globalFilters)
 	}
 
 	return accounts, nil
@@ -96,7 +97,51 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 	case "DO_NOT_REPEAT":
 		return helpers.CalculateTransactionBalance(transactions)
 	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month)
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+	case "REPEAT":
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+	}
+
+	return 0.0
+}
+
+func (c *FindAccountsRepository) calculateAllAccountCurrentBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
+	doNotRepeatBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "DO_NOT_REPEAT")
+	recurringBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "RECURRING")
+	repeatBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "REPEAT")
+
+	return doNotRepeatBalance + recurringBalance + repeatBalance
+}
+
+func (c *FindAccountsRepository) calculateAccountCurrentBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
+	collection := c.Db.Collection("transaction")
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	filter := bson.M{
+		"workspace_id": globalFilters.WorkspaceId,
+		"account_id":   accountId,
+		"confirmation_date": bson.M{
+			"$lt": endOfMonth,
+		},
+		"is_confirmed": true,
+		"frequency":    frequency,
+	}
+	cursor, err := collection.Find(context.Background(), filter)
+	if err != nil {
+		return 0.0
+	}
+
+	var transactions []models.Transaction
+	if err := cursor.All(context.Background(), &transactions); err != nil {
+		return 0.0
+	}
+
+	switch frequency {
+	case "DO_NOT_REPEAT":
+		return helpers.CalculateTransactionBalance(transactions)
+	case "RECURRING":
+		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	case "REPEAT":
 		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
 	}
