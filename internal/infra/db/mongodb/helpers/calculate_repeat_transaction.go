@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -17,7 +16,6 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 
 		// Get the current count for this transaction in the specified month
 		currentCount := CalculateCurrentCount(&t, year, month)
-		fmt.Println("current count", currentCount)
 
 		// Find all edits for this transaction with main_count <= currentCount
 		cursor, err := editCollection.Find(context.Background(), bson.M{

@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -40,7 +39,6 @@ func ReplaceEditTransactions(transactions []models.Transaction, db *mongo.Databa
 		}
 
 		if transaction.RepeatSettings != nil {
-			fmt.Println("transaction.RepeatSettings.CurrentCount", transaction.RepeatSettings.CurrentCount)
 
 			if editTransaction.MainCount != nil && transaction.RepeatSettings.CurrentCount == *editTransaction.MainCount {
 				transactions[i].Balance = editTransaction.Balance
