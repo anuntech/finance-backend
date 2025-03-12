@@ -29,7 +29,7 @@ func NewImportAccountController(importUseCase usecase.ImportAccountsRepository, 
 }
 
 type ImportAccountBody struct {
-	Accounts []models.ImportAccountInput `json:"accounts" validate:"required,dive"`
+	Accounts []models.ImportAccount `json:"accounts" validate:"required,dive"`
 }
 
 func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -69,7 +69,7 @@ func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	var accountInputs []models.AccountInput
+	var Accounts []models.Account
 	for _, acc := range body.Accounts {
 		bankId, err := primitive.ObjectIDFromHex(acc.BankId)
 		if err != nil {
@@ -78,7 +78,7 @@ func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *p
 			}, http.StatusBadRequest)
 		}
 
-		accountInputs = append(accountInputs, models.AccountInput{
+		Accounts = append(Accounts, models.Account{
 			Name:        acc.Name,
 			Balance:     acc.Balance,
 			BankId:      bankId,
@@ -86,7 +86,7 @@ func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		})
 	}
 
-	importedAccounts, err := c.ImportAccountsRepository.Import(accountInputs, workspaceId)
+	importedAccounts, err := c.ImportAccountsRepository.Import(Accounts, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "erro ao importar contas: " + err.Error(),

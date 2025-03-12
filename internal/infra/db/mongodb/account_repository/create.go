@@ -20,7 +20,7 @@ func NewCreateAccountMongoRepository(db *mongo.Database) *CreateAccountMongoRepo
 	}
 }
 
-func (c *CreateAccountMongoRepository) Create(account *models.AccountInput) (*models.Account, error) {
+func (c *CreateAccountMongoRepository) Create(account *models.Account) (*models.Account, error) {
 	collection := c.Db.Collection("account")
 
 	accountToSave := models.Account{

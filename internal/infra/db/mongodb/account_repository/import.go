@@ -20,7 +20,7 @@ func NewImportAccountsMongoRepository(db *mongo.Database) *ImportAccountsMongoRe
 	}
 }
 
-func (r *ImportAccountsMongoRepository) Import(accounts []models.AccountInput, workspaceId primitive.ObjectID) ([]models.Account, error) {
+func (r *ImportAccountsMongoRepository) Import(accounts []models.Account, workspaceId primitive.ObjectID) ([]models.Account, error) {
 	collection := r.db.Collection("account")
 
 	var docs []interface{}

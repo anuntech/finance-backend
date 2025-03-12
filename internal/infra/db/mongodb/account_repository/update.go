@@ -21,7 +21,7 @@ func NewUpdateAccountMongoRepository(db *mongo.Database) *UpdateAccountMongoRepo
 	}
 }
 
-func (u *UpdateAccountMongoRepository) Update(id primitive.ObjectID, account *models.AccountInput) (*models.Account, error) {
+func (u *UpdateAccountMongoRepository) Update(id primitive.ObjectID, account *models.Account) (*models.Account, error) {
 	collection := u.Db.Collection("account")
 
 	update := bson.M{

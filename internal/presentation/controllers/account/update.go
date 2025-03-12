@@ -96,7 +96,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusNotFound)
 	}
 
-	account, err := c.UpdateAccountRepository.Update(id, &models.AccountInput{
+	account, err := c.UpdateAccountRepository.Update(id, &models.Account{
 		Name:    body.Name,
 		Balance: body.Balance,
 		BankId:  bank.Id,

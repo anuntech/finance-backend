@@ -7,7 +7,7 @@ import (
 )
 
 type CreateAccountRepository interface {
-	Create(*models.AccountInput) (*models.Account, error)
+	Create(*models.Account) (*models.Account, error)
 }
 
 type FindAccountByWorkspaceIdRepository interface {
@@ -23,9 +23,9 @@ type DeleteAccountRepository interface {
 }
 
 type UpdateAccountRepository interface {
-	Update(primitive.ObjectID, *models.AccountInput) (*models.Account, error)
+	Update(primitive.ObjectID, *models.Account) (*models.Account, error)
 }
 
 type ImportAccountsRepository interface {
-	Import(accounts []models.AccountInput, workspaceId primitive.ObjectID) ([]models.Account, error)
+	Import(accounts []models.Account, workspaceId primitive.ObjectID) ([]models.Account, error)
 }

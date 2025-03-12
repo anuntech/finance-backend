@@ -100,7 +100,7 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	account, err := c.CreateAccountRepository.Create(&models.AccountInput{
+	account, err := c.CreateAccountRepository.Create(&models.Account{
 		Name:        body.Name,
 		BankId:      bankId,
 		Balance:     body.Balance,
