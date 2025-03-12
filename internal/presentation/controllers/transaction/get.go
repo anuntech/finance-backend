@@ -79,7 +79,9 @@ func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions [
 			transactions[i].RepeatSettings = &repeatSettings
 			transactions[i].MainCount = nil
 			transactions[i].MainId = nil
-			transactions[i].Balance = balance
+			if transactions[i].Frequency == "DO_NOT_REPEAT" {
+				transactions[i].Balance = balance
+			}
 			transactions[i].TotalBalance = totalBalance
 		}
 	}
