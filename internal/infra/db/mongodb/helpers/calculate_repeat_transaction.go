@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database) float64 {
+func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database, isConfirmed bool) float64 {
 	var balance float64
 	for _, t := range transactions {
 		editCollection := db.Collection("edit_transaction")
@@ -32,12 +32,17 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 			if err := cursor.All(context.Background(), &editTransactions); err == nil && len(editTransactions) > 0 {
 				// Apply the balance adjustments for each edit
 				for _, editTransaction := range editTransactions {
-					// Calculate the value of one installment in the original transaction
-					oneRepeatValue := CalculateOneTransactionBalance(&t) / float64(t.RepeatSettings.Count)
+					oneRecurringValue := CalculateOneTransactionBalance(&t) / float64(t.RepeatSettings.Count)
+					if isConfirmed {
+						if editTransaction.IsConfirmed {
+							balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+						} else {
+							balance -= oneRecurringValue
+						}
+						continue
+					}
 
-					// Add the edited transaction balance and remove the original installment value
-					balance += CalculateOneTransactionBalance(&editTransaction) - oneRepeatValue
-					fmt.Println("edit balance", balance, "for count", editTransaction.MainCount)
+					balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
 				}
 
 				// Continue to the next transaction since we've processed all edits

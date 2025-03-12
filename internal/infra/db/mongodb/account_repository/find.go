@@ -99,7 +99,7 @@ func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.Obj
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
 	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
 	}
 
 	return 0.0
@@ -142,7 +142,7 @@ func (c *FindAccountsRepository) calculateAccountCurrentBalance(accountId primit
 	case "RECURRING":
 		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
 	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db)
+		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
 	}
 
 	return 0.0
