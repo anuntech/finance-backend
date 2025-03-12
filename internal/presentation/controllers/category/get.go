@@ -46,6 +46,7 @@ func (c *GetCategoriesController) Handle(r presentationProtocols.HttpRequest) *p
 
 	for i := range categories {
 		categories[i].CalculateTotalAmount()
+		categories[i].CalculateTotalCurrentAmount()
 		categories[i].InvertSubCategoriesOrder()
 	}
 
