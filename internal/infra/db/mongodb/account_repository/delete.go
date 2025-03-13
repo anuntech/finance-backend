@@ -27,5 +27,17 @@ func (d *DeleteAccountMongoRepository) Delete(accountIds []primitive.ObjectID, w
 	defer cancel()
 
 	_, err := collection.DeleteMany(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	// Remove these accounts from all transactions
+	transactionCollection := d.Db.Collection("transaction")
+	_, err = transactionCollection.UpdateMany(
+		ctx,
+		bson.M{"account_id": bson.M{"$in": accountIds}, "workspace_id": workspaceId},
+		bson.M{"$unset": bson.M{"account_id": ""}},
+	)
+
 	return err
 }

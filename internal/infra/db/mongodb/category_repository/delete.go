@@ -30,5 +30,15 @@ func (r *DeleteCategoryRepository) Delete(categoryIds []primitive.ObjectID, work
 		return err
 	}
 
+	transactionCollection := r.Db.Collection("transaction")
+	_, err = transactionCollection.UpdateMany(
+		ctx,
+		bson.M{"category_id": bson.M{"$in": categoryIds}, "workspace_id": workspaceId},
+		bson.M{"$unset": bson.M{"category_id": ""}},
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
