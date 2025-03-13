@@ -44,8 +44,8 @@ func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalF
 	}
 
 	for index, account := range accounts {
-		accounts[index].Balance = c.calculateAllAccountBalance(account.Id, globalFilters)
-		accounts[index].CurrentBalance = c.calculateAllAccountCurrentBalance(account.Id, globalFilters)
+		accounts[index].CurrentBalance = account.Balance + c.calculateAllAccountCurrentBalance(account.Id, globalFilters)
+		accounts[index].Balance += c.calculateAllAccountBalance(account.Id, globalFilters)
 	}
 
 	return accounts, nil
