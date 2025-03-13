@@ -13,6 +13,7 @@ func SetupRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.D
 	routes.CategoryRoutes(apiServer, db, workspaceDb)
 	routes.BankRoutes(apiServer, db, workspaceDb)
 	routes.TransactionRoutes(apiServer, db, workspaceDb)
+	routes.CustomFieldRoutes(apiServer, db, workspaceDb)
 
 	server.Handle("/api/", http.StripPrefix("/api", apiServer))
 }
