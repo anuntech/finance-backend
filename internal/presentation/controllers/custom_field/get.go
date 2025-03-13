@@ -44,5 +44,9 @@ func (c *GetCustomFieldsController) Handle(r presentationProtocols.HttpRequest) 
 		}, http.StatusInternalServerError)
 	}
 
+	for i, j := 0, len(customFields)-1; i < j; i, j = i+1, j-1 {
+		customFields[i], customFields[j] = customFields[j], customFields[i]
+	}
+
 	return helpers.CreateResponse(customFields, http.StatusOK)
 }
