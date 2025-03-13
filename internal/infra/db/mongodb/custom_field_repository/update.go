@@ -2,7 +2,6 @@ package custom_field_repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -32,7 +31,6 @@ func (r *UpdateCustomFieldRepository) Update(customFieldId primitive.ObjectID, c
 
 	filter := bson.M{"_id": customFieldId, "workspace_id": workspaceId}
 
-	fmt.Println(filter)
 	// Prepare the document for update
 	update := bson.M{
 		"$set": bson.M{
