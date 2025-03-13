@@ -26,10 +26,10 @@ type TransactionTags struct {
 	SubTagId primitive.ObjectID `bson:"sub_tag_id" json:"subTagId"`
 }
 
-// type TransactionPersonalized struct {
-// 	PersonalizedId primitive.ObjectID `bson:"personalized_id" json:"personalizedId"`
-// 	Value          float64            `bson:"value" json:"value"`
-// }
+type TransactionCustomField struct {
+	CustomFieldId primitive.ObjectID `bson:"custom_field_id" json:"customFieldId"`
+	Value         interface{}        `bson:"value" json:"value"`
+}
 
 type Transaction struct {
 	Id               primitive.ObjectID         `bson:"_id" json:"id"`
@@ -58,5 +58,5 @@ type Transaction struct {
 	CreatedAt        time.Time                  `bson:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time                  `bson:"updated_at" json:"updatedAt"`
 	WorkspaceId      primitive.ObjectID         `bson:"workspace_id" json:"workspaceId"`
-	// Personalized     []TransactionPersonalized  `bson:"personalizeds" json:"personalizeds"`
+	CustomFields     []TransactionCustomField   `bson:"custom_fields" json:"customFields,omitempty"`
 }
