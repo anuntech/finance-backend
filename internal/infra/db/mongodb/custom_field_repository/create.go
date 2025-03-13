@@ -34,7 +34,7 @@ func (r *CreateCustomFieldRepository) Create(customField *models.CustomField) (*
 
 	// Prepare the document for insertion
 	document := map[string]interface{}{
-		"_id":          id.Hex(),
+		"_id":          id,
 		"workspace_id": workspaceId,
 		"name":         customField.Name,
 		"type":         customField.Type,

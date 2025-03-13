@@ -27,11 +27,11 @@ func (r *FindCustomFieldByIdRepository) Find(customFieldId primitive.ObjectID, w
 	defer cancel()
 
 	var customField models.CustomField
-	err := collection.FindOne(ctx, bson.M{"_id": customFieldId.Hex(), "workspace_id": workspaceId}).Decode(&customField)
+	err := collection.FindOne(ctx, bson.M{"_id": customFieldId, "workspace_id": workspaceId}).Decode(&customField)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
 		return nil, err
 	}
 

@@ -2,6 +2,7 @@ package custom_field_repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -24,8 +25,14 @@ func NewUpdateCustomFieldRepository(db *mongo.Database) *UpdateCustomFieldReposi
 func (r *UpdateCustomFieldRepository) Update(customFieldId primitive.ObjectID, customField *models.CustomField) (*models.CustomField, error) {
 	collection := r.Db.Collection("custom_field")
 
-	filter := bson.M{"_id": customFieldId.Hex(), "workspace_id": customField.WorkspaceId}
+	workspaceId, err := primitive.ObjectIDFromHex(customField.WorkspaceId)
+	if err != nil {
+		return nil, err
+	}
 
+	filter := bson.M{"_id": customFieldId, "workspace_id": workspaceId}
+
+	fmt.Println(filter)
 	// Prepare the document for update
 	update := bson.M{
 		"$set": bson.M{
@@ -40,7 +47,7 @@ func (r *UpdateCustomFieldRepository) Update(customFieldId primitive.ObjectID, c
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
-	_, err := collection.UpdateOne(ctx, filter, update)
+	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return nil, err
 	}
