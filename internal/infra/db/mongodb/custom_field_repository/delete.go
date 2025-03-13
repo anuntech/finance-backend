@@ -22,14 +22,8 @@ func NewDeleteCustomFieldRepository(db *mongo.Database) *DeleteCustomFieldReposi
 func (r *DeleteCustomFieldRepository) Delete(customFieldIds []primitive.ObjectID, workspaceId primitive.ObjectID) error {
 	collection := r.Db.Collection("custom_field")
 
-	// Convert ObjectIDs to hex strings for filtering
-	customFieldIdsHex := make([]string, len(customFieldIds))
-	for i, id := range customFieldIds {
-		customFieldIdsHex[i] = id.Hex()
-	}
-
 	filter := bson.M{
-		"_id":          bson.M{"$in": customFieldIdsHex},
+		"_id":          bson.M{"$in": customFieldIds},
 		"workspace_id": workspaceId,
 	}
 
