@@ -29,8 +29,8 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      handler,
 		IdleTimeout:  60 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  50 * time.Second,
+		WriteTimeout: 50 * time.Second,
 	}
 
 	go func() {
