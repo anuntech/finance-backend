@@ -1,11 +1,11 @@
 package factory
 
 import (
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/account_repository"
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/category_repository"
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/edit_transaction_repository"
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/transaction_repository"
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/workspace_repository/member_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/account_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/category_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/transaction_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/controllers/edit_transaction"
 	"github.com/anuntech/finance-backend/internal/presentation/controllers/transaction"
 	"go.mongodb.org/mongo-driver/mongo"

@@ -1,7 +1,7 @@
 package factory
 
 import (
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/bank_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/bank_repository"
 	controllers "github.com/anuntech/finance-backend/internal/presentation/controllers/bank"
 	"go.mongodb.org/mongo-driver/mongo"
 )

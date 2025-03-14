@@ -1,7 +1,7 @@
 package factory
 
 import (
-	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/custom_field_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/custom_field_repository"
 	controllers "github.com/anuntech/finance-backend/internal/presentation/controllers/custom_field"
 	"go.mongodb.org/mongo-driver/mongo"
 )
