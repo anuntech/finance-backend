@@ -43,107 +43,147 @@ func (c *FindAccountsRepository) Find(globalFilters *presentationHelpers.GlobalF
 		return accounts, nil
 	}
 
-	for index, account := range accounts {
-		accounts[index].CurrentBalance = account.Balance + c.calculateAllAccountCurrentBalance(account.Id, globalFilters)
-		accounts[index].Balance += c.calculateAllAccountBalance(account.Id, globalFilters)
+	// Optimize by fetching all transactions for all accounts in batch
+	if err := c.calculateAccountBalances(accounts, globalFilters); err != nil {
+		return nil, err
 	}
 
 	return accounts, nil
 }
 
-func (c *FindAccountsRepository) calculateAllAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateAccountBalance(accountId, globalFilters, "DO_NOT_REPEAT")
-	recurringBalance := c.calculateAccountBalance(accountId, globalFilters, "RECURRING")
-	repeatBalance := c.calculateAccountBalance(accountId, globalFilters, "REPEAT")
+// New optimized method that maintains the same calculation logic but with batch processing
+func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Account, globalFilters *presentationHelpers.GlobalFilterParams) error {
+	if len(accounts) == 0 {
+		return nil
+	}
 
-	return doNotRepeatBalance + recurringBalance + repeatBalance
-}
+	// Extract all account IDs
+	accountIDs := make([]primitive.ObjectID, len(accounts))
+	accountMap := make(map[primitive.ObjectID]*models.Account)
+	for i, account := range accounts {
+		accountIDs[i] = account.Id
+		accountMap[account.Id] = &accounts[i]
+		// Reset balances to avoid accumulation issues
+		accounts[i].Balance = account.Balance        // Preserve initial balance
+		accounts[i].CurrentBalance = account.Balance // Start with same base
+	}
 
-func (c *FindAccountsRepository) calculateAccountBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
-	collection := c.Db.Collection("transaction")
+	// Prepare date range
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
-	filter := bson.M{
+	// Get all transactions in one query (for total balance)
+	balanceFilter := bson.M{
 		"workspace_id": globalFilters.WorkspaceId,
-		"account_id":   accountId,
+		"account_id":   bson.M{"$in": accountIDs},
 		"$or": []bson.M{
 			{
-				"due_date": bson.M{
-					"$lt": endOfMonth,
-				},
+				"due_date":     bson.M{"$lt": endOfMonth},
 				"is_confirmed": false,
 			},
 			{
-				"confirmation_date": bson.M{
-					"$lt": endOfMonth,
-				},
-				"is_confirmed": true,
+				"confirmation_date": bson.M{"$lt": endOfMonth},
+				"is_confirmed":      true,
 			},
 		},
-		"frequency": frequency,
 	}
-	cursor, err := collection.Find(context.Background(), filter)
+
+	balanceTransactions, err := c.fetchTransactions(balanceFilter)
 	if err != nil {
-		return 0.0
+		return err
 	}
 
-	var transactions []models.Transaction
-	if err := cursor.All(context.Background(), &transactions); err != nil {
-		return 0.0
+	// Get all transactions for current balance in one query
+	currentBalanceFilter := bson.M{
+		"workspace_id":      globalFilters.WorkspaceId,
+		"account_id":        bson.M{"$in": accountIDs},
+		"confirmation_date": bson.M{"$lt": endOfMonth},
 	}
 
-	switch frequency {
-	case "DO_NOT_REPEAT":
-		return helpers.CalculateTransactionBalanceWithEdits(transactions, c.Db, false)
-	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
-	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
+	currentBalanceTransactions, err := c.fetchTransactions(currentBalanceFilter)
+	if err != nil {
+		return err
 	}
 
-	return 0.0
+	// Group transactions by account and frequency
+	balanceByAccountAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
+	currentBalanceByAccountAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
+
+	// Initialize maps for all accounts
+	for _, accountID := range accountIDs {
+		balanceByAccountAndFrequency[accountID] = make(map[string][]models.Transaction)
+		balanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"] = []models.Transaction{}
+		balanceByAccountAndFrequency[accountID]["RECURRING"] = []models.Transaction{}
+		balanceByAccountAndFrequency[accountID]["REPEAT"] = []models.Transaction{}
+
+		currentBalanceByAccountAndFrequency[accountID] = make(map[string][]models.Transaction)
+		currentBalanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"] = []models.Transaction{}
+		currentBalanceByAccountAndFrequency[accountID]["RECURRING"] = []models.Transaction{}
+		currentBalanceByAccountAndFrequency[accountID]["REPEAT"] = []models.Transaction{}
+	}
+
+	// Group balance transactions
+	for _, tx := range balanceTransactions {
+		if tx.AccountId != nil {
+			accountID := *tx.AccountId
+			if _, exists := balanceByAccountAndFrequency[accountID]; exists {
+				balanceByAccountAndFrequency[accountID][tx.Frequency] = append(
+					balanceByAccountAndFrequency[accountID][tx.Frequency], tx)
+			}
+		}
+	}
+
+	// Group current balance transactions
+	for _, tx := range currentBalanceTransactions {
+		if tx.AccountId != nil {
+			accountID := *tx.AccountId
+			if _, exists := currentBalanceByAccountAndFrequency[accountID]; exists {
+				currentBalanceByAccountAndFrequency[accountID][tx.Frequency] = append(
+					currentBalanceByAccountAndFrequency[accountID][tx.Frequency], tx)
+			}
+		}
+	}
+
+	// Calculate balances for each account
+	for accountID, account := range accountMap {
+		// Calculate balance using the same logic as the original methods
+		doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
+			balanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"], c.Db, false)
+		recurringBalance := helpers.CalculateRecurringTransactionsBalance(
+			balanceByAccountAndFrequency[accountID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, false)
+		repeatBalance := helpers.CalculateRepeatTransactionsBalance(
+			balanceByAccountAndFrequency[accountID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, false)
+
+		// The total balance includes both confirmed and unconfirmed transactions
+		account.Balance += doNotRepeatBalance + recurringBalance + repeatBalance
+
+		// Calculate current balance (confirmed transactions only)
+		doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
+			currentBalanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"], c.Db, true)
+		recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
+			currentBalanceByAccountAndFrequency[accountID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, true)
+		repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
+			currentBalanceByAccountAndFrequency[accountID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, true)
+
+		// CurrentBalance is the account's original balance plus only the confirmed transactions
+		account.CurrentBalance += doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+	}
+
+	return nil
 }
 
-func (c *FindAccountsRepository) calculateAllAccountCurrentBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "DO_NOT_REPEAT")
-	recurringBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "RECURRING")
-	repeatBalance := c.calculateAccountCurrentBalance(accountId, globalFilters, "REPEAT")
-
-	return doNotRepeatBalance + recurringBalance + repeatBalance
-}
-
-func (c *FindAccountsRepository) calculateAccountCurrentBalance(accountId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
+// Helper method to fetch transactions
+func (c *FindAccountsRepository) fetchTransactions(filter bson.M) ([]models.Transaction, error) {
 	collection := c.Db.Collection("transaction")
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-	filter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-		"account_id":   accountId,
-		"confirmation_date": bson.M{
-			"$lt": endOfMonth,
-		},
-		"frequency": frequency,
-	}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
-		return 0.0
+		return nil, err
 	}
 
 	var transactions []models.Transaction
 	if err := cursor.All(context.Background(), &transactions); err != nil {
-		return 0.0
+		return nil, err
 	}
 
-	switch frequency {
-	case "DO_NOT_REPEAT":
-		return helpers.CalculateTransactionBalanceWithEdits(transactions, c.Db, true)
-	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
-	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
-	}
-
-	return 0.0
+	return transactions, nil
 }

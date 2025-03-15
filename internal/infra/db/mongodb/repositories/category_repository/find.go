@@ -47,36 +47,47 @@ func (r *FindCategoriesRepository) Find(globalFilters *presentationHelpers.Globa
 		return categories, nil
 	}
 
-	for _, category := range categories {
-		for i := range category.SubCategories {
-			category.SubCategories[i].Amount = r.calculateAllSubCategoryBalance(category.SubCategories[i].Id, globalFilters)
-			category.SubCategories[i].CurrentAmount = r.calculateAllSubCategoryCurrentBalance(category.SubCategories[i].Id, globalFilters)
-		}
+	// Optimize by processing all subcategories in batch
+	if err := r.calculateCategoryBalances(categories, globalFilters); err != nil {
+		return nil, err
 	}
 
 	return categories, nil
 }
 
-func (c *FindCategoriesRepository) calculateAllSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "DO_NOT_REPEAT")
-	recurringBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "RECURRING")
-	repeatBalance := c.calculateSubCategoryBalance(subCategoryId, globalFilters, "REPEAT")
+// New optimized method that maintains the same calculation logic but with batch processing
+func (r *FindCategoriesRepository) calculateCategoryBalances(categories []models.Category, globalFilters *presentationHelpers.GlobalFilterParams) error {
+	// Collect all subcategory IDs from all categories
+	var subCategoryIDs []primitive.ObjectID
+	subCategoryMap := make(map[primitive.ObjectID]*models.SubCategoryCategory)
 
-	return doNotRepeatBalance + recurringBalance + repeatBalance
-}
+	for i := range categories {
+		for j := range categories[i].SubCategories {
+			subID := categories[i].SubCategories[j].Id
+			subCategoryIDs = append(subCategoryIDs, subID)
+			// Store reference to subcategory for later update
+			subCategoryMap[subID] = &categories[i].SubCategories[j]
+			// Reset amounts to avoid accumulation issues
+			categories[i].SubCategories[j].Amount = 0
+			categories[i].SubCategories[j].CurrentAmount = 0
+		}
+	}
 
-func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
-	collection := c.Db.Collection("transaction")
+	if len(subCategoryIDs) == 0 {
+		return nil
+	}
+
+	// Prepare date range
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
-	filter := bson.M{
+	// Build filter for balance calculation (includes both confirmed and unconfirmed)
+	balanceFilter := bson.M{
 		"workspace_id": globalFilters.WorkspaceId,
-
 		"$and": []bson.M{
 			{"$or": []bson.M{
-				{"sub_category_id": subCategoryId},
-				{"tags.sub_tag_id": subCategoryId},
+				{"sub_category_id": bson.M{"$in": subCategoryIDs}},
+				{"tags.sub_tag_id": bson.M{"$in": subCategoryIDs}},
 			}},
 			{"$or": []bson.M{
 				{"$and": []bson.M{
@@ -87,104 +98,155 @@ func (c *FindCategoriesRepository) calculateSubCategoryBalance(subCategoryId pri
 						"is_confirmed": false,
 					},
 				}},
-				{
-					"$and": []bson.M{
-						{
-							"confirmation_date": bson.M{
-								"$lt": endOfMonth,
-							},
-							"is_confirmed": true,
-						},
-					},
-				},
-			}},
-		},
-		"frequency": frequency,
-	}
-
-	cursor, err := collection.Find(context.Background(), filter)
-	if err != nil {
-		return 0.0
-	}
-
-	var transactions []models.Transaction
-	if err := cursor.All(context.Background(), &transactions); err != nil {
-		return 0.0
-	}
-
-	switch frequency {
-	case "DO_NOT_REPEAT":
-		return helpers.CalculateTransactionBalanceWithEdits(transactions, c.Db, false)
-	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
-	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, false)
-	}
-	return 0.0
-}
-
-func (c *FindCategoriesRepository) calculateAllSubCategoryCurrentBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams) float64 {
-	doNotRepeatBalance := c.calculateSubCategoryCurrentBalance(subCategoryId, globalFilters, "DO_NOT_REPEAT")
-	recurringBalance := c.calculateSubCategoryCurrentBalance(subCategoryId, globalFilters, "RECURRING")
-	repeatBalance := c.calculateSubCategoryCurrentBalance(subCategoryId, globalFilters, "REPEAT")
-
-	return doNotRepeatBalance + recurringBalance + repeatBalance
-}
-
-func (c *FindCategoriesRepository) calculateSubCategoryCurrentBalance(subCategoryId primitive.ObjectID, globalFilters *presentationHelpers.GlobalFilterParams, frequency string) float64 {
-	collection := c.Db.Collection("transaction")
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-	filter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-
-		"$and": []bson.M{
-			{"$or": []bson.M{
-				{"sub_category_id": subCategoryId},
-				{"tags.sub_tag_id": subCategoryId},
-			}},
-			{"$or": []bson.M{
 				{"$and": []bson.M{
 					{
-						"due_date": bson.M{
+						"confirmation_date": bson.M{
 							"$lt": endOfMonth,
 						},
-						"is_confirmed": false,
+						"is_confirmed": true,
 					},
 				}},
-				{
-					"$and": []bson.M{
-						{
-							"confirmation_date": bson.M{
-								"$lt": endOfMonth,
-							},
-							"is_confirmed": true,
-						},
-					},
-				},
 			}},
 		},
-		"frequency": frequency,
 	}
 
+	// Get all transactions in batch
+	balanceTransactions, err := r.fetchTransactions(balanceFilter)
+	if err != nil {
+		return err
+	}
+
+	// Build filter for current balance (confirmed only)
+	currentBalanceFilter := bson.M{
+		"workspace_id": globalFilters.WorkspaceId,
+		"$and": []bson.M{
+			{"$or": []bson.M{
+				{"sub_category_id": bson.M{"$in": subCategoryIDs}},
+				{"tags.sub_tag_id": bson.M{"$in": subCategoryIDs}},
+			}},
+			{
+				"confirmation_date": bson.M{"$lt": endOfMonth},
+				"is_confirmed":      true,
+			},
+		},
+	}
+
+	// Get all transactions for current balance in batch
+	currentBalanceTransactions, err := r.fetchTransactions(currentBalanceFilter)
+	if err != nil {
+		return err
+	}
+
+	// Group transactions by subcategory ID and frequency
+	transactionsBySubCategoryAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
+	currentTransactionsBySubCategoryAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
+
+	// Initialize maps for each subcategory
+	for _, subCategoryID := range subCategoryIDs {
+		transactionsBySubCategoryAndFrequency[subCategoryID] = make(map[string][]models.Transaction)
+		transactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"] = []models.Transaction{}
+		transactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"] = []models.Transaction{}
+		transactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"] = []models.Transaction{}
+
+		currentTransactionsBySubCategoryAndFrequency[subCategoryID] = make(map[string][]models.Transaction)
+		currentTransactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"] = []models.Transaction{}
+		currentTransactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"] = []models.Transaction{}
+		currentTransactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"] = []models.Transaction{}
+	}
+
+	// Group balance transactions by subcategory and frequency
+	for _, tx := range balanceTransactions {
+		// Handle direct subcategory reference
+		if tx.SubCategoryId != nil {
+			subCategoryID := *tx.SubCategoryId
+			if _, exists := transactionsBySubCategoryAndFrequency[subCategoryID]; exists {
+				transactionsBySubCategoryAndFrequency[subCategoryID][tx.Frequency] = append(
+					transactionsBySubCategoryAndFrequency[subCategoryID][tx.Frequency], tx)
+			}
+		}
+
+		// Handle tag references
+		for _, tag := range tx.Tags {
+			subTagID := tag.SubTagId
+			if _, exists := transactionsBySubCategoryAndFrequency[subTagID]; exists {
+				transactionsBySubCategoryAndFrequency[subTagID][tx.Frequency] = append(
+					transactionsBySubCategoryAndFrequency[subTagID][tx.Frequency], tx)
+			}
+		}
+	}
+
+	// Group current balance transactions by subcategory and frequency
+	for _, tx := range currentBalanceTransactions {
+		// Handle direct subcategory reference
+		if tx.SubCategoryId != nil {
+			subCategoryID := *tx.SubCategoryId
+			if _, exists := currentTransactionsBySubCategoryAndFrequency[subCategoryID]; exists {
+				currentTransactionsBySubCategoryAndFrequency[subCategoryID][tx.Frequency] = append(
+					currentTransactionsBySubCategoryAndFrequency[subCategoryID][tx.Frequency], tx)
+			}
+		}
+
+		// Handle tag references
+		for _, tag := range tx.Tags {
+			subTagID := tag.SubTagId
+			if _, exists := currentTransactionsBySubCategoryAndFrequency[subTagID]; exists {
+				currentTransactionsBySubCategoryAndFrequency[subTagID][tx.Frequency] = append(
+					currentTransactionsBySubCategoryAndFrequency[subTagID][tx.Frequency], tx)
+			}
+		}
+	}
+
+	// Calculate amounts for each subcategory using the same logic as before
+	for subCategoryID, subCategory := range subCategoryMap {
+		// Calculate balance
+		doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
+			transactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"], r.Db, false)
+		recurringBalance := helpers.CalculateRecurringTransactionsBalance(
+			transactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, false)
+		repeatBalance := helpers.CalculateRepeatTransactionsBalance(
+			transactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, false)
+
+		// Set the total balance (includes both confirmed and unconfirmed)
+		subCategory.Amount = doNotRepeatBalance + recurringBalance + repeatBalance
+
+		// Calculate current balance
+		doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
+			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"], r.Db, true)
+		recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
+			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, true)
+		repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
+			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, true)
+
+		// Set the current balance (includes only confirmed transactions)
+		subCategory.CurrentAmount = doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+	}
+
+	// Calculate total amounts for each category based on their subcategories
+	for i := range categories {
+		categories[i].Amount = 0
+		categories[i].CurrentAmount = 0
+
+		for _, subCategory := range categories[i].SubCategories {
+			categories[i].Amount += subCategory.Amount
+			categories[i].CurrentAmount += subCategory.CurrentAmount
+		}
+	}
+
+	return nil
+}
+
+// Helper method to fetch transactions
+func (r *FindCategoriesRepository) fetchTransactions(filter bson.M) ([]models.Transaction, error) {
+	collection := r.Db.Collection("transaction")
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
-		return 0.0
+		return nil, err
 	}
 
 	var transactions []models.Transaction
 	if err := cursor.All(context.Background(), &transactions); err != nil {
-		return 0.0
+		return nil, err
 	}
 
-	switch frequency {
-	case "DO_NOT_REPEAT":
-		return helpers.CalculateTransactionBalanceWithEdits(transactions, c.Db, true)
-	case "RECURRING":
-		return helpers.CalculateRecurringTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
-	case "REPEAT":
-		return helpers.CalculateRepeatTransactionsBalance(transactions, globalFilters.Year, globalFilters.Month, c.Db, true)
-	}
-	return 0.0
+	return transactions, nil
 }
