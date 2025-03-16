@@ -33,7 +33,7 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 					oneRecurringValue := CalculateOneTransactionBalance(&t) / float64(t.RepeatSettings.Count)
 					if isConfirmed {
 						if editTransaction.IsConfirmed {
-							balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+							balance += CalculateOneTransactionBalance(&editTransaction)
 						} else {
 							balance -= oneRecurringValue
 						}
@@ -45,6 +45,10 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 
 				// Continue to the next transaction since we've processed all edits
 			}
+		}
+
+		if isConfirmed && !t.IsConfirmed {
+			continue
 		}
 
 		// If no edits were found or there was an error, calculate normally based on interval

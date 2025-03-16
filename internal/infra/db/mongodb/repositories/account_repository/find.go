@@ -93,18 +93,6 @@ func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Acco
 		return err
 	}
 
-	// Get all transactions for current balance in one query
-	currentBalanceFilter := bson.M{
-		"workspace_id":      globalFilters.WorkspaceId,
-		"account_id":        bson.M{"$in": accountIDs},
-		"confirmation_date": bson.M{"$lt": endOfMonth},
-	}
-
-	currentBalanceTransactions, err := c.fetchTransactions(currentBalanceFilter)
-	if err != nil {
-		return err
-	}
-
 	// Group transactions by account and frequency
 	balanceByAccountAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
 	currentBalanceByAccountAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
@@ -134,7 +122,7 @@ func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Acco
 	}
 
 	// Group current balance transactions
-	for _, tx := range currentBalanceTransactions {
+	for _, tx := range balanceTransactions {
 		if tx.AccountId != nil {
 			accountID := *tx.AccountId
 			if _, exists := currentBalanceByAccountAndFrequency[accountID]; exists {

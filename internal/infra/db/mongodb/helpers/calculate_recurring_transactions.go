@@ -55,6 +55,10 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 			}
 		}
 
+		if isConfirmed && !t.IsConfirmed {
+			continue
+		}
+
 		// If no edits were found or there was an error, calculate normally
 		var refDate time.Time
 		if !t.IsConfirmed {

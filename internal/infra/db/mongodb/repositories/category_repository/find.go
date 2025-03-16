@@ -116,27 +116,6 @@ func (r *FindCategoriesRepository) calculateCategoryBalances(categories []models
 		return err
 	}
 
-	// Build filter for current balance (confirmed only)
-	currentBalanceFilter := bson.M{
-		"workspace_id": globalFilters.WorkspaceId,
-		"$and": []bson.M{
-			{"$or": []bson.M{
-				{"sub_category_id": bson.M{"$in": subCategoryIDs}},
-				{"tags.sub_tag_id": bson.M{"$in": subCategoryIDs}},
-			}},
-			{
-				"confirmation_date": bson.M{"$lt": endOfMonth},
-				"is_confirmed":      true,
-			},
-		},
-	}
-
-	// Get all transactions for current balance in batch
-	currentBalanceTransactions, err := r.fetchTransactions(currentBalanceFilter)
-	if err != nil {
-		return err
-	}
-
 	// Group transactions by subcategory ID and frequency
 	transactionsBySubCategoryAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
 	currentTransactionsBySubCategoryAndFrequency := make(map[primitive.ObjectID]map[string][]models.Transaction)
@@ -176,7 +155,7 @@ func (r *FindCategoriesRepository) calculateCategoryBalances(categories []models
 	}
 
 	// Group current balance transactions by subcategory and frequency
-	for _, tx := range currentBalanceTransactions {
+	for _, tx := range balanceTransactions {
 		// Handle direct subcategory reference
 		if tx.SubCategoryId != nil {
 			subCategoryID := *tx.SubCategoryId
