@@ -6,7 +6,6 @@ import (
 	"runtime/debug"
 )
 
-// RecoveryMiddleware captura panics no servidor e evita que a aplicação morra
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
