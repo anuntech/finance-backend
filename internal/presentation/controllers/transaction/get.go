@@ -3,6 +3,7 @@ package transaction
 import (
 	"net/http"
 	"slices"
+	"sync"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
@@ -16,15 +17,17 @@ type GetTransactionController struct {
 	FindTransactionsByWorkspaceIdAndMonthRepository usecase.FindTransactionsByWorkspaceIdRepository
 	Validator                                       *validator.Validate
 	FindByIdEditTransactionRepository               usecase.FindByIdEditTransactionRepository
+	FindCustomFieldByIdRepository                   usecase.FindCustomFieldByIdRepository
 }
 
-func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository) *GetTransactionController {
+func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository) *GetTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &GetTransactionController{
 		FindTransactionsByWorkspaceIdAndMonthRepository: findManyByUserIdAndWorkspaceId,
 		Validator:                         validate,
 		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
+		FindCustomFieldByIdRepository:     findCustomFieldByIdRepository,
 	}
 }
 
@@ -58,6 +61,36 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	return helpers.CreateResponse(transactions, http.StatusOK)
+}
+
+func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
+	wg := sync.WaitGroup{}
+	errors := []error{}
+	for i, transaction := range transactions {
+		for _, customField := range transaction.CustomFields {
+			wg.Add(1)
+
+			go func(customField models.TransactionCustomField) {
+				defer wg.Done()
+
+				customFieldFound, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, transaction.WorkspaceId)
+				if err != nil {
+					errors = append(errors, err)
+					return
+				}
+
+				transaction.CustomFields[i].Type = customFieldFound.Type
+			}(customField)
+		}
+	}
+
+	wg.Wait()
+
+	if len(errors) > 0 {
+		return nil, errors[0]
+	}
+
+	return transactions, nil
 }
 
 func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
