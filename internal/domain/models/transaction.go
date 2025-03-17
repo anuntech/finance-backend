@@ -27,7 +27,7 @@ type TransactionTags struct {
 }
 
 type TransactionCustomField struct {
-	CustomFieldId primitive.ObjectID `bson:"custom_field_id" json:"customFieldId"`
+	CustomFieldId primitive.ObjectID `bson:"custom_field_id" json:"id"`
 	Value         interface{}        `bson:"value" json:"value"`
 }
 

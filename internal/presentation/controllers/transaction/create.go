@@ -72,6 +72,10 @@ type TransactionBody struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
 		SubTagId string `json:"subTagId" validate:"excluded_if=TagId '',omitempty,mongodb"`
 	} `json:"tags" validate:"omitempty"`
+	CustomFields []struct {
+		CustomFieldId string `json:"id" validate:"required,mongodb"`
+		Value         string `json:"value" validate:"required,max=100"`
+	} `json:"customFields" validate:"omitempty"`
 	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
@@ -296,6 +300,20 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 		return nil, err
 	}
 
+	var customFields = []models.TransactionCustomField{}
+
+	for _, customField := range body.CustomFields {
+		customFieldIdParsed, err := convertID(customField.CustomFieldId)
+		if err != nil {
+			return nil, err
+		}
+
+		customFields = append(customFields, models.TransactionCustomField{
+			CustomFieldId: customFieldIdParsed,
+			Value:         customField.Value,
+		})
+	}
+
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
@@ -316,6 +334,7 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,
 		},
+		CustomFields:     customFields,
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,
