@@ -27,9 +27,10 @@ type CreateEditTransactionController struct {
 	FindTransactionById               usecase.FindTransactionByIdRepository
 	FindByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository
 	UpdateEditTransactionRepository   usecase.UpdateEditTransactionRepository
+	FindCustomFieldByIdRepository     usecase.FindCustomFieldByIdRepository
 }
 
-func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createEditTransactionRepository usecase.CreateEditTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findTransactionById usecase.FindTransactionByIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, updateEditTransactionRepository usecase.UpdateEditTransactionRepository) *CreateEditTransactionController {
+func NewCreateEditTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createEditTransactionRepository usecase.CreateEditTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findTransactionById usecase.FindTransactionByIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, updateEditTransactionRepository usecase.UpdateEditTransactionRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository) *CreateEditTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateEditTransactionController{
@@ -41,6 +42,7 @@ func NewCreateEditTransactionController(findMemberByIdRepository *member_reposit
 		FindTransactionById:               findTransactionById,
 		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
 		UpdateEditTransactionRepository:   updateEditTransactionRepository,
+		FindCustomFieldByIdRepository:     findCustomFieldByIdRepository,
 	}
 }
 
@@ -73,6 +75,10 @@ type EditTransactionBody struct {
 	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
+	CustomFields     []struct {
+		CustomFieldId string `json:"id" validate:"required,mongodb"`
+		Value         string `json:"value" validate:"required,max=100"`
+	} `json:"customFields"`
 }
 
 func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -148,6 +154,37 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		}
 		if err := c.validateCategory(workspaceId, *transactionParsed.CategoryId, transactionParsed.Type, *transactionParsed.SubCategoryId); err != nil {
 			errChan <- err
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		seenCustomFields := make(map[string]bool)
+
+		for _, customField := range transactionParsed.CustomFields {
+			compositeKey := customField.CustomFieldId.Hex()
+
+			if seenCustomFields[compositeKey] {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "duplicate custom field detected: " + compositeKey,
+				}, http.StatusBadRequest)
+			}
+			seenCustomFields[compositeKey] = true
+
+			customFieldParsed, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, workspaceId)
+			if err != nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "error finding custom field",
+				}, http.StatusInternalServerError)
+			}
+
+			if customFieldParsed == nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "custom field not found",
+				}, http.StatusNotFound)
+			}
 		}
 	}()
 
@@ -337,6 +374,20 @@ func createTransaction(body *EditTransactionBody) (*models.Transaction, error) {
 
 	mainCount := body.MainCount
 
+	var customFields = []models.TransactionCustomField{}
+
+	for _, customField := range body.CustomFields {
+		customFieldIdParsed, err := convertID(customField.CustomFieldId)
+		if err != nil {
+			return nil, err
+		}
+
+		customFields = append(customFields, models.TransactionCustomField{
+			CustomFieldId: customFieldIdParsed,
+			Value:         customField.Value,
+		})
+	}
+
 	return &models.Transaction{
 		Name:        body.Name,
 		Description: body.Description,
@@ -353,6 +404,7 @@ func createTransaction(body *EditTransactionBody) (*models.Transaction, error) {
 			DiscountPercentage: body.Balance.DiscountPercentage,
 			InterestPercentage: body.Balance.InterestPercentage,
 		},
+		CustomFields:     customFields,
 		IsConfirmed:      body.IsConfirmed,
 		CategoryId:       categoryId,
 		SubCategoryId:    subCategoryId,

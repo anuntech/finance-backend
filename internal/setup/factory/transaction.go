@@ -78,6 +78,7 @@ func MakeCreateEditTransactionController(workspaceDb *mongo.Database, db *mongo.
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
 	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	updateEditTransactionRepository := edit_transaction_repository.NewUpdateEditTransactionRepository(db)
+	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 
 	return edit_transaction.NewCreateEditTransactionController(
 		findMemberByIdRepository,
@@ -87,5 +88,6 @@ func MakeCreateEditTransactionController(workspaceDb *mongo.Database, db *mongo.
 		findTransactionByIdRepository,
 		findByIdEditTransactionRepository,
 		updateEditTransactionRepository,
+		findCustomFieldByIdRepository,
 	)
 }
