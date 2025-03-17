@@ -75,7 +75,7 @@ type TransactionBody struct {
 	CustomFields []struct {
 		CustomFieldId string `json:"id" validate:"required,mongodb"`
 		Value         string `json:"value" validate:"required,max=100"`
-	} `json:"customFields" validate:"omitempty"`
+	} `json:"customFields"`
 	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`

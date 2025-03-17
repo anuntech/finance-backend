@@ -58,5 +58,5 @@ type Transaction struct {
 	CreatedAt        time.Time                  `bson:"created_at" json:"createdAt"`
 	UpdatedAt        time.Time                  `bson:"updated_at" json:"updatedAt"`
 	WorkspaceId      primitive.ObjectID         `bson:"workspace_id" json:"workspaceId"`
-	CustomFields     []TransactionCustomField   `bson:"custom_fields" json:"customFields,omitempty"`
+	CustomFields     []TransactionCustomField   `bson:"custom_fields" json:"customFields"`
 }
