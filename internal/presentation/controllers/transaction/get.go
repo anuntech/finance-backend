@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"sync"
@@ -72,7 +73,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
 	wg := sync.WaitGroup{}
-	errors := []error{}
+	customErrors := []error{}
 	for _, transaction := range transactions {
 		for l, customField := range transaction.CustomFields {
 			wg.Add(1)
@@ -82,7 +83,12 @@ func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions [
 
 				customFieldFound, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, transaction.WorkspaceId)
 				if err != nil {
-					errors = append(errors, err)
+					customErrors = append(customErrors, err)
+					return
+				}
+
+				if customFieldFound == nil {
+					customErrors = append(customErrors, errors.New("custom field not found"))
 					return
 				}
 
@@ -93,8 +99,8 @@ func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions [
 
 	wg.Wait()
 
-	if len(errors) > 0 {
-		return nil, errors[0]
+	if len(customErrors) > 0 {
+		return nil, customErrors[0]
 	}
 
 	return transactions, nil
