@@ -11,9 +11,9 @@ import (
 
 func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year int, month int, db *mongo.Database, isConfirmed bool) float64 {
 	var balance float64
-	for _, t := range transactions {
-		editCollection := db.Collection("edit_transaction")
+	editCollection := db.Collection("edit_transaction")
 
+	for _, t := range transactions {
 		// Get the current count for this transaction in the specified month
 		currentCount := CalculateCurrentCount(&t, year, month)
 

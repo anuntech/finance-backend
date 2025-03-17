@@ -10,10 +10,9 @@ import (
 
 func CalculateTransactionBalanceWithEdits(transactions []models.Transaction, db *mongo.Database, isConfirmed bool) float64 {
 	var balance float64
+	editCollection := db.Collection("edit_transaction")
 
 	for _, t := range transactions {
-		editCollection := db.Collection("edit_transaction")
-
 		cursor, err := editCollection.Find(context.Background(), bson.M{
 			"main_id":      t.Id,
 			"workspace_id": t.WorkspaceId,
