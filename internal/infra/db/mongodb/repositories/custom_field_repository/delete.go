@@ -36,7 +36,7 @@ func (r *DeleteCustomFieldRepository) Delete(customFieldIds []primitive.ObjectID
 	}
 
 	transactionCollection := r.Db.Collection("transaction")
-	editTransactionCollection := r.Db.Collection("transaction")
+	editTransactionCollection := r.Db.Collection("edit_transaction")
 
 	update := bson.M{
 		"$pull": bson.M{
