@@ -23,7 +23,7 @@ func main() {
 
 	log.Println("server is running with port", port)
 
-	handler := middlewares.CorsMiddleware(setup.Server())
+	handler := middlewares.RecoveryMiddleware(middlewares.CorsMiddleware(setup.Server()))
 
 	sm := http.Server{
 		Addr:         ":" + port,
