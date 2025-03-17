@@ -26,11 +26,35 @@ func CalculateOneTransactionBalance(transaction *models.Transaction) float64 {
 	case "EXPENSE":
 		balance -= transaction.Balance.Value
 		balance += transaction.Balance.Discount
+
+		if transaction.Balance.DiscountPercentage > 0 {
+			discountAmount := balance * (transaction.Balance.DiscountPercentage / 100)
+			balance += discountAmount
+		}
+
 		balance -= transaction.Balance.Interest
+
+		if transaction.Balance.InterestPercentage > 0 {
+			interestAmount := balance * (transaction.Balance.InterestPercentage / 100)
+			balance -= interestAmount
+		}
+
 	case "RECIPE":
 		balance += transaction.Balance.Value
+
 		balance -= transaction.Balance.Discount
+
+		if transaction.Balance.DiscountPercentage > 0 {
+			discountAmount := balance * (transaction.Balance.DiscountPercentage / 100)
+			balance -= discountAmount
+		}
+
 		balance += transaction.Balance.Interest
+
+		if transaction.Balance.InterestPercentage > 0 {
+			interestAmount := balance * (transaction.Balance.InterestPercentage / 100)
+			balance += interestAmount
+		}
 	}
 
 	return balance
