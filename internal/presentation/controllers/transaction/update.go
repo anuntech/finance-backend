@@ -16,24 +16,26 @@ import (
 )
 
 type UpdateTransactionController struct {
-	UpdateTransactionRepository usecase.UpdateTransactionRepository
-	Validate                    *validator.Validate
-	FindTransactionById         usecase.FindTransactionByIdRepository
-	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
-	FindAccountByIdRepository   usecase.FindAccountByIdRepository
-	FindCategoryByIdRepository  usecase.FindCategoryByIdRepository
+	UpdateTransactionRepository   usecase.UpdateTransactionRepository
+	Validate                      *validator.Validate
+	FindTransactionById           usecase.FindTransactionByIdRepository
+	FindMemberByIdRepository      *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository     usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository    usecase.FindCategoryByIdRepository
+	FindCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository
 }
 
-func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionRepository, findTransactionById usecase.FindTransactionByIdRepository, findMemberByIdRepository *member_repository.FindMemberByIdRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *UpdateTransactionController {
+func NewUpdateTransactionController(updateTransaction usecase.UpdateTransactionRepository, findTransactionById usecase.FindTransactionByIdRepository, findMemberByIdRepository *member_repository.FindMemberByIdRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository) *UpdateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &UpdateTransactionController{
-		UpdateTransactionRepository: updateTransaction,
-		Validate:                    validate,
-		FindTransactionById:         findTransactionById,
-		FindMemberByIdRepository:    findMemberByIdRepository,
-		FindAccountByIdRepository:   findAccountByIdRepository,
-		FindCategoryByIdRepository:  findCategoryByIdRepository,
+		UpdateTransactionRepository:   updateTransaction,
+		Validate:                      validate,
+		FindTransactionById:           findTransactionById,
+		FindMemberByIdRepository:      findMemberByIdRepository,
+		FindAccountByIdRepository:     findAccountByIdRepository,
+		FindCategoryByIdRepository:    findCategoryByIdRepository,
+		FindCustomFieldByIdRepository: findCustomFieldByIdRepository,
 	}
 }
 
@@ -108,7 +110,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.DueDate = transactionIdsParsed.DueDate
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
 	transaction.IsConfirmed = transactionIdsParsed.IsConfirmed
-
+	transaction.CustomFields = transactionIdsParsed.CustomFields
 	errChan := make(chan *presentationProtocols.HttpResponse, 4)
 	var wg sync.WaitGroup
 
@@ -141,6 +143,37 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
 			errChan <- err
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		seenCustomFields := make(map[string]bool)
+
+		for _, customField := range transaction.CustomFields {
+			compositeKey := customField.CustomFieldId.Hex()
+
+			if seenCustomFields[compositeKey] {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "duplicate custom field detected: " + compositeKey,
+				}, http.StatusBadRequest)
+			}
+			seenCustomFields[compositeKey] = true
+
+			customFieldParsed, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, workspaceId)
+			if err != nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "error finding custom field",
+				}, http.StatusInternalServerError)
+			}
+
+			if customFieldParsed == nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "custom field not found",
+				}, http.StatusNotFound)
+			}
 		}
 	}()
 

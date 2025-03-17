@@ -41,6 +41,7 @@ func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	findMemberByIdRepository := member_repository.NewFindMemberByIdRepository(workspaceDb)
 	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 
 	return transaction.NewUpdateTransactionController(
 		updateTransactionRepository,
@@ -48,6 +49,7 @@ func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 		findMemberByIdRepository,
 		findAccountByIdRepository,
 		findCategoryByIdRepository,
+		findCustomFieldByIdRepository,
 	)
 }
 
