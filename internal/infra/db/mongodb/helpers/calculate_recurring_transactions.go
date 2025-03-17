@@ -14,9 +14,6 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 	editCollection := db.Collection("edit_transaction")
 
 	for _, t := range transactions {
-		// Check for edited transactions
-
-		// Get the current count for this transaction in the specified month
 		var refDate time.Time
 		if !t.IsConfirmed {
 			refDate = t.DueDate
@@ -39,16 +36,18 @@ func CalculateRecurringTransactionsBalance(transactions []models.Transaction, ye
 				// Apply the balance adjustments for each edit
 				for _, editTransaction := range editTransactions {
 					oneRecurringValue := CalculateOneTransactionBalance(&t)
-					if isConfirmed {
-						if editTransaction.IsConfirmed {
-							balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
-						} else {
-							balance -= oneRecurringValue
-						}
+
+					if !isConfirmed {
+						balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
 						continue
 					}
 
-					balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+					if editTransaction.IsConfirmed {
+						balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
+						continue
+					}
+					balance -= oneRecurringValue
+
 				}
 
 			}

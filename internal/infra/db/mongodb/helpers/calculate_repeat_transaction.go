@@ -31,19 +31,18 @@ func CalculateRepeatTransactionsBalance(transactions []models.Transaction, year 
 				// Apply the balance adjustments for each edit
 				for _, editTransaction := range editTransactions {
 					oneRecurringValue := CalculateOneTransactionBalance(&t) / float64(t.RepeatSettings.Count)
-					if isConfirmed {
-						if editTransaction.IsConfirmed {
-							balance += CalculateOneTransactionBalance(&editTransaction)
-						} else {
-							balance -= oneRecurringValue
-						}
+					if !isConfirmed {
+						balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
 						continue
 					}
 
-					balance += CalculateOneTransactionBalance(&editTransaction) - oneRecurringValue
-				}
+					if editTransaction.IsConfirmed {
+						balance += CalculateOneTransactionBalance(&editTransaction)
+						continue
+					}
+					balance -= oneRecurringValue
 
-				// Continue to the next transaction since we've processed all edits
+				}
 			}
 		}
 
