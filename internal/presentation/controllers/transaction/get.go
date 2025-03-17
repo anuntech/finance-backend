@@ -60,14 +60,21 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
+	transactions, err = c.PutTransactionCustomFieldTypes(transactions)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when putting transaction custom field types",
+		}, http.StatusInternalServerError)
+	}
+
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
 func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
 	wg := sync.WaitGroup{}
 	errors := []error{}
-	for i, transaction := range transactions {
-		for _, customField := range transaction.CustomFields {
+	for _, transaction := range transactions {
+		for l, customField := range transaction.CustomFields {
 			wg.Add(1)
 
 			go func(customField models.TransactionCustomField) {
@@ -79,7 +86,7 @@ func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions [
 					return
 				}
 
-				transaction.CustomFields[i].Type = customFieldFound.Type
+				transaction.CustomFields[l].Type = customFieldFound.Type
 			}(customField)
 		}
 	}
