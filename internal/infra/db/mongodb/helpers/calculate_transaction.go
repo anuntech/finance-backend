@@ -38,6 +38,10 @@ func CalculateTransactionBalanceWithEdits(transactions []models.Transaction, db 
 			}
 		}
 
+		if isConfirmed && !t.IsConfirmed {
+			continue
+		}
+
 		balance += CalculateOneTransactionBalance(&t)
 	}
 
