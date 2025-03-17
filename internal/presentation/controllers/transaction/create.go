@@ -20,23 +20,25 @@ import (
 )
 
 type CreateTransactionController struct {
-	Validate                    *validator.Validate
-	Translator                  ut.Translator
-	CreateTransactionRepository usecase.CreateTransactionRepository
-	FindMemberByIdRepository    *member_repository.FindMemberByIdRepository
-	FindAccountByIdRepository   usecase.FindAccountByIdRepository
-	FindCategoryByIdRepository  usecase.FindCategoryByIdRepository
+	Validate                      *validator.Validate
+	Translator                    ut.Translator
+	CreateTransactionRepository   usecase.CreateTransactionRepository
+	FindMemberByIdRepository      *member_repository.FindMemberByIdRepository
+	FindAccountByIdRepository     usecase.FindAccountByIdRepository
+	FindCategoryByIdRepository    usecase.FindCategoryByIdRepository
+	FindCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository
 }
 
-func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *CreateTransactionController {
+func NewCreateTransactionController(findMemberByIdRepository *member_repository.FindMemberByIdRepository, createTransactionRepository *transaction_repository.CreateTransactionRepository, findAccountByIdRepository usecase.FindAccountByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository) *CreateTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateTransactionController{
-		Validate:                    validate,
-		FindMemberByIdRepository:    findMemberByIdRepository,
-		CreateTransactionRepository: createTransactionRepository,
-		FindAccountByIdRepository:   findAccountByIdRepository,
-		FindCategoryByIdRepository:  findCategoryByIdRepository,
+		Validate:                      validate,
+		FindMemberByIdRepository:      findMemberByIdRepository,
+		CreateTransactionRepository:   createTransactionRepository,
+		FindAccountByIdRepository:     findAccountByIdRepository,
+		FindCategoryByIdRepository:    findCategoryByIdRepository,
+		FindCustomFieldByIdRepository: findCustomFieldByIdRepository,
 	}
 }
 
@@ -157,6 +159,37 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
 			errChan <- err
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		seenCustomFields := make(map[string]bool)
+
+		for _, customField := range transaction.CustomFields {
+			compositeKey := customField.CustomFieldId.Hex()
+
+			if seenCustomFields[compositeKey] {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "duplicate custom field detected: " + compositeKey,
+				}, http.StatusBadRequest)
+			}
+			seenCustomFields[compositeKey] = true
+
+			customFieldParsed, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, workspaceId)
+			if err != nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "error finding custom field",
+				}, http.StatusInternalServerError)
+			}
+
+			if customFieldParsed == nil {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "custom field not found",
+				}, http.StatusNotFound)
+			}
 		}
 	}()
 

@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/account_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/category_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/custom_field_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
@@ -16,8 +17,15 @@ func MakeCreateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	createTransactionRepository := transaction_repository.NewCreateTransactionRepository(db)
 	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 
-	return transaction.NewCreateTransactionController(findMemberByIdRepository, createTransactionRepository, findAccountByIdRepository, findCategoryByIdRepository)
+	return transaction.NewCreateTransactionController(
+		findMemberByIdRepository,
+		createTransactionRepository,
+		findAccountByIdRepository,
+		findCategoryByIdRepository,
+		findCustomFieldByIdRepository,
+	)
 }
 
 func MakeGetTransactionController(db *mongo.Database) *transaction.GetTransactionController {
@@ -34,7 +42,13 @@ func MakeUpdateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
 
-	return transaction.NewUpdateTransactionController(updateTransactionRepository, findTransactionByIdRepository, findMemberByIdRepository, findAccountByIdRepository, findCategoryByIdRepository)
+	return transaction.NewUpdateTransactionController(
+		updateTransactionRepository,
+		findTransactionByIdRepository,
+		findMemberByIdRepository,
+		findAccountByIdRepository,
+		findCategoryByIdRepository,
+	)
 }
 
 func MakeGetTransactionByIdController(workspaceDb *mongo.Database) *transaction.GetTransactionByIdController {
