@@ -13,9 +13,11 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 				log.Printf("ERRO GRAVE: %v\n", err)
 				log.Printf("Stack trace: %s\n", debug.Stack())
 
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":"Erro interno no servidor"}`))
+				if w.Header().Get("Content-Type") == "" {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(`{"error":"Erro interno no servidor"}`))
+				}
 			}
 		}()
 		next.ServeHTTP(w, r)
