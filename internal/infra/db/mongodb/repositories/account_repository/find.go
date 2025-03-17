@@ -2,6 +2,7 @@ package account_repository
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -132,30 +133,43 @@ func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Acco
 		}
 	}
 
-	// Calculate balances for each account
+	// Use a WaitGroup to wait for all goroutines to finish
+	var wg sync.WaitGroup
+
+	// Calculate balances for each account concurrently
 	for accountID, account := range accountMap {
-		// Calculate balance using the same logic as the original methods
-		doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
-			balanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"], c.Db, false)
-		recurringBalance := helpers.CalculateRecurringTransactionsBalance(
-			balanceByAccountAndFrequency[accountID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, false)
-		repeatBalance := helpers.CalculateRepeatTransactionsBalance(
-			balanceByAccountAndFrequency[accountID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, false)
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
 
-		// The total balance includes both confirmed and unconfirmed transactions
-		account.Balance += doNotRepeatBalance + recurringBalance + repeatBalance
+			// Calculate balance using the same logic as the original methods
+			doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
+				balanceByAccountAndFrequency[accID]["DO_NOT_REPEAT"], c.Db, false)
+			recurringBalance := helpers.CalculateRecurringTransactionsBalance(
+				balanceByAccountAndFrequency[accID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, false)
+			repeatBalance := helpers.CalculateRepeatTransactionsBalance(
+				balanceByAccountAndFrequency[accID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, false)
 
-		// Calculate current balance (confirmed transactions only)
-		doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
-			currentBalanceByAccountAndFrequency[accountID]["DO_NOT_REPEAT"], c.Db, true)
-		recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
-			currentBalanceByAccountAndFrequency[accountID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, true)
-		repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
-			currentBalanceByAccountAndFrequency[accountID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, true)
+			// The total balance includes both confirmed and unconfirmed transactions
+			acc.Balance += doNotRepeatBalance + recurringBalance + repeatBalance
+		}(accountID, account)
 
-		// CurrentBalance is the account's original balance plus only the confirmed transactions
-		account.CurrentBalance += doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
+
+			doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
+				currentBalanceByAccountAndFrequency[accID]["DO_NOT_REPEAT"], c.Db, true)
+			recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
+				currentBalanceByAccountAndFrequency[accID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, true)
+			repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
+				currentBalanceByAccountAndFrequency[accID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, true)
+
+			acc.CurrentBalance += doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+		}(accountID, account)
 	}
+
+	wg.Wait()
 
 	return nil
 }

@@ -2,6 +2,7 @@ package category_repository
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -175,30 +176,46 @@ func (r *FindCategoriesRepository) calculateCategoryBalances(categories []models
 		}
 	}
 
-	// Calculate amounts for each subcategory using the same logic as before
+	// Use WaitGroup to wait for all goroutines to finish
+	var wg sync.WaitGroup
+
+	// Calculate amounts for each subcategory using concurrent processing
 	for subCategoryID, subCategory := range subCategoryMap {
-		// Calculate balance
-		doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
-			transactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"], r.Db, false)
-		recurringBalance := helpers.CalculateRecurringTransactionsBalance(
-			transactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, false)
-		repeatBalance := helpers.CalculateRepeatTransactionsBalance(
-			transactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, false)
+		wg.Add(1)
+		go func(scID primitive.ObjectID, sc *models.SubCategoryCategory) {
+			defer wg.Done()
 
-		// Set the total balance (includes both confirmed and unconfirmed)
-		subCategory.Amount = doNotRepeatBalance + recurringBalance + repeatBalance
+			// Calculate balance
+			doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
+				transactionsBySubCategoryAndFrequency[scID]["DO_NOT_REPEAT"], r.Db, false)
+			recurringBalance := helpers.CalculateRecurringTransactionsBalance(
+				transactionsBySubCategoryAndFrequency[scID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, false)
+			repeatBalance := helpers.CalculateRepeatTransactionsBalance(
+				transactionsBySubCategoryAndFrequency[scID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, false)
 
-		// Calculate current balance
-		doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
-			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["DO_NOT_REPEAT"], r.Db, true)
-		recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
-			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, true)
-		repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
-			currentTransactionsBySubCategoryAndFrequency[subCategoryID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, true)
+			// Set the total balance (includes both confirmed and unconfirmed)
+			sc.Amount = doNotRepeatBalance + recurringBalance + repeatBalance
+		}(subCategoryID, subCategory)
 
-		// Set the current balance (includes only confirmed transactions)
-		subCategory.CurrentAmount = doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+		wg.Add(1)
+		go func(scID primitive.ObjectID, sc *models.SubCategoryCategory) {
+			defer wg.Done()
+
+			// Calculate current balance
+			doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
+				currentTransactionsBySubCategoryAndFrequency[scID]["DO_NOT_REPEAT"], r.Db, true)
+			recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
+				currentTransactionsBySubCategoryAndFrequency[scID]["RECURRING"], globalFilters.Year, globalFilters.Month, r.Db, true)
+			repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
+				currentTransactionsBySubCategoryAndFrequency[scID]["REPEAT"], globalFilters.Year, globalFilters.Month, r.Db, true)
+
+			// Set the current balance (includes only confirmed transactions)
+			sc.CurrentAmount = doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+		}(subCategoryID, subCategory)
 	}
+
+	// Wait for all subcategory calculations to complete
+	wg.Wait()
 
 	// Calculate total amounts for each category based on their subcategories
 	for i := range categories {
