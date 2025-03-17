@@ -145,13 +145,28 @@ func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Acco
 			// Calculate balance using the same logic as the original methods
 			doNotRepeatBalance := helpers.CalculateTransactionBalanceWithEdits(
 				balanceByAccountAndFrequency[accID]["DO_NOT_REPEAT"], c.Db, false)
+			// The total balance includes both confirmed and unconfirmed transactions
+			acc.Balance += doNotRepeatBalance
+		}(accountID, account)
+
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
+
 			recurringBalance := helpers.CalculateRecurringTransactionsBalance(
 				balanceByAccountAndFrequency[accID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, false)
+
+			acc.Balance += recurringBalance
+		}(accountID, account)
+
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
+
 			repeatBalance := helpers.CalculateRepeatTransactionsBalance(
 				balanceByAccountAndFrequency[accID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, false)
 
-			// The total balance includes both confirmed and unconfirmed transactions
-			acc.Balance += doNotRepeatBalance + recurringBalance + repeatBalance
+			acc.Balance += repeatBalance
 		}(accountID, account)
 
 		wg.Add(1)
@@ -160,12 +175,28 @@ func (c *FindAccountsRepository) calculateAccountBalances(accounts []models.Acco
 
 			doNotRepeatCurrentBalance := helpers.CalculateTransactionBalanceWithEdits(
 				currentBalanceByAccountAndFrequency[accID]["DO_NOT_REPEAT"], c.Db, true)
+
+			acc.CurrentBalance += doNotRepeatCurrentBalance
+		}(accountID, account)
+
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
+
 			recurringCurrentBalance := helpers.CalculateRecurringTransactionsBalance(
 				currentBalanceByAccountAndFrequency[accID]["RECURRING"], globalFilters.Year, globalFilters.Month, c.Db, true)
+
+			acc.CurrentBalance += recurringCurrentBalance
+		}(accountID, account)
+
+		wg.Add(1)
+		go func(accID primitive.ObjectID, acc *models.Account) {
+			defer wg.Done()
+
 			repeatCurrentBalance := helpers.CalculateRepeatTransactionsBalance(
 				currentBalanceByAccountAndFrequency[accID]["REPEAT"], globalFilters.Year, globalFilters.Month, c.Db, true)
 
-			acc.CurrentBalance += doNotRepeatCurrentBalance + recurringCurrentBalance + repeatCurrentBalance
+			acc.CurrentBalance += repeatCurrentBalance
 		}(accountID, account)
 	}
 
