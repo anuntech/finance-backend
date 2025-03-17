@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
@@ -47,9 +48,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	for i, j := 0, len(transactions)-1; i < j; i, j = i+1, j-1 {
-		transactions[i], transactions[j] = transactions[j], transactions[i]
-	}
+	slices.Reverse(transactions)
 
 	transactions, err = c.ReplaceTransactionIfEditRepeat(transactions)
 	if err != nil {

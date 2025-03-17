@@ -2,6 +2,7 @@ package category
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -50,9 +51,7 @@ func (c *GetCategoriesController) Handle(r presentationProtocols.HttpRequest) *p
 		categories[i].InvertSubCategoriesOrder()
 	}
 
-	for i, j := 0, len(categories)-1; i < j; i, j = i+1, j-1 {
-		categories[i], categories[j] = categories[j], categories[i]
-	}
+	slices.Reverse(categories)
 
 	return helpers.CreateResponse(categories, http.StatusOK)
 }

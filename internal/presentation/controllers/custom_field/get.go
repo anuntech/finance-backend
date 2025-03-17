@@ -2,6 +2,7 @@ package custom_field
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -44,9 +45,7 @@ func (c *GetCustomFieldsController) Handle(r presentationProtocols.HttpRequest) 
 		}, http.StatusInternalServerError)
 	}
 
-	for i, j := 0, len(customFields)-1; i < j; i, j = i+1, j-1 {
-		customFields[i], customFields[j] = customFields[j], customFields[i]
-	}
+	slices.Reverse(customFields)
 
 	return helpers.CreateResponse(customFields, http.StatusOK)
 }

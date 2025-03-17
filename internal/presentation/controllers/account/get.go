@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -44,9 +45,7 @@ func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *pre
 		}, http.StatusInternalServerError)
 	}
 
-	for i, j := 0, len(accounts)-1; i < j; i, j = i+1, j-1 {
-		accounts[i], accounts[j] = accounts[j], accounts[i]
-	}
+	slices.Reverse(accounts)
 
 	return helpers.CreateResponse(accounts, http.StatusOK)
 }
