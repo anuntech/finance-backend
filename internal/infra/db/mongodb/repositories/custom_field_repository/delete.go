@@ -36,6 +36,7 @@ func (r *DeleteCustomFieldRepository) Delete(customFieldIds []primitive.ObjectID
 	}
 
 	transactionCollection := r.Db.Collection("transaction")
+	editTransactionCollection := r.Db.Collection("transaction")
 
 	update := bson.M{
 		"$pull": bson.M{
@@ -58,5 +59,10 @@ func (r *DeleteCustomFieldRepository) Delete(customFieldIds []primitive.ObjectID
 	defer updateCancel()
 
 	_, err = transactionCollection.UpdateMany(updateCtx, transactionFilter, update)
+	if err != nil {
+		return err
+	}
+
+	_, err = editTransactionCollection.UpdateMany(updateCtx, transactionFilter, update)
 	return err
 }
