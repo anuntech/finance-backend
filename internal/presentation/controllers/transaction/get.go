@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
@@ -54,14 +55,21 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 	slices.Reverse(transactions)
 
-	transactions, err = c.ReplaceTransactionIfEditRepeat(transactions)
+	transactions, err = c.replaceTransactionIfEditRepeat(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when replacing transactions",
 		}, http.StatusInternalServerError)
 	}
 
-	transactions, err = c.PutTransactionCustomFieldTypes(transactions)
+	transactions, err = c.filterTransactions(transactions, globalFilters)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when filtering transactions",
+		}, http.StatusInternalServerError)
+	}
+
+	transactions, err = c.putTransactionCustomFieldTypes(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when putting transaction custom field types",
@@ -71,7 +79,41 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
-func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
+func (c *GetTransactionController) filterTransactions(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
+	var filtered []models.Transaction
+
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	for _, tx := range transactions {
+		var dateToCheck time.Time
+		if tx.IsConfirmed && tx.ConfirmationDate != nil {
+			dateToCheck = *tx.ConfirmationDate
+		} else {
+			dateToCheck = tx.DueDate
+		}
+
+		switch tx.Frequency {
+		case "DO_NOT_REPEAT":
+			// Check if transaction date falls within the target month
+			if (dateToCheck.Equal(startOfMonth) || dateToCheck.After(startOfMonth)) &&
+				dateToCheck.Before(endOfMonth) {
+				filtered = append(filtered, tx)
+			}
+		case "RECURRING", "REPEAT":
+			// Check if transaction date is before end of month
+			if dateToCheck.Before(endOfMonth) {
+				filtered = append(filtered, tx)
+			}
+		default:
+			filtered = append(filtered, tx)
+		}
+	}
+
+	return filtered, nil
+}
+
+func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
 	wg := sync.WaitGroup{}
 	customErrors := []error{}
 	for _, transaction := range transactions {
@@ -106,7 +148,7 @@ func (c *GetTransactionController) PutTransactionCustomFieldTypes(transactions [
 	return transactions, nil
 }
 
-func (c *GetTransactionController) ReplaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
+func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
 	for i, transaction := range transactions {
 		editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
 		if err != nil {
