@@ -32,49 +32,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 		filter["type"] = filters.Type
 	}
 
-	if filters.Month != 0 {
-		orRepeatAndRecurringLogic := []bson.M{
-			{
-				"$and": []bson.M{
-					{"is_confirmed": false},
-					{"due_date": bson.M{"$lt": endOfMonth}},
-				},
-			},
-			{
-				"$and": []bson.M{
-					{"is_confirmed": true},
-					{"confirmation_date": bson.M{"$lt": endOfMonth}},
-				},
-			},
-		}
-
-		filter["$or"] = []bson.M{
-			{
-				"frequency": "DO_NOT_REPEAT",
-				"$or": []bson.M{
-					{
-						"$and": []bson.M{
-							{"is_confirmed": false},
-							{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-						},
-					},
-					{
-						"$and": []bson.M{
-							{"is_confirmed": true},
-							{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-						},
-					},
-				},
-			},
-			{
-				"frequency": "RECURRING",
-				"$or":       orRepeatAndRecurringLogic,
-			},
-			{
-				"frequency": "REPEAT",
-				"$or":       orRepeatAndRecurringLogic,
-			},
-		}
+	if filters.Month != 0 && filters.DateType == "" {
+		filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
+	} else if filters.DateType != "" {
+		// filter["$or"] = r.createDateTypeFilter(startOfMonth, endOfMonth, filters.DateType)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
@@ -93,13 +54,60 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	if filters.Month != 0 {
-		transactions = filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
+		transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
 	}
 
 	return transactions, nil
 }
 
-func computeInstallmentDueDate(initial time.Time, interval string, offset int) time.Time {
+func (r *TransactionRepository) createNormalFilter(startOfMonth, endOfMonth time.Time) []bson.M {
+	orRepeatAndRecurringLogic := []bson.M{
+		{
+			"$and": []bson.M{
+				{"is_confirmed": false},
+				{"due_date": bson.M{"$lt": endOfMonth}},
+			},
+		},
+		{
+			"$and": []bson.M{
+				{"is_confirmed": true},
+				{"confirmation_date": bson.M{"$lt": endOfMonth}},
+			},
+		},
+	}
+
+	filter := []bson.M{
+		{
+			"frequency": "DO_NOT_REPEAT",
+			"$or": []bson.M{
+				{
+					"$and": []bson.M{
+						{"is_confirmed": false},
+						{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+					},
+				},
+				{
+					"$and": []bson.M{
+						{"is_confirmed": true},
+						{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+					},
+				},
+			},
+		},
+		{
+			"frequency": "RECURRING",
+			"$or":       orRepeatAndRecurringLogic,
+		},
+		{
+			"frequency": "REPEAT",
+			"$or":       orRepeatAndRecurringLogic,
+		},
+	}
+
+	return filter
+}
+
+func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int) time.Time {
 	switch interval {
 	// case "DAILY":
 	// 	return initial.AddDate(0, 0, offset)
@@ -120,7 +128,7 @@ func computeInstallmentDueDate(initial time.Time, interval string, offset int) t
 // filterRepeatTransactions percorre todas as transações e, para aquelas com frequência "REPEAT"
 // aplica a lógica de parcelas: considera o initialInstallment e ignora as parcelas já passadas.
 // Se a parcela para o mês (ou o período escolhido) não existir, a transação é descartada da lista.
-func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, endOfMonth time.Time) []models.Transaction {
+func (r *TransactionRepository) filterRepeatTransactions(transactions []models.Transaction, startOfMonth, endOfMonth time.Time) []models.Transaction {
 	var filtered []models.Transaction
 
 	for _, tx := range transactions {
@@ -139,7 +147,7 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 				// Como a primeira parcela usa o DueDate original,
 				// usamos (i-1) como offset para calcular a data da parcela.
 
-				installmentDueDate := computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
+				installmentDueDate := r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
 
 				// Verifica se o vencimento da parcela está dentro do período desejado.
 				if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
@@ -193,7 +201,7 @@ func filterRepeatTransactions(transactions []models.Transaction, startOfMonth, e
 			tx.RepeatSettings.CurrentCount = months + 1
 
 			// Atualiza o DueDate para refletir o mês atual
-			newDueDate := computeInstallmentDueDate(tx.DueDate, tx.RepeatSettings.Interval, months)
+			newDueDate := r.computeInstallmentDueDate(tx.DueDate, tx.RepeatSettings.Interval, months)
 			tx.DueDate = newDueDate
 
 			// Sincroniza o ConfirmationDate se a transação estiver confirmada
