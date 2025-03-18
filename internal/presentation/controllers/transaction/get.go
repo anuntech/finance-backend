@@ -62,11 +62,20 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	transactions, err = c.filterTransactions(transactions, globalFilters)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when filtering transactions",
-		}, http.StatusInternalServerError)
+	if globalFilters.DateType != "" {
+		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "an error occurred when filtering transactions",
+			}, http.StatusInternalServerError)
+		}
+	} else {
+		transactions, err = c.filterTransactions(transactions, globalFilters)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "an error occurred when filtering transactions",
+			}, http.StatusInternalServerError)
+		}
 	}
 
 	transactions, err = c.putTransactionCustomFieldTypes(transactions)
@@ -77,6 +86,38 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	return helpers.CreateResponse(transactions, http.StatusOK)
+}
+
+func (c *GetTransactionController) filterTransactionsByDateType(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
+	var filtered []models.Transaction
+
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	for _, tx := range transactions {
+		switch globalFilters.DateType {
+		case "DUE":
+			if (tx.DueDate.Equal(startOfMonth) || tx.DueDate.After(startOfMonth)) &&
+				tx.DueDate.Before(endOfMonth) {
+				filtered = append(filtered, tx)
+			}
+		case "CONFIRMATION":
+			if tx.IsConfirmed && tx.ConfirmationDate != nil &&
+				(tx.ConfirmationDate.Equal(startOfMonth) || tx.ConfirmationDate.After(startOfMonth)) &&
+				tx.ConfirmationDate.Before(endOfMonth) {
+				filtered = append(filtered, tx)
+			}
+		case "REGISTRATION":
+			if (tx.RegistrationDate.Equal(startOfMonth) || tx.RegistrationDate.After(startOfMonth)) &&
+				tx.RegistrationDate.Before(endOfMonth) {
+				filtered = append(filtered, tx)
+			}
+		default:
+			filtered = append(filtered, tx)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (c *GetTransactionController) filterTransactions(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
