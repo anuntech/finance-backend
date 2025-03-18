@@ -32,11 +32,7 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 		filter["type"] = filters.Type
 	}
 
-	if filters.Month != 0 && filters.DateType == "" {
-		filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
-	} else if filters.DateType != "" {
-		// filter["$or"] = r.createDateTypeFilter(startOfMonth, endOfMonth, filters.DateType)
-	}
+	filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
