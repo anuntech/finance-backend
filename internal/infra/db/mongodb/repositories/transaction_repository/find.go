@@ -32,7 +32,7 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 		filter["type"] = filters.Type
 	}
 
-	filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
+	// filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
@@ -56,52 +56,52 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	return transactions, nil
 }
 
-func (r *TransactionRepository) createNormalFilter(startOfMonth, endOfMonth time.Time) []bson.M {
-	orRepeatAndRecurringLogic := []bson.M{
-		{
-			"$and": []bson.M{
-				{"is_confirmed": false},
-				{"due_date": bson.M{"$lt": endOfMonth}},
-			},
-		},
-		{
-			"$and": []bson.M{
-				{"is_confirmed": true},
-				{"confirmation_date": bson.M{"$lt": endOfMonth}},
-			},
-		},
-	}
+// func (r *TransactionRepository) createNormalFilter(startOfMonth, endOfMonth time.Time) []bson.M {
+// 	orRepeatAndRecurringLogic := []bson.M{
+// 		{
+// 			"$and": []bson.M{
+// 				{"is_confirmed": false},
+// 				{"due_date": bson.M{"$lt": endOfMonth}},
+// 			},
+// 		},
+// 		{
+// 			"$and": []bson.M{
+// 				{"is_confirmed": true},
+// 				{"confirmation_date": bson.M{"$lt": endOfMonth}},
+// 			},
+// 		},
+// 	}
 
-	filter := []bson.M{
-		{
-			"frequency": "DO_NOT_REPEAT",
-			"$or": []bson.M{
-				{
-					"$and": []bson.M{
-						{"is_confirmed": false},
-						{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-					},
-				},
-				{
-					"$and": []bson.M{
-						{"is_confirmed": true},
-						{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-					},
-				},
-			},
-		},
-		{
-			"frequency": "RECURRING",
-			"$or":       orRepeatAndRecurringLogic,
-		},
-		{
-			"frequency": "REPEAT",
-			"$or":       orRepeatAndRecurringLogic,
-		},
-	}
+// 	filter := []bson.M{
+// 		{
+// 			"frequency": "DO_NOT_REPEAT",
+// 			"$or": []bson.M{
+// 				{
+// 					"$and": []bson.M{
+// 						{"is_confirmed": false},
+// 						{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+// 					},
+// 				},
+// 				{
+// 					"$and": []bson.M{
+// 						{"is_confirmed": true},
+// 						{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
+// 					},
+// 				},
+// 			},
+// 		},
+// 		{
+// 			"frequency": "RECURRING",
+// 			"$or":       orRepeatAndRecurringLogic,
+// 		},
+// 		{
+// 			"frequency": "REPEAT",
+// 			"$or":       orRepeatAndRecurringLogic,
+// 		},
+// 	}
 
-	return filter
-}
+// 	return filter
+// }
 
 func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int) time.Time {
 	switch interval {
