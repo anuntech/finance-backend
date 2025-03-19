@@ -29,10 +29,11 @@ func NewCreateCustomFieldController(createCustomFieldRepository usecase.CreateCu
 }
 
 type CustomFieldBody struct {
-	Name     string   `json:"name" validate:"required,min=2,max=50"`
-	Type     string   `json:"type" validate:"required,oneof=SELECT TEXT NUMBER DATE BOOLEAN"`
-	Options  []string `json:"options,omitempty" validate:"omitempty,required_if=Type SELECT,dive,min=1,max=50"`
-	Required bool     `json:"required"`
+	Name            string   `json:"name" validate:"required,min=2,max=50"`
+	TransactionType string   `json:"transactionType" validate:"required,oneof=RECIPE EXPENSE"`
+	Type            string   `json:"type" validate:"required,oneof=SELECT TEXT NUMBER DATE BOOLEAN"`
+	Options         []string `json:"options,omitempty" validate:"omitempty,required_if=Type SELECT,dive,min=1,max=50"`
+	Required        bool     `json:"required"`
 }
 
 func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -68,11 +69,12 @@ func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 
 	// Create custom field
 	customField := &models.CustomField{
-		WorkspaceId: workspaceId.Hex(),
-		Name:        body.Name,
-		Type:        body.Type,
-		Options:     body.Options,
-		Required:    body.Required,
+		WorkspaceId:     workspaceId.Hex(),
+		Name:            body.Name,
+		Type:            body.Type,
+		Options:         body.Options,
+		Required:        body.Required,
+		TransactionType: body.TransactionType,
 	}
 
 	createdCustomField, err := c.CreateCustomFieldRepository.Create(customField)

@@ -25,6 +25,9 @@ func (r *FindCustomFieldsRepository) Find(globalFilters *presentationHelpers.Glo
 	collection := r.Db.Collection("custom_field")
 
 	filter := bson.M{"workspace_id": globalFilters.WorkspaceId}
+	if globalFilters.Type != "" {
+		filter["transaction_type"] = globalFilters.Type
+	}
 
 	// Define sorting options to get in order
 	opts := options.Find().SetSort(bson.M{"name": 1})
