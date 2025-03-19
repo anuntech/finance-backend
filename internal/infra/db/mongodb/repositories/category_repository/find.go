@@ -278,3 +278,50 @@ func (r *FindCategoriesRepository) fetchTransactions(filter bson.M) ([]models.Tr
 
 	return transactions, nil
 }
+
+//
+// I used these methods below to filter transactions date with golang tools
+//
+
+// func (r *FindCategoriesRepository) fetchTransactions(globalFilters *presentationHelpers.GlobalFilterParams, subCategoryIDs []primitive.ObjectID) ([]models.Transaction, error) {
+// 	collection := r.Db.Collection("transaction")
+
+// 	filter := bson.M{
+// 		"workspace_id": globalFilters.WorkspaceId,
+// 		"$or": []bson.M{
+// 			{"sub_category_id": bson.M{"$in": subCategoryIDs}},
+// 			{"tags.sub_tag_id": bson.M{"$in": subCategoryIDs}},
+// 		},
+// 	}
+
+// 	cursor, err := collection.Find(context.Background(), filter)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var transactions []models.Transaction
+// 	if err := cursor.All(context.Background(), &transactions); err != nil {
+// 		return nil, err
+// 	}
+
+// 	return transactions, nil
+// }
+
+// func (r *FindCategoriesRepository) filterTransactions(transactions []models.Transaction, globalFilters *presentationHelpers.GlobalFilterParams) []models.Transaction {
+// 	filtered := []models.Transaction{}
+// 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+// 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+// 	for _, tx := range transactions {
+// 		if !tx.IsConfirmed && !tx.DueDate.IsZero() && tx.DueDate.Before(endOfMonth) {
+// 			filtered = append(filtered, tx)
+// 			continue
+// 		}
+
+// 		if tx.IsConfirmed && tx.ConfirmationDate != nil && tx.ConfirmationDate.Before(endOfMonth) {
+// 			filtered = append(filtered, tx)
+// 		}
+// 	}
+
+// 	return filtered
+// }
