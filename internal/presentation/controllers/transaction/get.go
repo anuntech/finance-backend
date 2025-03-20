@@ -9,6 +9,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -214,6 +215,12 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 			}
 			transactions[i].TotalBalance = totalBalance
 		}
+
+		transactionCopy := transactions[i]
+		transactionCopy.Type = "RECIPE"
+		calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
+		difference := transactions[i].Balance.Value - calc
+		transactions[i].NetBalance = difference + transaction.Balance.Value
 	}
 
 	return transactions, nil
