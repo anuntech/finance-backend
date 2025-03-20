@@ -34,14 +34,15 @@ func (r *CreateCustomFieldRepository) Create(customField *models.CustomField) (*
 
 	// Prepare the document for insertion
 	document := map[string]interface{}{
-		"_id":          id,
-		"workspace_id": workspaceId,
-		"name":         customField.Name,
-		"type":         customField.Type,
-		"options":      customField.Options,
-		"required":     customField.Required,
-		"created_at":   time.Now().UTC(),
-		"updated_at":   time.Now().UTC(),
+		"_id":              id,
+		"workspace_id":     workspaceId,
+		"name":             customField.Name,
+		"type":             customField.Type,
+		"options":          customField.Options,
+		"required":         customField.Required,
+		"transaction_type": customField.TransactionType,
+		"created_at":       time.Now().UTC(),
+		"updated_at":       time.Now().UTC(),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
