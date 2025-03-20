@@ -12,6 +12,7 @@ type TransactionBalance struct {
 	Interest           float64 `bson:"interest" json:"interest"`                      // increase
 	DiscountPercentage float64 `bson:"discount_percentage" json:"discountPercentage"` // decrease
 	InterestPercentage float64 `bson:"interest_percentage" json:"interestPercentage"` // increase
+	NetBalance         float64 `bson:"-" json:"netBalance,omitempty"`
 }
 
 type TransactionRepeatSettings struct {
@@ -45,7 +46,6 @@ type Transaction struct {
 	AssignedTo       primitive.ObjectID         `bson:"assigned_to" json:"assignedTo"`
 	Balance          TransactionBalance         `bson:"balance" json:"balance"`
 	TotalBalance     float64                    `bson:"-" json:"totalBalance,omitempty"`
-	NetBalance       float64                    `bson:"-" json:"netBalance,omitempty"`
 	Frequency        string                     `bson:"frequency" json:"frequency"` // DO_NOT_REPEAT | RECURRING | REPEAT
 	RepeatSettings   *TransactionRepeatSettings `bson:"repeat_settings" json:"repeatSettings,omitempty"`
 	DueDate          time.Time                  `bson:"due_date" json:"dueDate"`

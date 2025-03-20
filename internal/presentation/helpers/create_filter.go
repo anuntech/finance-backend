@@ -14,7 +14,7 @@ type GlobalFilterParams struct {
 	Month       int    `json:"month" validate:"required_with=Year,omitempty,min=1,max=12"`
 	Year        int    `json:"year" validate:"required_with=Month,omitempty,min=1,max=9999"`
 	Type        string `json:"type" validate:"omitempty,oneof=RECIPE EXPENSE TAG ALL"` // all is only for custom field
-	DateType    string `json:"date_type" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
+	DateType    string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
 	WorkspaceId primitive.ObjectID
 }
 
