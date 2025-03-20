@@ -26,7 +26,7 @@ func GetGlobalFilterByQueries(urlQueries *url.Values, workspaceId primitive.Obje
 		Month:       monthInt,
 		Year:        yearInt,
 		Type:        urlQueries.Get("type"),
-		DateType:    urlQueries.Get("date_type"),
+		DateType:    urlQueries.Get("dateType"),
 		WorkspaceId: workspaceId,
 	}
 
