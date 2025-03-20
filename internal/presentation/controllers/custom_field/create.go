@@ -30,7 +30,7 @@ func NewCreateCustomFieldController(createCustomFieldRepository usecase.CreateCu
 
 type CustomFieldBody struct {
 	Name            string   `json:"name" validate:"required,min=2,max=50"`
-	TransactionType string   `json:"transactionType" validate:"required,oneof=RECIPE EXPENSE"`
+	TransactionType string   `json:"transactionType" validate:"required,oneof=RECIPE EXPENSE ALL"`
 	Type            string   `json:"type" validate:"required,oneof=SELECT TEXT NUMBER DATE BOOLEAN"`
 	Options         []string `json:"options,omitempty" validate:"omitempty,required_if=Type SELECT,dive,min=1,max=50"`
 	Required        bool     `json:"required"`

@@ -7,5 +7,5 @@ type CustomField struct {
 	Type            string   `json:"type" bson:"type"`                        // SELECT, TEXT, NUMBER, DATE, BOOLEAN
 	Options         []string `json:"options" bson:"options"`                  // SELECT
 	Required        bool     `json:"required" bson:"required"`                // true, false
-	TransactionType string   `json:"transactionType" bson:"transaction_type"` // RECIPE, EXPENSE
+	TransactionType string   `json:"transactionType" bson:"transaction_type"` // RECIPE, EXPENSE, ALL
 }
