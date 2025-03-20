@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"slices"
 	"sort"
@@ -119,6 +120,9 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		}
 	}
 
+	log.Printf("Sorting transactions by %s", globalFilters.DateType)
+
+	// Ordenar as transações com base no DateType
 	switch globalFilters.DateType {
 	case "DUE":
 		sort.Slice(filtered, func(i, j int) bool {
