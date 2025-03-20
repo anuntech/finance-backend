@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -118,6 +119,21 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		}
 	}
 
+	switch globalFilters.DateType {
+	case "DUE":
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].DueDate.After(filtered[j].DueDate)
+		})
+	case "CONFIRMATION":
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].ConfirmationDate.After(*filtered[j].ConfirmationDate)
+		})
+	case "REGISTRATION":
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].RegistrationDate.After(filtered[j].RegistrationDate)
+		})
+	}
+
 	return filtered, nil
 }
 
@@ -151,6 +167,11 @@ func (c *GetTransactionController) filterTransactions(transactions []models.Tran
 			filtered = append(filtered, tx)
 		}
 	}
+
+	// Ordenar as transações por DueDate por padrão
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].DueDate.After(filtered[j].DueDate)
+	})
 
 	return filtered, nil
 }
