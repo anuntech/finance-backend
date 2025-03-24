@@ -291,7 +291,7 @@ func (c *GetTransactionController) filterTransactionsByDescriptionAndSupplier(tr
 
 	for _, tx := range transactions {
 		matchesDescription := params.Description == "" ||
-			(tx.Description != "" && c.ContainsIgnoreCase(tx.Description, params.Description))
+			(tx.Name != "" && c.ContainsIgnoreCase(tx.Name, params.Description))
 
 		matchesSupplier := params.Supplier == "" ||
 			(tx.Supplier != "" && c.ContainsIgnoreCase(tx.Supplier, params.Supplier))
