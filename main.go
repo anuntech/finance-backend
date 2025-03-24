@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/setup"
 	"github.com/anuntech/finance-backend/internal/setup/config"
 	"github.com/anuntech/finance-backend/internal/setup/middlewares"
@@ -35,7 +36,7 @@ func main() {
 
 	go func() {
 		err := sm.ListenAndServe()
-		if err != nil {
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
@@ -45,6 +46,9 @@ func main() {
 
 	sig := <-sigChan
 	log.Println("received terminate, graceful shutdown", sig)
+
+	// Fechar as conexões com o MongoDB antes de encerrar
+	helpers.DisconnectMongo()
 
 	tc, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

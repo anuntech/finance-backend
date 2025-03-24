@@ -2,6 +2,7 @@ package category_repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -93,6 +94,8 @@ func (r *UpdateCategoryRepository) UpdateSubCategory(subCategory *models.SubCate
 		"workspace_id":      workspaceId,
 		"sub_categories.id": subCategoryId,
 	}
+
+	fmt.Println(subCategory)
 
 	update := bson.M{
 		"$set": bson.M{
