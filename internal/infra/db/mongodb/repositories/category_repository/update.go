@@ -90,9 +90,13 @@ func (r *UpdateCategoryRepository) UpdateSubCategory(subCategory *models.SubCate
 	collection := r.Db.Collection("category")
 
 	filter := bson.M{
-		"_id":               categoryId,
-		"workspace_id":      workspaceId,
-		"sub_categories.id": subCategoryId,
+		"_id":          categoryId,
+		"workspace_id": workspaceId,
+		"sub_categories": bson.M{
+			"$elemMatch": bson.M{
+				"_id": subCategoryId,
+			},
+		},
 	}
 
 	fmt.Println(subCategory)

@@ -47,7 +47,6 @@ func main() {
 	sig := <-sigChan
 	log.Println("received terminate, graceful shutdown", sig)
 
-	// Fechar as conexões com o MongoDB antes de encerrar
 	helpers.DisconnectMongo()
 
 	tc, cancel := context.WithTimeout(context.Background(), 30*time.Second)
