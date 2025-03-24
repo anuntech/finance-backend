@@ -268,8 +268,7 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 		transactionCopy := transactions[i]
 		transactionCopy.Type = "RECIPE"
 		calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
-		difference := transactions[i].Balance.Value - calc
-		transactions[i].Balance.NetBalance = difference + transaction.Balance.Value
+		transactions[i].Balance.NetBalance = calc
 	}
 
 	return transactions, nil
