@@ -10,6 +10,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
@@ -229,6 +230,11 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 			Error: "error creating transaction",
 		}, http.StatusInternalServerError)
 	}
+
+	recipeTx := *transaction
+	recipeTx.Type = "RECIPE"
+	recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
+	transaction.Balance.NetBalance = recipeNetBalance
 
 	return helpers.CreateResponse(transaction, http.StatusCreated)
 }

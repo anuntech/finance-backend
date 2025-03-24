@@ -8,6 +8,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -213,6 +214,11 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 			Error: "error updating transaction",
 		}, http.StatusInternalServerError)
 	}
+
+	recipeTx := *transactionUpdated
+	recipeTx.Type = "RECIPE"
+	recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
+	transactionUpdated.Balance.NetBalance = recipeNetBalance
 
 	return helpers.CreateResponse(transactionUpdated, http.StatusOK)
 }
