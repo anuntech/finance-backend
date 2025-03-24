@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,8 +37,10 @@ func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTran
 }
 
 type GetTransactionParams struct {
-	DateType string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
-	Sort     string `json:"sort" validate:"omitempty,oneof=ASC DESC"`
+	DateType    string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
+	Sort        string `json:"sort" validate:"omitempty,oneof=ASC DESC"`
+	Supplier    string `json:"supplier" validate:"omitempty,max=255"`
+	Description string `json:"description" validate:"omitempty,max=255"`
 }
 
 func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -70,24 +73,26 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	params := &GetTransactionParams{
-		DateType: r.UrlParams.Get("dateType"),
-		Sort:     r.UrlParams.Get("sort"),
+		DateType:    r.UrlParams.Get("dateType"),
+		Sort:        r.UrlParams.Get("sort"),
+		Description: r.UrlParams.Get("description"),
+		Supplier:    r.UrlParams.Get("supplier"),
 	}
 
-	if params.DateType != "" {
-		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "an error occurred when filtering transactions",
-			}, http.StatusInternalServerError)
-		}
+	if params.Description != "" || params.Supplier != "" {
+		transactions = c.filterTransactionsByDescriptionAndSupplier(transactions, params)
 	} else {
-		transactions, err = c.filterTransactions(transactions, globalFilters)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "an error occurred when filtering transactions",
-			}, http.StatusInternalServerError)
+		if params.DateType != "" {
+			transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
+		} else {
+			transactions, err = c.filterTransactions(transactions, globalFilters)
 		}
+	}
+
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when filtering transactions",
+		}, http.StatusInternalServerError)
 	}
 
 	if params.Sort != "" {
@@ -272,4 +277,29 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 	}
 
 	return transactions, nil
+}
+
+func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
+	return strings.Contains(
+		strings.ToLower(s),
+		strings.ToLower(substr),
+	)
+}
+
+func (c *GetTransactionController) filterTransactionsByDescriptionAndSupplier(transactions []models.Transaction, params *GetTransactionParams) []models.Transaction {
+	var filtered []models.Transaction
+
+	for _, tx := range transactions {
+		matchesDescription := params.Description == "" ||
+			(tx.Description != "" && c.ContainsIgnoreCase(tx.Description, params.Description))
+
+		matchesSupplier := params.Supplier == "" ||
+			(tx.Supplier != "" && c.ContainsIgnoreCase(tx.Supplier, params.Supplier))
+
+		if matchesDescription && matchesSupplier {
+			filtered = append(filtered, tx)
+		}
+	}
+
+	return filtered
 }
