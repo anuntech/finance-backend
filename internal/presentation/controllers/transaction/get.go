@@ -35,6 +35,11 @@ func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTran
 	}
 }
 
+type GetTransactionParams struct {
+	DateType string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
+	Sort     string `json:"sort" validate:"omitempty,oneof=ASC DESC"`
+}
+
 func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
@@ -64,8 +69,13 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	if globalFilters.DateType != "" {
-		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters)
+	params := &GetTransactionParams{
+		DateType: r.UrlParams.Get("dateType"),
+		Sort:     r.UrlParams.Get("sort"),
+	}
+
+	if params.DateType != "" {
+		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "an error occurred when filtering transactions",
@@ -80,6 +90,10 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}
 	}
 
+	if params.Sort != "" {
+		c.sortTransactions(transactions, params)
+	}
+
 	transactions, err = c.putTransactionCustomFieldTypes(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -90,14 +104,14 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	return helpers.CreateResponse(transactions, http.StatusOK)
 }
 
-func (c *GetTransactionController) filterTransactionsByDateType(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
+func (c *GetTransactionController) filterTransactionsByDateType(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams, params *GetTransactionParams) ([]models.Transaction, error) {
 	var filtered []models.Transaction
 
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	for _, tx := range transactions {
-		switch globalFilters.DateType {
+		switch params.DateType {
 		case "DUE":
 			if (tx.DueDate.Equal(startOfMonth) || tx.DueDate.After(startOfMonth)) &&
 				tx.DueDate.Before(endOfMonth) {
@@ -117,22 +131,6 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		default:
 			filtered = append(filtered, tx)
 		}
-	}
-
-	// Ordenar as transações com base no DateType
-	switch globalFilters.DateType {
-	case "DUE":
-		sort.Slice(filtered, func(i, j int) bool {
-			return filtered[i].DueDate.After(filtered[j].DueDate)
-		})
-	case "CONFIRMATION":
-		sort.Slice(filtered, func(i, j int) bool {
-			return filtered[i].ConfirmationDate.After(*filtered[j].ConfirmationDate)
-		})
-	case "REGISTRATION":
-		sort.Slice(filtered, func(i, j int) bool {
-			return filtered[i].RegistrationDate.After(filtered[j].RegistrationDate)
-		})
 	}
 
 	return filtered, nil
@@ -175,6 +173,35 @@ func (c *GetTransactionController) filterTransactions(transactions []models.Tran
 	})
 
 	return filtered, nil
+}
+
+func (c *GetTransactionController) sortTransactions(transactions []models.Transaction, params *GetTransactionParams) {
+	switch params.DateType {
+	case "DUE":
+		sort.Slice(transactions, func(i, j int) bool {
+			if params.Sort == "ASC" {
+				return transactions[i].DueDate.After(transactions[j].DueDate)
+			}
+
+			return transactions[i].DueDate.Before(transactions[j].DueDate)
+		})
+	case "CONFIRMATION":
+		sort.Slice(transactions, func(i, j int) bool {
+			if params.Sort == "ASC" {
+				return transactions[i].ConfirmationDate.After(*transactions[j].ConfirmationDate)
+			}
+
+			return transactions[i].ConfirmationDate.Before(*transactions[j].ConfirmationDate)
+		})
+	case "REGISTRATION":
+		sort.Slice(transactions, func(i, j int) bool {
+			if params.Sort == "ASC" {
+				return transactions[i].RegistrationDate.After(transactions[j].RegistrationDate)
+			}
+
+			return transactions[i].RegistrationDate.Before(transactions[j].RegistrationDate)
+		})
+	}
 }
 
 func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
