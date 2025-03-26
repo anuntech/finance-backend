@@ -108,27 +108,48 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 func (c *GetTransactionController) filterTransactionsByDateType(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams, params *GetTransactionParams) ([]models.Transaction, error) {
 	var filtered []models.Transaction
 
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+	// Determine the date range based on available filters
+	var startDate, endDate time.Time
 
-	wg := sync.WaitGroup{}
+	if globalFilters.InitialDate != "" && globalFilters.FinalDate != "" {
+		// Use date range if provided
+		var err error
+		startDate, err = time.Parse("2006-01-02", globalFilters.InitialDate)
+		if err != nil {
+			return nil, err
+		}
+
+		endDate, err = time.Parse("2006-01-02", globalFilters.FinalDate)
+		if err != nil {
+			return nil, err
+		}
+		// Set end date to the end of the day
+		endDate = endDate.Add(24*time.Hour - time.Second)
+	} else if globalFilters.Month != 0 && globalFilters.Year != 0 {
+		// Fall back to month/year if date range not provided
+		startDate = time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+		endDate = startDate.AddDate(0, 1, 0).Add(-time.Second)
+	} else {
+		// If neither is provided, return all transactions
+		return transactions, nil
+	}
+
 	for _, tx := range transactions {
-
 		switch params.DateType {
 		case "DUE":
-			if (tx.DueDate.Equal(startOfMonth) || tx.DueDate.After(startOfMonth)) &&
-				tx.DueDate.Before(endOfMonth) {
+			if (tx.DueDate.Equal(startDate) || tx.DueDate.After(startDate)) &&
+				tx.DueDate.Before(endDate) {
 				filtered = append(filtered, tx)
 			}
 		case "CONFIRMATION":
 			if tx.IsConfirmed && tx.ConfirmationDate != nil &&
-				(tx.ConfirmationDate.Equal(startOfMonth) || tx.ConfirmationDate.After(startOfMonth)) &&
-				tx.ConfirmationDate.Before(endOfMonth) {
+				(tx.ConfirmationDate.Equal(startDate) || tx.ConfirmationDate.After(startDate)) &&
+				tx.ConfirmationDate.Before(endDate) {
 				filtered = append(filtered, tx)
 			}
 		case "REGISTRATION":
-			if (tx.RegistrationDate.Equal(startOfMonth) || tx.RegistrationDate.After(startOfMonth)) &&
-				tx.RegistrationDate.Before(endOfMonth) {
+			if (tx.RegistrationDate.Equal(startDate) || tx.RegistrationDate.After(startDate)) &&
+				tx.RegistrationDate.Before(endDate) {
 				filtered = append(filtered, tx)
 			}
 		default:
@@ -136,16 +157,37 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		}
 	}
 
-	wg.Wait()
-
 	return filtered, nil
 }
 
 func (c *GetTransactionController) filterTransactions(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
 	var filtered []models.Transaction
 
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+	// Determine the date range based on available filters
+	var startDate, endDate time.Time
+
+	if globalFilters.InitialDate != "" && globalFilters.FinalDate != "" {
+		// Use date range if provided
+		var err error
+		startDate, err = time.Parse("2006-01-02", globalFilters.InitialDate)
+		if err != nil {
+			return nil, err
+		}
+
+		endDate, err = time.Parse("2006-01-02", globalFilters.FinalDate)
+		if err != nil {
+			return nil, err
+		}
+		// Set end date to the end of the day
+		endDate = endDate.Add(24*time.Hour - time.Second)
+	} else if globalFilters.Month != 0 && globalFilters.Year != 0 {
+		// Fall back to month/year if date range not provided
+		startDate = time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+		endDate = startDate.AddDate(0, 1, 0).Add(-time.Second)
+	} else {
+		// If neither is provided, return all transactions
+		return transactions, nil
+	}
 
 	for _, tx := range transactions {
 		var dateToCheck time.Time
@@ -157,14 +199,14 @@ func (c *GetTransactionController) filterTransactions(transactions []models.Tran
 
 		switch tx.Frequency {
 		case "DO_NOT_REPEAT":
-			// Check if transaction date falls within the target month
-			if (dateToCheck.Equal(startOfMonth) || dateToCheck.After(startOfMonth)) &&
-				dateToCheck.Before(endOfMonth) {
+			// Check if transaction date falls within the target range
+			if (dateToCheck.Equal(startDate) || dateToCheck.After(startDate)) &&
+				dateToCheck.Before(endDate) {
 				filtered = append(filtered, tx)
 			}
 		case "RECURRING", "REPEAT":
-			// Check if transaction date is before end of month
-			if dateToCheck.Before(endOfMonth) {
+			// Check if transaction date is before end of range
+			if dateToCheck.Before(endDate) {
 				filtered = append(filtered, tx)
 			}
 		default:

@@ -2,6 +2,7 @@ package transaction_repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -22,8 +23,24 @@ func NewTransactionRepository(db *mongo.Database) *TransactionRepository {
 func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterParams) ([]models.Transaction, error) {
 	collection := r.db.Collection("transaction")
 
-	startOfMonth := time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+	var startOfMonth, endOfMonth time.Time
+	if filters.Month != 0 {
+		startOfMonth = time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
+		endOfMonth = startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+	}
+
+	if filters.InitialDate != "" && filters.FinalDate != "" {
+		startDate, err := time.Parse("2006-01-02", filters.InitialDate)
+		if err != nil {
+			return nil, err
+		}
+		endDate, err := time.Parse("2006-01-02", filters.FinalDate)
+		if err != nil {
+			return nil, err
+		}
+		startOfMonth = startDate
+		endOfMonth = endDate
+	}
 
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
@@ -49,9 +66,9 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	}
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
-	if filters.Month != 0 {
-		transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
-	}
+	transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
+
+	fmt.Println(transactions)
 
 	return transactions, nil
 }

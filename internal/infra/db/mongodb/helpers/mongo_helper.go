@@ -11,7 +11,7 @@ import (
 )
 
 // Timeout padrão para as operações do MongoDB
-var Timeout = 10 * time.Second
+var Timeout = 30 * time.Second
 
 var (
 	dbConnections   = make(map[string]*mongo.Database)
