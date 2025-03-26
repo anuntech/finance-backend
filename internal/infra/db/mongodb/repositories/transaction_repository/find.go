@@ -156,65 +156,72 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 
 		switch tx.Frequency {
 		case "REPEAT":
-			valid := false
+			// Create multiple instances like the RECURRING case
+			var txInstances []models.Transaction
 
+			// For each installment number
 			for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
-				// Como a primeira parcela usa o DueDate original,
-				// usamos (i-1) como offset para calcular a data da parcela.
-
+				// Calculate the due date for this installment
 				installmentDueDate := r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
 
-				// Verifica se o vencimento da parcela está dentro do período desejado.
+				// Check if this installment is within the date range
 				if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
-					// Armazena a data de registro original para manter o dia
+					// Create a copy of the transaction for this installment
+					txCopy := tx
+
+					// Make a deep copy of RepeatSettings
+					if tx.RepeatSettings != nil {
+						repeatSettingsCopy := *tx.RepeatSettings
+						txCopy.RepeatSettings = &repeatSettingsCopy
+					}
+
+					// Update the due date
+					txCopy.DueDate = installmentDueDate
+
+					// Update the current count (installment number)
+					txCopy.RepeatSettings.CurrentCount = i
+
+					// Update the balance (divide by total installments)
+					balance := tx.Balance.Value
+					txCopy.Balance.Value = balance / float64(tx.RepeatSettings.Count)
+					txCopy.TotalBalance = balance
+
+					// Sync the registration date
 					originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
 					originalRegDay := tx.RegistrationDate.Day()
 
-					// Atualiza a transação para exibir apenas a parcela atual...
-					tx.DueDate = installmentDueDate
+					// Ensure the day exists in the month
+					if originalRegDay > daysInMonth(installmentDueDate) {
+						originalRegDay = daysInMonth(installmentDueDate)
+					}
 
-					// Sincroniza o RegistrationDate com base no mês atual
 					newRegDate := time.Date(
-						startOfMonth.Year(), startOfMonth.Month(), originalRegDay,
-						originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+						installmentDueDate.Year(), installmentDueDate.Month(), originalRegDay,
+						originalRegHour, originalRegMin, originalRegSec, 0, installmentDueDate.Location(),
 					)
+					txCopy.RegistrationDate = newRegDate
 
-					// Certifica-se de que o dia existe no mês atual (por exemplo, 31 de fevereiro não existe)
-					if originalRegDay > daysInMonth(startOfMonth) {
-						newRegDate = time.Date(
-							startOfMonth.Year(), startOfMonth.Month(), daysInMonth(startOfMonth),
-							originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+					// Sync the confirmation date if the transaction is confirmed
+					if txCopy.IsConfirmed && txCopy.ConfirmationDate != nil {
+						origHour, origMin, origSec := txCopy.ConfirmationDate.Clock()
+						newConfDate := time.Date(
+							installmentDueDate.Year(), installmentDueDate.Month(), installmentDueDate.Day(),
+							origHour, origMin, origSec, 0, installmentDueDate.Location(),
 						)
+						txCopy.ConfirmationDate = &newConfDate
 					}
 
-					tx.RegistrationDate = newRegDate
-
-					// Sincroniza o ConfirmationDate se a transação estiver confirmada
-					if tx.IsConfirmed && tx.ConfirmationDate != nil {
-						// Mantém a mesma hora do dia do ConfirmationDate original
-						origHour, origMin, origSec := tx.ConfirmationDate.Clock()
-						newConfDate := installmentDueDate
-						newConfDate = time.Date(
-							newConfDate.Year(), newConfDate.Month(), newConfDate.Day(),
-							origHour, origMin, origSec, 0, newConfDate.Location(),
-						)
-						tx.ConfirmationDate = &newConfDate
-					}
-
-					// E ajusta a quantidade de parcelas restantes (por exemplo, se eram 3 e estamos na 2ª, então resta 2 parcelas)
-					tx.RepeatSettings.CurrentCount = i
-					balance := tx.Balance.Value
-					tx.Balance.Value = balance / float64(tx.RepeatSettings.Count)
-					tx.TotalBalance = balance
-					valid = true
-					break
+					txInstances = append(txInstances, txCopy)
 				}
 			}
 
-			// Se nenhuma parcela se encaixar no período, a transação não deverá ser exibida.
-			if !valid {
+			if len(txInstances) > 0 {
+				filtered = append(filtered, txInstances...)
 				continue
 			}
+
+			// Skip this transaction if no instances were found
+			continue
 		case "RECURRING":
 			if tx.RepeatSettings == nil {
 				tx.RepeatSettings = &models.TransactionRepeatSettings{
