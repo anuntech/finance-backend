@@ -2,6 +2,7 @@ package transaction_repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -66,6 +67,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
+
+	for _, tx := range transactions {
+		fmt.Println(tx.RepeatSettings.CurrentCount)
+	}
 
 	return transactions, nil
 }
@@ -253,6 +258,12 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 				// Cria uma cópia da transação para este mês
 				txCopy := tx
 
+				// Cria uma cópia profunda do RepeatSettings
+				if tx.RepeatSettings != nil {
+					repeatSettingsCopy := *tx.RepeatSettings
+					txCopy.RepeatSettings = &repeatSettingsCopy
+				}
+
 				// Mantém o mesmo dia do mês da transação original
 				originalDay := dateRef.Day()
 				if originalDay > daysInMonth(currentDate) {
@@ -270,13 +281,6 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 					txCopy.DueDate = newDueDate
 
 					// Atualiza a contagem atual
-					if txCopy.RepeatSettings == nil {
-						txCopy.RepeatSettings = &models.TransactionRepeatSettings{
-							Interval: "MONTHLY",
-						}
-					}
-
-					// Atualiza o CurrentCount para refletir a ordem das parcelas no período
 					txCopy.RepeatSettings.CurrentCount = installmentCounter
 					installmentCounter++ // Incrementa para a próxima parcela
 					// Atualiza o RegistrationDate
@@ -304,6 +308,10 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 
 					txInstances = append(txInstances, txCopy)
 				}
+			}
+
+			for _, tx := range txInstances {
+				fmt.Println(tx.RepeatSettings.CurrentCount)
 			}
 			// Se encontrou instâncias, adiciona-as aos resultados filtrados
 			if len(txInstances) > 0 {
