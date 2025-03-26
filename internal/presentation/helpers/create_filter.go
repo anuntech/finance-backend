@@ -14,6 +14,8 @@ type GlobalFilterParams struct {
 	Month       int    `json:"month" validate:"required_with=Year,omitempty,min=1,max=12"`
 	Year        int    `json:"year" validate:"required_with=Month,omitempty,min=1,max=9999"`
 	Type        string `json:"type" validate:"omitempty,oneof=RECIPE EXPENSE TAG ALL"` // all is only for custom field
+	InitialDate string `json:"initialDate" validate:"omitempty,datetime=2006-01-02"`
+	FinalDate   string `json:"finalDate" validate:"omitempty,datetime=2006-01-02"`
 	WorkspaceId primitive.ObjectID
 }
 
@@ -26,6 +28,8 @@ func GetGlobalFilterByQueries(urlQueries *url.Values, workspaceId primitive.Obje
 		Year:        yearInt,
 		Type:        urlQueries.Get("type"),
 		WorkspaceId: workspaceId,
+		InitialDate: urlQueries.Get("initialDate"),
+		FinalDate:   urlQueries.Get("finalDate"),
 	}
 
 	err := validator.Struct(params)
