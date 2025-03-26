@@ -2,7 +2,6 @@ package transaction_repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -67,8 +66,6 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
-
-	fmt.Println(transactions)
 
 	return transactions, nil
 }
@@ -220,54 +217,102 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 				}
 			}
 
-			// Calcula o número de meses entre a data original e o início do mês filtrado
-			months := 0
+			// Para transações recorrentes, precisamos criar uma instância para cada mês no intervalo
+			// Calculamos o intervalo entre os meses de início e fim
+			startYear, startMonth, _ := startOfMonth.Date()
+			endYear, endMonth, _ := endOfMonth.Date()
+
+			// Número total de meses no intervalo
+			totalMonths := (endYear-startYear)*12 + int(endMonth-startMonth)
+			if totalMonths < 0 {
+				totalMonths = 0
+			}
+
+			// Referência para a data original da transação
 			refYear, refMonth, _ := dateRef.Date()
-			targetYear, targetMonth, _ := startOfMonth.Date()
 
-			months = (targetYear-refYear)*12 + int(targetMonth-refMonth)
-			if months < 0 {
-				months = 0
-			}
+			// Para cada mês no intervalo, crie uma cópia da transação
+			var txInstances []models.Transaction
 
-			// Incrementa em 1 porque a primeira parcela é considerada 1, não 0
-			tx.RepeatSettings.CurrentCount = months + 1
+			// Contador para manter o controle da exibição sequencial (1, 2, 3, ...)
+			installmentCounter := 1
 
-			// Atualiza o DueDate para refletir o mês atual
-			newDueDate := r.computeInstallmentDueDate(tx.DueDate, tx.RepeatSettings.Interval, months)
-			tx.DueDate = newDueDate
+			for monthOffset := 0; monthOffset <= totalMonths; monthOffset++ {
+				// Calcula a data para esta instância
+				currentDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.UTC)
+				currentDate = currentDate.AddDate(0, monthOffset, 0)
 
-			// Armazena a data de registro original para manter o dia
-			originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
-			originalRegDay := tx.RegistrationDate.Day()
+				// Verifica se a data é posterior à data original da transação
+				currentYear, currentMonth, _ := currentDate.Date()
+				monthsSinceOriginal := (currentYear-refYear)*12 + int(currentMonth-refMonth)
 
-			// Atualiza o RegistrationDate para refletir o mês atual
-			newRegDate := time.Date(
-				startOfMonth.Year(), startOfMonth.Month(), originalRegDay,
-				originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
-			)
+				if monthsSinceOriginal < 0 {
+					continue // Pula meses anteriores à data original
+				}
 
-			// Certifica-se de que o dia existe no mês atual
-			if originalRegDay > daysInMonth(startOfMonth) {
-				newRegDate = time.Date(
-					startOfMonth.Year(), startOfMonth.Month(), daysInMonth(startOfMonth),
-					originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+				// Cria uma cópia da transação para este mês
+				txCopy := tx
+
+				// Mantém o mesmo dia do mês da transação original
+				originalDay := dateRef.Day()
+				if originalDay > daysInMonth(currentDate) {
+					originalDay = daysInMonth(currentDate)
+				}
+
+				// Atualiza o DueDate para este mês
+				newDueDate := time.Date(
+					currentDate.Year(), currentDate.Month(), originalDay,
+					dateRef.Hour(), dateRef.Minute(), dateRef.Second(), 0, dateRef.Location(),
 				)
+
+				// Verifica se está dentro do intervalo
+				if !newDueDate.Before(startOfMonth) && newDueDate.Before(endOfMonth) {
+					txCopy.DueDate = newDueDate
+
+					// Atualiza a contagem atual
+					if txCopy.RepeatSettings == nil {
+						txCopy.RepeatSettings = &models.TransactionRepeatSettings{
+							Interval: "MONTHLY",
+						}
+					}
+
+					// Atualiza o CurrentCount para refletir a ordem das parcelas no período
+					txCopy.RepeatSettings.CurrentCount = installmentCounter
+					installmentCounter++ // Incrementa para a próxima parcela
+					// Atualiza o RegistrationDate
+					originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
+					originalRegDay := tx.RegistrationDate.Day()
+					if originalRegDay > daysInMonth(currentDate) {
+						originalRegDay = daysInMonth(currentDate)
+					}
+
+					newRegDate := time.Date(
+						currentDate.Year(), currentDate.Month(), originalRegDay,
+						originalRegHour, originalRegMin, originalRegSec, 0, currentDate.Location(),
+					)
+					txCopy.RegistrationDate = newRegDate
+
+					// Sincroniza o ConfirmationDate se a transação estiver confirmada
+					if txCopy.IsConfirmed && txCopy.ConfirmationDate != nil {
+						origHour, origMin, origSec := txCopy.ConfirmationDate.Clock()
+						newConfDate := time.Date(
+							newDueDate.Year(), newDueDate.Month(), newDueDate.Day(),
+							origHour, origMin, origSec, 0, newDueDate.Location(),
+						)
+						txCopy.ConfirmationDate = &newConfDate
+					}
+
+					txInstances = append(txInstances, txCopy)
+				}
+			}
+			// Se encontrou instâncias, adiciona-as aos resultados filtrados
+			if len(txInstances) > 0 {
+				filtered = append(filtered, txInstances...)
+				continue
 			}
 
-			tx.RegistrationDate = newRegDate
-
-			// Sincroniza o ConfirmationDate se a transação estiver confirmada
-			if tx.IsConfirmed && tx.ConfirmationDate != nil {
-				// Mantém a mesma hora do dia do ConfirmationDate original
-				origHour, origMin, origSec := tx.ConfirmationDate.Clock()
-				newConfDate := newDueDate
-				newConfDate = time.Date(
-					newConfDate.Year(), newConfDate.Month(), newConfDate.Day(),
-					origHour, origMin, origSec, 0, newConfDate.Location(),
-				)
-				tx.ConfirmationDate = &newConfDate
-			}
+			// Se não houver instâncias, pulamos esta transação
+			continue
 		}
 
 		filtered = append(filtered, tx)

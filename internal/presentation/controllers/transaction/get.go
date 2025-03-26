@@ -163,31 +163,8 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 func (c *GetTransactionController) filterTransactions(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
 	var filtered []models.Transaction
 
-	// Determine the date range based on available filters
-	var startDate, endDate time.Time
-
-	if globalFilters.InitialDate != "" && globalFilters.FinalDate != "" {
-		// Use date range if provided
-		var err error
-		startDate, err = time.Parse("2006-01-02", globalFilters.InitialDate)
-		if err != nil {
-			return nil, err
-		}
-
-		endDate, err = time.Parse("2006-01-02", globalFilters.FinalDate)
-		if err != nil {
-			return nil, err
-		}
-		// Set end date to the end of the day
-		endDate = endDate.Add(24*time.Hour - time.Second)
-	} else if globalFilters.Month != 0 && globalFilters.Year != 0 {
-		// Fall back to month/year if date range not provided
-		startDate = time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-		endDate = startDate.AddDate(0, 1, 0).Add(-time.Second)
-	} else {
-		// If neither is provided, return all transactions
-		return transactions, nil
-	}
+	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
 	for _, tx := range transactions {
 		var dateToCheck time.Time
@@ -199,14 +176,14 @@ func (c *GetTransactionController) filterTransactions(transactions []models.Tran
 
 		switch tx.Frequency {
 		case "DO_NOT_REPEAT":
-			// Check if transaction date falls within the target range
-			if (dateToCheck.Equal(startDate) || dateToCheck.After(startDate)) &&
-				dateToCheck.Before(endDate) {
+			// Check if transaction date falls within the target month
+			if (dateToCheck.Equal(startOfMonth) || dateToCheck.After(startOfMonth)) &&
+				dateToCheck.Before(endOfMonth) {
 				filtered = append(filtered, tx)
 			}
 		case "RECURRING", "REPEAT":
-			// Check if transaction date is before end of range
-			if dateToCheck.Before(endDate) {
+			// Check if transaction date is before end of month
+			if dateToCheck.Before(endOfMonth) {
 				filtered = append(filtered, tx)
 			}
 		default:
@@ -292,8 +269,16 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 	for i, transaction := range transactions {
 		wg.Add(1)
 
-		go func(transaction models.Transaction) {
+		go func(i int, transaction models.Transaction) {
 			defer wg.Done()
+
+			// Make sure RepeatSettings exists
+			if transaction.RepeatSettings == nil {
+				transaction.RepeatSettings = &models.TransactionRepeatSettings{}
+			}
+
+			// Store the current count (installment number) before potential replacement
+			currentCount := transaction.RepeatSettings.CurrentCount
 
 			editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
 			if err != nil {
@@ -308,9 +293,16 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 				balance := transaction.Balance
 				id := transaction.Id
 
+				// Preserve the installment number/current count
+				installmentNumber := repeatSettings.CurrentCount
+
 				transactions[i] = *editTransaction
 				transactions[i].Frequency = frequency
 				transactions[i].RepeatSettings = &repeatSettings
+
+				// Restore the installment number after replacing with edited transaction
+				transactions[i].RepeatSettings.CurrentCount = installmentNumber
+
 				transactions[i].Id = id
 				transactions[i].MainCount = nil
 				transactions[i].MainId = nil
@@ -318,13 +310,16 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 					transactions[i].Balance = balance
 				}
 				transactions[i].TotalBalance = totalBalance
+			} else if currentCount > 0 {
+				// If no edit was found but we had a currentCount, make sure to preserve it
+				transactions[i].RepeatSettings.CurrentCount = currentCount
 			}
 
 			transactionCopy := transactions[i]
 			transactionCopy.Type = "RECIPE"
 			calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
 			transactions[i].Balance.NetBalance = calc
-		}(transaction)
+		}(i, transaction)
 	}
 
 	wg.Wait()
