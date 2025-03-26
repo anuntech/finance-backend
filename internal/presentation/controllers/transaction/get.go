@@ -79,14 +79,10 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		Supplier:    r.UrlParams.Get("supplier"),
 	}
 
-	if params.Description != "" || params.Supplier != "" {
-		transactions = c.filterTransactionsByDescriptionAndSupplier(transactions, params)
+	if params.DateType != "" {
+		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
 	} else {
-		if params.DateType != "" {
-			transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
-		} else {
-			transactions, err = c.filterTransactions(transactions, globalFilters)
-		}
+		transactions, err = c.filterTransactions(transactions, globalFilters)
 	}
 
 	if err != nil {
@@ -303,22 +299,4 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 		strings.ToLower(s),
 		strings.ToLower(substr),
 	)
-}
-
-func (c *GetTransactionController) filterTransactionsByDescriptionAndSupplier(transactions []models.Transaction, params *GetTransactionParams) []models.Transaction {
-	var filtered []models.Transaction
-
-	for _, tx := range transactions {
-		matchesDescription := params.Description == "" ||
-			(tx.Name != "" && c.ContainsIgnoreCase(tx.Name, params.Description))
-
-		matchesSupplier := params.Supplier == "" ||
-			(tx.Supplier != "" && c.ContainsIgnoreCase(tx.Supplier, params.Supplier))
-
-		if matchesDescription && matchesSupplier {
-			filtered = append(filtered, tx)
-		}
-	}
-
-	return filtered
 }
