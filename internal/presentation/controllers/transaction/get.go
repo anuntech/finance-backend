@@ -115,7 +115,9 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
 
+	wg := sync.WaitGroup{}
 	for _, tx := range transactions {
+
 		switch params.DateType {
 		case "DUE":
 			if (tx.DueDate.Equal(startOfMonth) || tx.DueDate.After(startOfMonth)) &&
@@ -137,6 +139,8 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 			filtered = append(filtered, tx)
 		}
 	}
+
+	wg.Wait()
 
 	return filtered, nil
 }
@@ -172,7 +176,6 @@ func (c *GetTransactionController) filterTransactions(transactions []models.Tran
 		}
 	}
 
-	// Ordenar as transações por DueDate por padrão
 	sort.Slice(filtered, func(i, j int) bool {
 		return filtered[i].DueDate.After(filtered[j].DueDate)
 	})
@@ -245,35 +248,51 @@ func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions [
 }
 
 func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
+	wg := sync.WaitGroup{}
+	editErrors := []error{}
+
 	for i, transaction := range transactions {
-		editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
-		if err != nil {
-			return nil, err
-		}
+		wg.Add(1)
 
-		if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
-			repeatSettings := *transaction.RepeatSettings
-			frequency := transaction.Frequency
-			totalBalance := transaction.TotalBalance
-			balance := transaction.Balance
-			id := transaction.Id
+		go func(transaction models.Transaction) {
+			defer wg.Done()
 
-			transactions[i] = *editTransaction
-			transactions[i].Frequency = frequency
-			transactions[i].RepeatSettings = &repeatSettings
-			transactions[i].Id = id
-			transactions[i].MainCount = nil
-			transactions[i].MainId = nil
-			if transactions[i].Frequency == "DO_NOT_REPEAT" {
-				transactions[i].Balance = balance
+			editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
+			if err != nil {
+				editErrors = append(editErrors, err)
+				return
 			}
-			transactions[i].TotalBalance = totalBalance
-		}
 
-		transactionCopy := transactions[i]
-		transactionCopy.Type = "RECIPE"
-		calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
-		transactions[i].Balance.NetBalance = calc
+			if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
+				repeatSettings := *transaction.RepeatSettings
+				frequency := transaction.Frequency
+				totalBalance := transaction.TotalBalance
+				balance := transaction.Balance
+				id := transaction.Id
+
+				transactions[i] = *editTransaction
+				transactions[i].Frequency = frequency
+				transactions[i].RepeatSettings = &repeatSettings
+				transactions[i].Id = id
+				transactions[i].MainCount = nil
+				transactions[i].MainId = nil
+				if transactions[i].Frequency == "DO_NOT_REPEAT" {
+					transactions[i].Balance = balance
+				}
+				transactions[i].TotalBalance = totalBalance
+			}
+
+			transactionCopy := transactions[i]
+			transactionCopy.Type = "RECIPE"
+			calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
+			transactions[i].Balance.NetBalance = calc
+		}(transaction)
+	}
+
+	wg.Wait()
+
+	if len(editErrors) > 0 {
+		return nil, editErrors[0]
 	}
 
 	return transactions, nil

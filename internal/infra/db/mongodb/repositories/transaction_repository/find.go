@@ -147,8 +147,28 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 
 				// Verifica se o vencimento da parcela está dentro do período desejado.
 				if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
+					// Armazena a data de registro original para manter o dia
+					originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
+					originalRegDay := tx.RegistrationDate.Day()
+
 					// Atualiza a transação para exibir apenas a parcela atual...
 					tx.DueDate = installmentDueDate
+
+					// Sincroniza o RegistrationDate com base no mês atual
+					newRegDate := time.Date(
+						startOfMonth.Year(), startOfMonth.Month(), originalRegDay,
+						originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+					)
+
+					// Certifica-se de que o dia existe no mês atual (por exemplo, 31 de fevereiro não existe)
+					if originalRegDay > daysInMonth(startOfMonth) {
+						newRegDate = time.Date(
+							startOfMonth.Year(), startOfMonth.Month(), daysInMonth(startOfMonth),
+							originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+						)
+					}
+
+					tx.RegistrationDate = newRegDate
 
 					// Sincroniza o ConfirmationDate se a transação estiver confirmada
 					if tx.IsConfirmed && tx.ConfirmationDate != nil {
@@ -200,6 +220,26 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 			newDueDate := r.computeInstallmentDueDate(tx.DueDate, tx.RepeatSettings.Interval, months)
 			tx.DueDate = newDueDate
 
+			// Armazena a data de registro original para manter o dia
+			originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
+			originalRegDay := tx.RegistrationDate.Day()
+
+			// Atualiza o RegistrationDate para refletir o mês atual
+			newRegDate := time.Date(
+				startOfMonth.Year(), startOfMonth.Month(), originalRegDay,
+				originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+			)
+
+			// Certifica-se de que o dia existe no mês atual
+			if originalRegDay > daysInMonth(startOfMonth) {
+				newRegDate = time.Date(
+					startOfMonth.Year(), startOfMonth.Month(), daysInMonth(startOfMonth),
+					originalRegHour, originalRegMin, originalRegSec, 0, startOfMonth.Location(),
+				)
+			}
+
+			tx.RegistrationDate = newRegDate
+
 			// Sincroniza o ConfirmationDate se a transação estiver confirmada
 			if tx.IsConfirmed && tx.ConfirmationDate != nil {
 				// Mantém a mesma hora do dia do ConfirmationDate original
@@ -217,4 +257,11 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 	}
 
 	return filtered
+}
+
+// Função auxiliar para obter o número de dias em um mês
+func daysInMonth(date time.Time) int {
+	year, month, _ := date.Date()
+	// Pegar o primeiro dia do próximo mês e subtrair 1 dia
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, date.Location()).Day()
 }
