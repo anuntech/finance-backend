@@ -2,7 +2,6 @@ package transaction_repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -71,10 +70,6 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
-
-	for _, tx := range transactions {
-		fmt.Println(tx.RepeatSettings.CurrentCount)
-	}
 
 	return transactions, nil
 }
@@ -321,9 +316,6 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 				}
 			}
 
-			for _, tx := range txInstances {
-				fmt.Println(tx.RepeatSettings.CurrentCount)
-			}
 			// Se encontrou instâncias, adiciona-as aos resultados filtrados
 			if len(txInstances) > 0 {
 				filtered = append(filtered, txInstances...)

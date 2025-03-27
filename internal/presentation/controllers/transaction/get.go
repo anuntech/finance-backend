@@ -125,13 +125,9 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		}
 		// Set end date to the end of the day
 		endDate = endDate.Add(24*time.Hour - time.Second)
-	} else if globalFilters.Month != 0 && globalFilters.Year != 0 {
-		// Fall back to month/year if date range not provided
-		startDate = time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-		endDate = startDate.AddDate(0, 1, 0).Add(-time.Second)
 	} else {
-		// If neither is provided, return all transactions
-		return transactions, nil
+		startDate = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDate = time.Date(2100, 12, 31, 23, 59, 59, 0, time.UTC)
 	}
 
 	for _, tx := range transactions {
