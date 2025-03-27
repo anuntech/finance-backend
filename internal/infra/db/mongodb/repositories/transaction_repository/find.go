@@ -24,6 +24,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	collection := r.db.Collection("transaction")
 
 	var startOfMonth, endOfMonth time.Time
+
+	startOfMonth = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth = time.Date(2100, 12, 31, 23, 59, 59, 0, time.UTC)
+
 	if filters.Month != 0 {
 		startOfMonth = time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
 		endOfMonth = startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
