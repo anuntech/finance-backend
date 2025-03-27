@@ -170,12 +170,20 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		seenCustomFields := make(map[string]bool)
 
 		for _, customField := range transaction.CustomFields {
+			if customField.CustomFieldId.IsZero() {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "invalid custom field ID",
+				}, http.StatusBadRequest)
+				return
+			}
+
 			compositeKey := customField.CustomFieldId.Hex()
 
 			if seenCustomFields[compositeKey] {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "duplicate custom field detected: " + compositeKey,
 				}, http.StatusBadRequest)
+				return
 			}
 			seenCustomFields[compositeKey] = true
 
@@ -184,12 +192,14 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "error finding custom field",
 				}, http.StatusInternalServerError)
+				return
 			}
 
 			if customFieldParsed == nil {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "custom field not found",
 				}, http.StatusNotFound)
+				return
 			}
 		}
 	}()
