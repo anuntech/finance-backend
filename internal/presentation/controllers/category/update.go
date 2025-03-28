@@ -12,18 +12,24 @@ import (
 )
 
 type UpdateCategoryController struct {
-	UpdateCategoryRepository usecase.UpdateCategoryRepository
-	Validate                 *validator.Validate
-	FindCategoryById         usecase.FindCategoryByIdRepository
+	UpdateCategoryRepository     usecase.UpdateCategoryRepository
+	Validate                     *validator.Validate
+	FindCategoryById             usecase.FindCategoryByIdRepository
+	FindCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository
 }
 
-func NewUpdateCategoryController(updateCategory usecase.UpdateCategoryRepository, findCategoryById usecase.FindCategoryByIdRepository) *UpdateCategoryController {
+func NewUpdateCategoryController(
+	updateCategory usecase.UpdateCategoryRepository,
+	findCategoryById usecase.FindCategoryByIdRepository,
+	findCategoryByName usecase.FindCategoryByNameAndWorkspaceIdRepository,
+) *UpdateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &UpdateCategoryController{
-		UpdateCategoryRepository: updateCategory,
-		Validate:                 validate,
-		FindCategoryById:         findCategoryById,
+		UpdateCategoryRepository:     updateCategory,
+		Validate:                     validate,
+		FindCategoryById:             findCategoryById,
+		FindCategoryByNameRepository: findCategoryByName,
 	}
 }
 
@@ -66,6 +72,22 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "category not found",
 		}, http.StatusNotFound)
+	}
+
+	// Verificar se já existe outra categoria com o mesmo nome neste workspace
+	if category.Name != body.Name {
+		existingCategory, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(body.Name, workspaceId)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error checking category name",
+			}, http.StatusInternalServerError)
+		}
+
+		if existingCategory != nil && existingCategory.Id != categoryId {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "a category with this name already exists in this workspace",
+			}, http.StatusConflict)
+		}
 	}
 
 	category.Name = body.Name

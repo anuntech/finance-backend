@@ -13,20 +13,27 @@ import (
 )
 
 type CreateCategoryController struct {
-	CreateCategoryRepository usecase.CreateCategoryRepository
-	Validate                 *validator.Validate
-	FindAccountById          usecase.FindAccountByIdRepository
-	FindCategoriesRepository usecase.FindCategoriesRepository
+	CreateCategoryRepository     usecase.CreateCategoryRepository
+	Validate                     *validator.Validate
+	FindAccountById              usecase.FindAccountByIdRepository
+	FindCategoriesRepository     usecase.FindCategoriesRepository
+	FindCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository
 }
 
-func NewCreateCategoryController(createCategory usecase.CreateCategoryRepository, findAccountById usecase.FindAccountByIdRepository, findCategorysByWorkspaceId usecase.FindCategoriesRepository) *CreateCategoryController {
+func NewCreateCategoryController(
+	createCategory usecase.CreateCategoryRepository,
+	findAccountById usecase.FindAccountByIdRepository,
+	findCategorysByWorkspaceId usecase.FindCategoriesRepository,
+	findCategoryByName usecase.FindCategoryByNameAndWorkspaceIdRepository,
+) *CreateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateCategoryController{
-		CreateCategoryRepository: createCategory,
-		Validate:                 validate,
-		FindAccountById:          findAccountById,
-		FindCategoriesRepository: findCategorysByWorkspaceId,
+		CreateCategoryRepository:     createCategory,
+		Validate:                     validate,
+		FindAccountById:              findAccountById,
+		FindCategoriesRepository:     findCategorysByWorkspaceId,
+		FindCategoryByNameRepository: findCategoryByName,
 	}
 }
 
@@ -62,6 +69,33 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "invalid workspace id",
 		}, http.StatusBadRequest)
+	}
+
+	// Verificar se já existe uma categoria com o mesmo nome neste workspace
+	existingCategory, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(body.Name, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error checking category name",
+		}, http.StatusInternalServerError)
+	}
+
+	if existingCategory != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "a category with this name already exists in this workspace",
+		}, http.StatusConflict)
+	}
+
+	// Verificar se há subcategorias com nomes duplicados
+	if len(body.SubCategories) > 0 {
+		nameSet := make(map[string]bool)
+		for _, subCat := range body.SubCategories {
+			if nameSet[subCat.Name] {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "subcategory names must be unique within the same category",
+				}, http.StatusBadRequest)
+			}
+			nameSet[subCat.Name] = true
+		}
 	}
 
 	categorys, err := c.FindCategoriesRepository.Find(&helpers.GlobalFilterParams{

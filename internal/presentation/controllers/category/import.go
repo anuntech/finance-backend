@@ -13,18 +13,24 @@ import (
 )
 
 type ImportCategoryController struct {
-	ImportCategoriesRepository usecase.ImportCategoriesRepository
-	Validate                   *validator.Validate
-	FindCategoriesRepository   usecase.FindCategoriesRepository
+	ImportCategoriesRepository   usecase.ImportCategoriesRepository
+	Validate                     *validator.Validate
+	FindCategoriesRepository     usecase.FindCategoriesRepository
+	FindCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository
 }
 
-func NewImportCategoryController(importUseCase usecase.ImportCategoriesRepository, findCategorys usecase.FindCategoriesRepository) *ImportCategoryController {
+func NewImportCategoryController(
+	importUseCase usecase.ImportCategoriesRepository,
+	findCategorys usecase.FindCategoriesRepository,
+	findCategoryByName usecase.FindCategoryByNameAndWorkspaceIdRepository,
+) *ImportCategoryController {
 	validate := validator.New()
 
 	return &ImportCategoryController{
-		ImportCategoriesRepository: importUseCase,
-		Validate:                   validate,
-		FindCategoriesRepository:   findCategorys,
+		ImportCategoriesRepository:   importUseCase,
+		Validate:                     validate,
+		FindCategoriesRepository:     findCategorys,
+		FindCategoryByNameRepository: findCategoryByName,
 	}
 }
 
@@ -74,6 +80,43 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "importação excede o número máximo de categorias permitidas (50)",
 		}, http.StatusBadRequest)
+	}
+
+	// Verificar duplicidade de nomes entre as categorias a serem importadas
+	categoryNameSet := make(map[string]bool)
+	for _, cat := range body.Categories {
+		// Verificar se a categoria já existe na importação
+		if categoryNameSet[cat.Name] {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "a importação contém categorias com nomes duplicados: " + cat.Name,
+			}, http.StatusBadRequest)
+		}
+		categoryNameSet[cat.Name] = true
+
+		// Verificar se o nome já existe no workspace
+		existingCategory, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(cat.Name, workspaceId)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "erro ao verificar duplicidade de nomes de categorias: " + err.Error(),
+			}, http.StatusInternalServerError)
+		}
+
+		if existingCategory != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "já existe uma categoria com o nome '" + cat.Name + "' neste workspace",
+			}, http.StatusConflict)
+		}
+
+		// Verificar duplicidade de nomes entre as subcategorias
+		subCategoryNameSet := make(map[string]bool)
+		for _, subCat := range cat.SubCategories {
+			if subCategoryNameSet[subCat.Name] {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "a categoria '" + cat.Name + "' contém subcategorias com nomes duplicados: " + subCat.Name,
+				}, http.StatusBadRequest)
+			}
+			subCategoryNameSet[subCat.Name] = true
+		}
 	}
 
 	var categoryInputs []models.Category

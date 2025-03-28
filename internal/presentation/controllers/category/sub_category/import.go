@@ -85,6 +85,31 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
+	// Verificar duplicidade de nomes entre as subcategorias a serem importadas
+	importNameSet := make(map[string]bool)
+	for _, subCat := range body.SubCategories {
+		if importNameSet[subCat.Name] {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "import contains duplicate subcategory names: " + subCat.Name,
+			}, http.StatusBadRequest)
+		}
+		importNameSet[subCat.Name] = true
+	}
+
+	// Verificar duplicidade com subcategorias existentes
+	existingNameSet := make(map[string]bool)
+	for _, existingSubCat := range category.SubCategories {
+		existingNameSet[existingSubCat.Name] = true
+	}
+
+	for _, newSubCat := range body.SubCategories {
+		if existingNameSet[newSubCat.Name] {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "a subcategory with the name '" + newSubCat.Name + "' already exists in this category",
+			}, http.StatusConflict)
+		}
+	}
+
 	var subCategoryInputs []models.SubCategoryCategory
 	for _, sc := range body.SubCategories {
 		subCategoryInputs = append(subCategoryInputs, models.SubCategoryCategory{

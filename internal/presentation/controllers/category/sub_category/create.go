@@ -81,6 +81,15 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusNotFound)
 	}
 
+	// Verificar se já existe uma subcategoria com o mesmo nome nesta categoria
+	for _, existingSubCat := range category.SubCategories {
+		if existingSubCat.Name == body.SubCategory.Name {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "a subcategory with this name already exists in this category",
+			}, http.StatusConflict)
+		}
+	}
+
 	subCategory, err := c.UpdateCategoryRepository.CreateSubCategory(&models.SubCategoryCategory{
 		Name: body.SubCategory.Name,
 		Icon: body.SubCategory.Icon,

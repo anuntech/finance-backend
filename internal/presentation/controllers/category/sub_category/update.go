@@ -84,6 +84,33 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusNotFound)
 	}
 
+	// Encontrar a subcategoria atual para verificar se o nome está sendo alterado
+	var currentSubCategory *models.SubCategoryCategory
+	for _, sc := range category.SubCategories {
+		if sc.Id == subCategoryId {
+			currentSubCategory = &sc
+			break
+		}
+	}
+
+	if currentSubCategory == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "subcategory not found in this category",
+		}, http.StatusNotFound)
+	}
+
+	// Se o nome for alterado, verificar duplicidade
+	if currentSubCategory.Name != body.Name {
+		// Verificar se já existe uma subcategoria com o mesmo nome nesta categoria
+		for _, existingSubCat := range category.SubCategories {
+			if existingSubCat.Name == body.Name && existingSubCat.Id != subCategoryId {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "a subcategory with this name already exists in this category",
+				}, http.StatusConflict)
+			}
+		}
+	}
+
 	err = c.UpdateCategoryRepository.UpdateSubCategory(&models.SubCategoryCategory{
 		Id:   subCategoryId,
 		Name: body.Name,

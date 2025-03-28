@@ -14,6 +14,10 @@ type FindCategoriesRepository interface {
 	Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Category, error)
 }
 
+type FindCategoryByNameAndWorkspaceIdRepository interface {
+	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Category, error)
+}
+
 type UpdateCategoryRepository interface {
 	CreateSubCategories(subCategories []models.SubCategoryCategory, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) ([]models.SubCategoryCategory, error)
 	CreateSubCategory(subCategory *models.SubCategoryCategory, categoryId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.SubCategoryCategory, error)
