@@ -16,15 +16,21 @@ type ImportAccountController struct {
 	ImportAccountsRepository           usecase.ImportAccountsRepository
 	Validate                           *validator.Validate
 	FindAccountByWorkspaceIdRepository usecase.FindAccountByWorkspaceIdRepository
+	FindAccountByNameRepository        usecase.FindAccountByNameAndWorkspaceIdRepository
 }
 
-func NewImportAccountController(importUseCase usecase.ImportAccountsRepository, findAccounts usecase.FindAccountByWorkspaceIdRepository) *ImportAccountController {
+func NewImportAccountController(
+	importUseCase usecase.ImportAccountsRepository,
+	findAccounts usecase.FindAccountByWorkspaceIdRepository,
+	findByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository,
+) *ImportAccountController {
 	validate := validator.New()
 
 	return &ImportAccountController{
 		ImportAccountsRepository:           importUseCase,
 		Validate:                           validate,
 		FindAccountByWorkspaceIdRepository: findAccounts,
+		FindAccountByNameRepository:        findByNameRepository,
 	}
 }
 
@@ -73,6 +79,31 @@ func (c *ImportAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "importação excede o número máximo de contas permitidas (50)",
 		}, http.StatusBadRequest)
+	}
+
+	// Verificar duplicidade de nomes entre as contas a serem importadas
+	nameSet := make(map[string]bool)
+	for _, acc := range body.Accounts {
+		if nameSet[acc.Name] {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "a importação contém contas com nomes duplicados: " + acc.Name,
+			}, http.StatusBadRequest)
+		}
+		nameSet[acc.Name] = true
+
+		// Verificar se o nome já existe no workspace
+		existingAccount, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(acc.Name, workspaceId)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "erro ao verificar duplicidade de nomes: " + err.Error(),
+			}, http.StatusInternalServerError)
+		}
+
+		if existingAccount != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "já existe uma conta com o nome '" + acc.Name + "' neste workspace",
+			}, http.StatusConflict)
+		}
 	}
 
 	var Accounts []models.Account

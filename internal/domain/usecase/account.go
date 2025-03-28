@@ -18,6 +18,10 @@ type FindAccountByIdRepository interface {
 	Find(accountId primitive.ObjectID, workspaceId primitive.ObjectID) (*models.Account, error)
 }
 
+type FindAccountByNameAndWorkspaceIdRepository interface {
+	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Account, error)
+}
+
 type DeleteAccountRepository interface {
 	Delete(accountIds []primitive.ObjectID, workspaceId primitive.ObjectID) error
 }

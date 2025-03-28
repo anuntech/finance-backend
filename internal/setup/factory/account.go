@@ -11,7 +11,8 @@ func MakeCreateAccountController(db *mongo.Database) *controllers.CreateAccountC
 	accountRepository := account_repository.NewCreateAccountMongoRepository(db)
 	findManyByUserIdAndWorkspaceId := account_repository.NewFindAccountsRepository(db)
 	findBankById := bank_repository.NewFindByIdMongoRepository(db)
-	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId, findBankById)
+	findByNameRepository := account_repository.NewFindByNameMongoRepository(db)
+	return controllers.NewCreateAccountController(accountRepository, findManyByUserIdAndWorkspaceId, findBankById, findByNameRepository)
 }
 
 func MakeGetAccountsController(db *mongo.Database) *controllers.GetAccountsController {
@@ -33,11 +34,13 @@ func MakeUpdateAccountController(db *mongo.Database) *controllers.UpdateAccountC
 	updateAccount := account_repository.NewUpdateAccountMongoRepository(db)
 	findBankById := bank_repository.NewFindByIdMongoRepository(db)
 	findAccountById := account_repository.NewFindByIdMongoRepository(db)
-	return controllers.NewUpdateAccountController(updateAccount, findBankById, findAccountById)
+	findByNameRepository := account_repository.NewFindByNameMongoRepository(db)
+	return controllers.NewUpdateAccountController(updateAccount, findBankById, findAccountById, findByNameRepository)
 }
 
 func MakeImportAccountController(db *mongo.Database) *controllers.ImportAccountController {
 	importAccounts := account_repository.NewImportAccountsMongoRepository(db)
 	findAccountByWorkspaceId := account_repository.NewFindAccountsRepository(db)
-	return controllers.NewImportAccountController(importAccounts, findAccountByWorkspaceId)
+	findByNameRepository := account_repository.NewFindByNameMongoRepository(db)
+	return controllers.NewImportAccountController(importAccounts, findAccountByWorkspaceId, findByNameRepository)
 }

@@ -17,9 +17,15 @@ type CreateAccountController struct {
 	Validate                           *validator.Validate
 	FindAccountByWorkspaceIdRepository usecase.FindAccountByWorkspaceIdRepository
 	FindBankById                       usecase.FindBankByIdRepository
+	FindAccountByNameRepository        usecase.FindAccountByNameAndWorkspaceIdRepository
 }
 
-func NewCreateAccountController(createAccount usecase.CreateAccountRepository, findManyByUserIdAndWorkspaceId usecase.FindAccountByWorkspaceIdRepository, findBankById usecase.FindBankByIdRepository) *CreateAccountController {
+func NewCreateAccountController(
+	createAccount usecase.CreateAccountRepository,
+	findManyByUserIdAndWorkspaceId usecase.FindAccountByWorkspaceIdRepository,
+	findBankById usecase.FindBankByIdRepository,
+	findByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository,
+) *CreateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &CreateAccountController{
@@ -27,6 +33,7 @@ func NewCreateAccountController(createAccount usecase.CreateAccountRepository, f
 		FindAccountByWorkspaceIdRepository: findManyByUserIdAndWorkspaceId,
 		Validate:                           validate,
 		FindBankById:                       findBankById,
+		FindAccountByNameRepository:        findByNameRepository,
 	}
 }
 
@@ -83,6 +90,19 @@ func (c *CreateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid workspace ID format",
 		}, http.StatusBadRequest)
+	}
+
+	existingAccount, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(body.Name, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an error occurred when checking for account name",
+		}, http.StatusInternalServerError)
+	}
+
+	if existingAccount != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "an account with this name already exists in this workspace",
+		}, http.StatusConflict)
 	}
 
 	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(&helpers.GlobalFilterParams{
