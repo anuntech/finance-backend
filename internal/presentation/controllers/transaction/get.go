@@ -344,33 +344,50 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 }
 
 func (c *GetTransactionController) filterTransactionsBySearch(transactions []models.Transaction, search string) ([]models.Transaction, error) {
-	var filtered []models.Transaction
+	filtered := make([]models.Transaction, 0, len(transactions)/2)
 
-	for _, tx := range transactions {
-		// Check basic transaction fields
+	for i := range transactions {
+		tx := &transactions[i]
+
 		if c.ContainsIgnoreCase(tx.Name, search) ||
 			c.ContainsIgnoreCase(tx.Description, search) ||
 			c.ContainsIgnoreCase(tx.Supplier, search) ||
 			c.ContainsIgnoreCase(tx.Type, search) ||
 			c.ContainsIgnoreCase(tx.Frequency, search) {
-			filtered = append(filtered, tx)
+			filtered = append(filtered, *tx)
 			continue
 		}
 
-		// Check custom fields
-		foundInCustomFields := false
+		if c.isDateMatch(tx.DueDate, search) ||
+			c.isDateMatch(tx.RegistrationDate, search) ||
+			(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
+			filtered = append(filtered, *tx)
+			continue
+		}
+
 		for _, cf := range tx.CustomFields {
 			if c.ContainsIgnoreCase(cf.Value, search) {
-				foundInCustomFields = true
+				filtered = append(filtered, *tx)
 				break
 			}
-		}
-
-		if foundInCustomFields {
-			filtered = append(filtered, tx)
-			continue
 		}
 	}
 
 	return filtered, nil
+}
+
+func (c *GetTransactionController) isDateMatch(date time.Time, search string) bool {
+	formattedDate := date.Format("02/01/2006")
+	if c.ContainsIgnoreCase(formattedDate, search) {
+		return true
+	}
+
+	dayStr := ""
+	if date.Day() < 10 {
+		dayStr = date.Format("2")
+	} else {
+		dayStr = date.Format("02")
+	}
+
+	return c.ContainsIgnoreCase(dayStr, search)
 }

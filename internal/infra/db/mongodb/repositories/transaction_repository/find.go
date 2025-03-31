@@ -69,7 +69,7 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	}
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
-	transactions = r.filterRepeatTransactions(transactions, startOfMonth, endOfMonth)
+	transactions = r.applyRepeatAndRecurringLogicTransactions(transactions, startOfMonth, endOfMonth)
 
 	return transactions, nil
 }
@@ -142,7 +142,7 @@ func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, int
 // filterRepeatTransactions percorre todas as transações e, para aquelas com frequência "REPEAT"
 // aplica a lógica de parcelas: considera o initialInstallment e ignora as parcelas já passadas.
 // Se a parcela para o mês (ou o período escolhido) não existir, a transação é descartada da lista.
-func (r *TransactionRepository) filterRepeatTransactions(transactions []models.Transaction, startOfMonth, endOfMonth time.Time) []models.Transaction {
+func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transactions []models.Transaction, startOfMonth, endOfMonth time.Time) []models.Transaction {
 	var filtered []models.Transaction
 
 	for _, tx := range transactions {
@@ -158,7 +158,7 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 			// Create multiple instances like the RECURRING case
 			var txInstances []models.Transaction
 
-			// For each installment number
+			installmentCounter := 1
 			for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
 				// Calculate the due date for this installment
 				installmentDueDate := r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
@@ -178,7 +178,8 @@ func (r *TransactionRepository) filterRepeatTransactions(transactions []models.T
 					txCopy.DueDate = installmentDueDate
 
 					// Update the current count (installment number)
-					txCopy.RepeatSettings.CurrentCount = i
+					txCopy.RepeatSettings.CurrentCount = installmentCounter
+					installmentCounter++
 
 					// Update the balance (divide by total installments)
 					balance := tx.Balance.Value
