@@ -1,14 +1,30 @@
 package middlewares
 
-import "net/http"
+import (
+	"net/http"
+	"os"
+	"strings"
+)
 
 func CorsMiddleware(next http.Handler) http.Handler {
-	allowedOrigins := map[string]bool{
-		"https://anun.tech":                 true,
-		"http://localhost:3000":             true,
-		"http://localhost:3001":             true,
-		"https://anuntech.com":              true,
-		"https://finance-company.anun.tech": true,
+	allowedOrigins := make(map[string]bool)
+
+	// Lê as origens permitidas da variável de ambiente
+	allowedOriginsEnv := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOriginsEnv != "" {
+		origins := strings.Split(allowedOriginsEnv, ",")
+		for _, origin := range origins {
+			allowedOrigins[strings.TrimSpace(origin)] = true
+		}
+	} else {
+		// Fallback para valores padrão se a variável de ambiente não estiver definida
+		allowedOrigins = map[string]bool{
+			"https://anun.tech":                 true,
+			"http://localhost:3000":             true,
+			"http://localhost:3001":             true,
+			"https://anuntech.online":           true,
+			"https://finance-company.anun.tech": true,
+		}
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
