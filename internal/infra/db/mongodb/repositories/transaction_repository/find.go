@@ -24,9 +24,6 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	var startOfMonth, endOfMonth time.Time
 
-	startOfMonth = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth = time.Date(2100, 12, 31, 23, 59, 59, 0, time.UTC)
-
 	if filters.Month != 0 {
 		startOfMonth = time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
 		endOfMonth = startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
@@ -164,7 +161,7 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 				installmentDueDate := r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
 
 				// Check if this installment is within the date range
-				if !installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth) {
+				if (!installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth)) || startOfMonth.IsZero() || endOfMonth.IsZero() {
 					// Create a copy of the transaction for this installment
 					txCopy := tx
 
@@ -284,7 +281,7 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 				)
 
 				// Verifica se está dentro do intervalo
-				if !newDueDate.Before(startOfMonth) && newDueDate.Before(endOfMonth) {
+				if (!newDueDate.Before(startOfMonth) && newDueDate.Before(endOfMonth)) || startOfMonth.IsZero() || endOfMonth.IsZero() {
 					txCopy.DueDate = newDueDate
 
 					// Atualiza a contagem atual

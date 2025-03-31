@@ -90,8 +90,6 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 	if params.DateType != "" {
 		transactions, err = c.filterTransactionsByDateType(transactions, globalFilters, params)
-	} else {
-		transactions, err = c.filterTransactions(transactions, globalFilters)
 	}
 
 	if err != nil {
@@ -134,11 +132,7 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 		}
 		// Set end date to the end of the day
 		endDate = endDate.Add(24*time.Hour - time.Second)
-	} else {
-		startDate = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-		endDate = time.Date(2100, 12, 31, 23, 59, 59, 0, time.UTC)
 	}
-
 	for _, tx := range transactions {
 		switch params.DateType {
 		case "DUE":
@@ -161,44 +155,6 @@ func (c *GetTransactionController) filterTransactionsByDateType(transactions []m
 			filtered = append(filtered, tx)
 		}
 	}
-
-	return filtered, nil
-}
-
-func (c *GetTransactionController) filterTransactions(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams) ([]models.Transaction, error) {
-	var filtered []models.Transaction
-
-	startOfMonth := time.Date(globalFilters.Year, time.Month(globalFilters.Month), 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-	for _, tx := range transactions {
-		var dateToCheck time.Time
-		if tx.IsConfirmed && tx.ConfirmationDate != nil {
-			dateToCheck = *tx.ConfirmationDate
-		} else {
-			dateToCheck = tx.DueDate
-		}
-
-		switch tx.Frequency {
-		case "DO_NOT_REPEAT":
-			// Check if transaction date falls within the target month
-			if (dateToCheck.Equal(startOfMonth) || dateToCheck.After(startOfMonth)) &&
-				dateToCheck.Before(endOfMonth) {
-				filtered = append(filtered, tx)
-			}
-		case "RECURRING", "REPEAT":
-			// Check if transaction date is before end of month
-			if dateToCheck.Before(endOfMonth) {
-				filtered = append(filtered, tx)
-			}
-		default:
-			filtered = append(filtered, tx)
-		}
-	}
-
-	sort.Slice(filtered, func(i, j int) bool {
-		return filtered[i].DueDate.After(filtered[j].DueDate)
-	})
 
 	return filtered, nil
 }
