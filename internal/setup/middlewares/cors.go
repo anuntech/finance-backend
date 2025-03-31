@@ -19,11 +19,11 @@ func CorsMiddleware(next http.Handler) http.Handler {
 	} else {
 		// Fallback para valores padrão se a variável de ambiente não estiver definida
 		allowedOrigins = map[string]bool{
-			"https://anun.tech":                 true,
-			"http://localhost:3000":             true,
-			"http://localhost:3001":             true,
-			"https://anuntech.online":           true,
-			"https://finance-company.anun.tech": true,
+			"https://anun.tech":                       true,
+			"http://localhost:3000":                   true,
+			"http://localhost:3001":                   true,
+			"https://anuntech.online":                 true,
+			"https://finance-company.anuntech.online": true,
 		}
 	}
 
