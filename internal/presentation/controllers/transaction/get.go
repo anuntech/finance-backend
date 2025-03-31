@@ -37,10 +37,9 @@ func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTran
 }
 
 type GetTransactionParams struct {
-	DateType    string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
-	Sort        string `json:"sort" validate:"omitempty,oneof=ASC DESC"`
-	Supplier    string `json:"supplier" validate:"omitempty,max=255"`
-	Description string `json:"description" validate:"omitempty,max=255"`
+	DateType string `json:"dateType" validate:"omitempty,oneof=CONFIRMATION DUE REGISTRATION"`
+	Sort     string `json:"sort" validate:"omitempty,oneof=ASC DESC"`
+	Search   string `json:"search" validate:"omitempty,max=255"`
 }
 
 func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -73,10 +72,20 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	params := &GetTransactionParams{
-		DateType:    r.UrlParams.Get("dateType"),
-		Sort:        r.UrlParams.Get("sort"),
-		Description: r.UrlParams.Get("description"),
-		Supplier:    r.UrlParams.Get("supplier"),
+		DateType: r.UrlParams.Get("dateType"),
+		Sort:     r.UrlParams.Get("sort"),
+		Search:   r.UrlParams.Get("search"),
+	}
+
+	if params.Search != "" {
+		transactions, err = c.filterTransactionsBySearch(transactions, params.Search)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "an error occurred when filtering transactions by search",
+			}, http.StatusInternalServerError)
+		}
+
+		return helpers.CreateResponse(transactions, http.StatusOK)
 	}
 
 	if params.DateType != "" {
@@ -332,4 +341,36 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 		strings.ToLower(s),
 		strings.ToLower(substr),
 	)
+}
+
+func (c *GetTransactionController) filterTransactionsBySearch(transactions []models.Transaction, search string) ([]models.Transaction, error) {
+	var filtered []models.Transaction
+
+	for _, tx := range transactions {
+		// Check basic transaction fields
+		if c.ContainsIgnoreCase(tx.Name, search) ||
+			c.ContainsIgnoreCase(tx.Description, search) ||
+			c.ContainsIgnoreCase(tx.Supplier, search) ||
+			c.ContainsIgnoreCase(tx.Type, search) ||
+			c.ContainsIgnoreCase(tx.Frequency, search) {
+			filtered = append(filtered, tx)
+			continue
+		}
+
+		// Check custom fields
+		foundInCustomFields := false
+		for _, cf := range tx.CustomFields {
+			if c.ContainsIgnoreCase(cf.Value, search) {
+				foundInCustomFields = true
+				break
+			}
+		}
+
+		if foundInCustomFields {
+			filtered = append(filtered, tx)
+			continue
+		}
+	}
+
+	return filtered, nil
 }

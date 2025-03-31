@@ -29,7 +29,7 @@ type TransactionTags struct {
 
 type TransactionCustomField struct {
 	CustomFieldId primitive.ObjectID `bson:"custom_field_id" json:"id"`
-	Value         interface{}        `bson:"value" json:"value"`
+	Value         string             `bson:"value" json:"value"`
 	Type          string             `bson:"-" json:"type"` // TEXT | NUMBER | DATE | BOOLEAN
 }
 
