@@ -112,6 +112,8 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction.ConfirmationDate = transactionIdsParsed.ConfirmationDate
 	transaction.IsConfirmed = transactionIdsParsed.IsConfirmed
 	transaction.CustomFields = transactionIdsParsed.CustomFields
+	transaction.CategoryId = transactionIdsParsed.CategoryId
+	transaction.SubCategoryId = transactionIdsParsed.SubCategoryId
 	errChan := make(chan *presentationProtocols.HttpResponse, 4)
 	var wg sync.WaitGroup
 
