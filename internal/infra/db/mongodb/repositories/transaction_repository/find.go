@@ -38,6 +38,9 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 		if err != nil {
 			return nil, err
 		}
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+
 		startOfMonth = startDate
 		endOfMonth = endDate
 	}
