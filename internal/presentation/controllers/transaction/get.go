@@ -23,9 +23,10 @@ type GetTransactionController struct {
 	Validator                                       *validator.Validate
 	FindByIdEditTransactionRepository               usecase.FindByIdEditTransactionRepository
 	FindCustomFieldByIdRepository                   usecase.FindCustomFieldByIdRepository
+	FindCategoryByIdRepository                      usecase.FindCategoryByIdRepository
 }
 
-func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository) *GetTransactionController {
+func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *GetTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &GetTransactionController{
@@ -33,6 +34,7 @@ func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTran
 		Validator:                         validate,
 		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
 		FindCustomFieldByIdRepository:     findCustomFieldByIdRepository,
+		FindCategoryByIdRepository:        findCategoryByIdRepository,
 	}
 }
 
@@ -302,6 +304,28 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 func (c *GetTransactionController) filterTransactionsBySearch(transactions []models.Transaction, search string) ([]models.Transaction, error) {
 	filtered := make([]models.Transaction, 0, len(transactions)/2)
 
+	filterByCategory := func(tx *models.Transaction) (bool, error) {
+		if tx.CategoryId == nil {
+			return false, nil
+		}
+
+		category, err := c.FindCategoryByIdRepository.Find(*tx.CategoryId, tx.WorkspaceId)
+		if err != nil {
+			return false, err
+		}
+
+		if c.ContainsIgnoreCase(category.Name, search) {
+			return true, nil
+		}
+
+		for _, subCategory := range category.SubCategories {
+			if c.ContainsIgnoreCase(subCategory.Name, search) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
 	for i := range transactions {
 		tx := &transactions[i]
 
@@ -321,11 +345,26 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 			continue
 		}
 
+		isThereFieldMatch := false
 		for _, cf := range tx.CustomFields {
 			if c.ContainsIgnoreCase(cf.Value, search) {
 				filtered = append(filtered, *tx)
+				isThereFieldMatch = true
 				break
 			}
+		}
+
+		if isThereFieldMatch {
+			continue
+		}
+
+		categoryMatch, err := filterByCategory(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		if categoryMatch {
+			filtered = append(filtered, *tx)
 		}
 	}
 

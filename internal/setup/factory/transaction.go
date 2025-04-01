@@ -32,11 +32,13 @@ func MakeGetTransactionController(db *mongo.Database) *transaction.GetTransactio
 	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(db)
 	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
+	findCategoriesRepository := category_repository.NewFindCategoriesRepository(db)
 
 	return transaction.NewGetTransactionController(
 		findTransactionsByWorkspaceIdAndMonthRepository,
 		findByIdEditTransactionRepository,
 		findCustomFieldByIdRepository,
+		findCategoriesRepository,
 	)
 }
 
