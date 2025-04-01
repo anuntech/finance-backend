@@ -304,12 +304,8 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 func (c *GetTransactionController) filterTransactionsBySearch(transactions []models.Transaction, search string) ([]models.Transaction, error) {
 	filtered := make([]models.Transaction, 0, len(transactions)/2)
 
-	filterByCategory := func(tx *models.Transaction) (bool, error) {
-		if tx.CategoryId == nil {
-			return false, nil
-		}
-
-		category, err := c.FindCategoryByIdRepository.Find(*tx.CategoryId, tx.WorkspaceId)
+	filterCategoryById := func(categoryId primitive.ObjectID, workspaceId primitive.ObjectID) (bool, error) {
+		category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 		if err != nil {
 			return false, err
 		}
@@ -323,6 +319,34 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 				return true, nil
 			}
 		}
+
+		return false, nil
+	}
+
+	filterByCategory := func(tx *models.Transaction) (bool, error) {
+		if tx.CategoryId == nil {
+			return false, nil
+		}
+
+		return filterCategoryById(*tx.CategoryId, tx.WorkspaceId)
+	}
+
+	filterByTag := func(tx *models.Transaction) (bool, error) {
+		if tx.Tags == nil {
+			return false, nil
+		}
+
+		for _, tag := range tx.Tags {
+			categoryMatch, err := filterCategoryById(tag.TagId, tx.WorkspaceId)
+			if err != nil {
+				return false, err
+			}
+
+			if categoryMatch {
+				return true, nil
+			}
+		}
+
 		return false, nil
 	}
 
@@ -365,6 +389,17 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 
 		if categoryMatch {
 			filtered = append(filtered, *tx)
+			continue
+		}
+
+		tagMatch, err := filterByTag(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		if tagMatch {
+			filtered = append(filtered, *tx)
+			continue
 		}
 	}
 
