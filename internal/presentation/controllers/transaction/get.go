@@ -359,6 +359,19 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 		return false, nil
 	}
 
+	filterByAssignedTo := func(id primitive.ObjectID) bool {
+		user, err := c.FindWorkspaceUserByIdRepository.Find(id)
+		if err != nil {
+			return false
+		}
+
+		if user == nil {
+			return false
+		}
+
+		return c.ContainsIgnoreCase(user.Name, search)
+	}
+
 	for i := range transactions {
 		tx := &transactions[i]
 
@@ -407,6 +420,11 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 		}
 
 		if tagMatch {
+			filtered = append(filtered, *tx)
+			continue
+		}
+
+		if filterByAssignedTo(tx.AssignedTo) {
 			filtered = append(filtered, *tx)
 			continue
 		}
