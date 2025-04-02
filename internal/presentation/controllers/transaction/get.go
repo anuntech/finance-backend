@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"sort"
@@ -392,7 +393,12 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 				c.ContainsIgnoreCase(tx.Description, search) ||
 				c.ContainsIgnoreCase(tx.Supplier, search) ||
 				c.ContainsIgnoreCase(tx.Type, search) ||
-				c.ContainsIgnoreCase(tx.Frequency, search) {
+				c.ContainsIgnoreCase(tx.Frequency, search) ||
+				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Value), search) ||
+				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Discount), search) ||
+				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Interest), search) ||
+				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.DiscountPercentage), search) ||
+				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.InterestPercentage), search) {
 				addToFiltered()
 				return
 			}
