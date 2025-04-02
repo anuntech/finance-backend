@@ -373,33 +373,40 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(transactions))
+	var mu sync.Mutex
 
+	wg.Add(len(transactions))
 	for i := range transactions {
 		go func(i int) {
 			defer wg.Done()
 
 			tx := &transactions[i]
 
+			addToFiltered := func() {
+				mu.Lock()
+				defer mu.Unlock()
+				filtered = append(filtered, *tx)
+			}
+
 			if c.ContainsIgnoreCase(tx.Name, search) ||
 				c.ContainsIgnoreCase(tx.Description, search) ||
 				c.ContainsIgnoreCase(tx.Supplier, search) ||
 				c.ContainsIgnoreCase(tx.Type, search) ||
 				c.ContainsIgnoreCase(tx.Frequency, search) {
-				filtered = append(filtered, *tx)
+				addToFiltered()
 				return
 			}
 
 			if c.isDateMatch(tx.DueDate, search) ||
 				c.isDateMatch(tx.RegistrationDate, search) ||
 				(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
-				filtered = append(filtered, *tx)
+				addToFiltered()
 				return
 			}
 
 			for _, cf := range tx.CustomFields {
 				if c.ContainsIgnoreCase(cf.Value, search) {
-					filtered = append(filtered, *tx)
+					addToFiltered()
 					return
 				}
 			}
@@ -410,7 +417,7 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 			}
 
 			if categoryMatch {
-				filtered = append(filtered, *tx)
+				addToFiltered()
 				return
 			}
 
@@ -420,12 +427,12 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 			}
 
 			if tagMatch {
-				filtered = append(filtered, *tx)
+				addToFiltered()
 				return
 			}
 
 			if filterByAssignedTo(tx.AssignedTo) {
-				filtered = append(filtered, *tx)
+				addToFiltered()
 				return
 			}
 		}(i)
