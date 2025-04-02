@@ -28,3 +28,9 @@ type Workspace struct {
 	Members []Member           `bson:"members"`
 	Rules   Rules              `bson:"rules"`
 }
+
+type WorkspaceUser struct {
+	Id    primitive.ObjectID `bson:"_id"`
+	Name  string             `bson:"name"`
+	Email string             `bson:"email"`
+}

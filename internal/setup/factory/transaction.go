@@ -7,6 +7,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/transaction_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
+	workspace_user_repository "github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/user_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/controllers/edit_transaction"
 	"github.com/anuntech/finance-backend/internal/presentation/controllers/transaction"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,17 +29,19 @@ func MakeCreateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	)
 }
 
-func MakeGetTransactionController(db *mongo.Database) *transaction.GetTransactionController {
+func MakeGetTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *transaction.GetTransactionController {
 	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(db)
 	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+	findWorkspaceUserByIdRepository := workspace_user_repository.NewFindWorkspaceUserByIdRepository(workspaceDb)
 
 	return transaction.NewGetTransactionController(
 		findTransactionsByWorkspaceIdAndMonthRepository,
 		findByIdEditTransactionRepository,
 		findCustomFieldByIdRepository,
 		findCategoryByIdRepository,
+		*findWorkspaceUserByIdRepository,
 	)
 }
 

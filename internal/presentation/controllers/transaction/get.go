@@ -12,6 +12,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
+	workspace_user_repository "github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/user_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -24,9 +25,16 @@ type GetTransactionController struct {
 	FindByIdEditTransactionRepository               usecase.FindByIdEditTransactionRepository
 	FindCustomFieldByIdRepository                   usecase.FindCustomFieldByIdRepository
 	FindCategoryByIdRepository                      usecase.FindCategoryByIdRepository
+	FindWorkspaceUserByIdRepository                 workspace_user_repository.FindWorkspaceUserByIdRepository
 }
 
-func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository, findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository, findCategoryByIdRepository usecase.FindCategoryByIdRepository) *GetTransactionController {
+func NewGetTransactionController(
+	findManyByUserIdAndWorkspaceId usecase.FindTransactionsByWorkspaceIdRepository,
+	findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository,
+	findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository,
+	findCategoryByIdRepository usecase.FindCategoryByIdRepository,
+	findWorkspaceUserByIdRepository workspace_user_repository.FindWorkspaceUserByIdRepository,
+) *GetTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &GetTransactionController{
@@ -35,6 +43,7 @@ func NewGetTransactionController(findManyByUserIdAndWorkspaceId usecase.FindTran
 		FindByIdEditTransactionRepository: findByIdEditTransactionRepository,
 		FindCustomFieldByIdRepository:     findCustomFieldByIdRepository,
 		FindCategoryByIdRepository:        findCategoryByIdRepository,
+		FindWorkspaceUserByIdRepository:   findWorkspaceUserByIdRepository,
 	}
 }
 
