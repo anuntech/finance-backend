@@ -372,63 +372,72 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 		return c.ContainsIgnoreCase(user.Name, search)
 	}
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(transactions))
+
 	for i := range transactions {
-		tx := &transactions[i]
+		go func(i int) {
+			defer wg.Done()
 
-		if c.ContainsIgnoreCase(tx.Name, search) ||
-			c.ContainsIgnoreCase(tx.Description, search) ||
-			c.ContainsIgnoreCase(tx.Supplier, search) ||
-			c.ContainsIgnoreCase(tx.Type, search) ||
-			c.ContainsIgnoreCase(tx.Frequency, search) {
-			filtered = append(filtered, *tx)
-			continue
-		}
+			tx := &transactions[i]
 
-		if c.isDateMatch(tx.DueDate, search) ||
-			c.isDateMatch(tx.RegistrationDate, search) ||
-			(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
-			filtered = append(filtered, *tx)
-			continue
-		}
-
-		isThereFieldMatch := false
-		for _, cf := range tx.CustomFields {
-			if c.ContainsIgnoreCase(cf.Value, search) {
+			if c.ContainsIgnoreCase(tx.Name, search) ||
+				c.ContainsIgnoreCase(tx.Description, search) ||
+				c.ContainsIgnoreCase(tx.Supplier, search) ||
+				c.ContainsIgnoreCase(tx.Type, search) ||
+				c.ContainsIgnoreCase(tx.Frequency, search) {
 				filtered = append(filtered, *tx)
-				isThereFieldMatch = true
-				break
+				return
 			}
-		}
 
-		if isThereFieldMatch {
-			continue
-		}
+			if c.isDateMatch(tx.DueDate, search) ||
+				c.isDateMatch(tx.RegistrationDate, search) ||
+				(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
+				filtered = append(filtered, *tx)
+				return
+			}
 
-		categoryMatch, err := filterByCategory(tx)
-		if err != nil {
-			return nil, err
-		}
+			isThereFieldMatch := false
+			for _, cf := range tx.CustomFields {
+				if c.ContainsIgnoreCase(cf.Value, search) {
+					filtered = append(filtered, *tx)
+					isThereFieldMatch = true
+					break
+				}
+			}
 
-		if categoryMatch {
-			filtered = append(filtered, *tx)
-			continue
-		}
+			if isThereFieldMatch {
+				return
+			}
 
-		tagMatch, err := filterByTag(tx)
-		if err != nil {
-			return nil, err
-		}
+			categoryMatch, err := filterByCategory(tx)
+			if err != nil {
+				return
+			}
 
-		if tagMatch {
-			filtered = append(filtered, *tx)
-			continue
-		}
+			if categoryMatch {
+				filtered = append(filtered, *tx)
+				return
+			}
 
-		if filterByAssignedTo(tx.AssignedTo) {
-			filtered = append(filtered, *tx)
-			continue
-		}
+			tagMatch, err := filterByTag(tx)
+			if err != nil {
+				return
+			}
+
+			if tagMatch {
+				filtered = append(filtered, *tx)
+				return
+			}
+
+			if filterByAssignedTo(tx.AssignedTo) {
+				filtered = append(filtered, *tx)
+				return
+			}
+		}(i)
 	}
+
+	wg.Wait()
 
 	return filtered, nil
 }
