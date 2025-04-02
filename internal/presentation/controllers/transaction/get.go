@@ -397,17 +397,11 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 				return
 			}
 
-			isThereFieldMatch := false
 			for _, cf := range tx.CustomFields {
 				if c.ContainsIgnoreCase(cf.Value, search) {
 					filtered = append(filtered, *tx)
-					isThereFieldMatch = true
-					break
+					return
 				}
-			}
-
-			if isThereFieldMatch {
-				return
 			}
 
 			categoryMatch, err := filterByCategory(tx)
