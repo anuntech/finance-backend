@@ -44,4 +44,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /transaction/import", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeImportTransactionController(workspaceDb, db)),
+			workspaceDb,
+		),
+	))
 }

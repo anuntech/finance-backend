@@ -96,3 +96,29 @@ func MakeCreateEditTransactionController(workspaceDb *mongo.Database, db *mongo.
 		findCustomFieldByIdRepository,
 	)
 }
+
+func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *transaction.ImportTransactionController {
+	findMemberByIdRepository := member_repository.NewFindMemberByIdRepository(workspaceDb)
+	createTransactionRepository := transaction_repository.NewCreateTransactionRepository(db)
+	findAccountByIdRepository := account_repository.NewFindByIdMongoRepository(db)
+	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
+	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
+
+	// Repositórios para busca por nome
+	findAccountByNameRepository := account_repository.NewFindByNameMongoRepository(db)
+	findCategoryByNameRepository := category_repository.NewFindByNameMongoRepository(db)
+	findMemberByNameRepository := member_repository.NewFindMemberByNameRepository(workspaceDb)
+	findCustomFieldByNameRepository := custom_field_repository.NewFindCustomFieldByNameRepository(db)
+
+	return transaction.NewImportTransactionController(
+		findMemberByIdRepository,
+		createTransactionRepository,
+		findAccountByIdRepository,
+		findCategoryByIdRepository,
+		findCustomFieldByIdRepository,
+		findAccountByNameRepository,
+		findCategoryByNameRepository,
+		findMemberByNameRepository,
+		findCustomFieldByNameRepository,
+	)
+}
