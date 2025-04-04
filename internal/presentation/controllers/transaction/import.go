@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
@@ -151,35 +152,67 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	var importedTransactions []*models.Transaction
+	var wg sync.WaitGroup
+	importedTransactions := make([]*models.Transaction, len(body.Transactions))
+	type errorInfo struct {
+		index int
+		err   error
+	}
+	errs := make(chan errorInfo, len(body.Transactions))
 
+	// Iniciando uma goroutine para cada transação
 	for i, txImport := range body.Transactions {
-		// Converte a transação importada para o modelo interno
-		transaction, err := c.convertImportedTransaction(&txImport, workspaceId, userObjectID)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: fmt.Sprintf("error processing transaction #%d: %s", i+1, err.Error()),
-			}, http.StatusBadRequest)
-		}
+		wg.Add(1)
+		go func(index int, tx TransactionImportItem) {
+			defer wg.Done()
 
-		// Cria a transação
-		createdTx, err := c.CreateTransactionRepository.Create(transaction)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: fmt.Sprintf("error creating transaction #%d", i+1),
-			}, http.StatusInternalServerError)
-		}
+			// Converte a transação importada para o modelo interno
+			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
+			if err != nil {
+				errs <- errorInfo{index: index, err: err}
+				return
+			}
 
-		// Calcula o balanço líquido
-		recipeTx := *createdTx
-		recipeTx.Type = "RECIPE"
-		recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
-		createdTx.Balance.NetBalance = recipeNetBalance
+			// Cria a transação
+			createdTx, err := c.CreateTransactionRepository.Create(transaction)
+			if err != nil {
+				errs <- errorInfo{index: index, err: fmt.Errorf("error creating transaction: %w", err)}
+				return
+			}
 
-		importedTransactions = append(importedTransactions, createdTx)
+			// Calcula o balanço líquido
+			recipeTx := *createdTx
+			recipeTx.Type = "RECIPE"
+			recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
+			createdTx.Balance.NetBalance = recipeNetBalance
+
+			// Armazena o resultado no slice na posição correta
+			importedTransactions[index] = createdTx
+		}(i, txImport)
 	}
 
-	return helpers.CreateResponse(importedTransactions, http.StatusCreated)
+	// Goroutine para monitorar erros e fechar o canal após todas as tarefas finalizarem
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	// Verifica se ocorreu algum erro
+	for e := range errs {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: fmt.Sprintf("error processing transaction #%d: %s", e.index+1, e.err.Error()),
+		}, http.StatusBadRequest)
+	}
+
+	// Remove valores nil do slice de resultados (caso alguma goroutine tenha terminado com erro)
+	finalTransactions := make([]*models.Transaction, 0, len(importedTransactions))
+	for _, tx := range importedTransactions {
+		if tx != nil {
+			finalTransactions = append(finalTransactions, tx)
+		}
+	}
+
+	return helpers.CreateResponse(finalTransactions, http.StatusCreated)
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
