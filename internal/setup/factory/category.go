@@ -12,8 +12,8 @@ func MakeCreateCategoryController(db *mongo.Database) *controllers.CreateCategor
 	createCategory := category_repository.NewCreateCategoryRepository(db)
 	findAccountById := account_repository.NewFindByIdMongoRepository(db)
 	findCategorysByWorkspaceId := category_repository.NewFindCategoriesRepository(db)
-	findCategoryByName := category_repository.NewFindByNameMongoRepository(db)
-	return controllers.NewCreateCategoryController(createCategory, findAccountById, findCategorysByWorkspaceId, findCategoryByName)
+	findCategoryByNameAndType := category_repository.NewFindByNameAndTypeMongoRepository(db)
+	return controllers.NewCreateCategoryController(createCategory, findAccountById, findCategorysByWorkspaceId, findCategoryByNameAndType)
 }
 
 func MakeGetCategorysController(db *mongo.Database) *controllers.GetCategoriesController {
@@ -45,8 +45,8 @@ func MakeGetCategoryByIdController(db *mongo.Database) *controllers.GetCategoryB
 func MakeUpdateCategoryController(db *mongo.Database) *controllers.UpdateCategoryController {
 	updateCategory := category_repository.NewUpdateCategoryRepository(db)
 	findCategoryById := category_repository.NewFindCategoryByIdRepository(db)
-	findCategoryByName := category_repository.NewFindByNameMongoRepository(db)
-	return controllers.NewUpdateCategoryController(updateCategory, findCategoryById, findCategoryByName)
+	findCategoryByNameAndType := category_repository.NewFindByNameAndTypeMongoRepository(db)
+	return controllers.NewUpdateCategoryController(updateCategory, findCategoryById, findCategoryByNameAndType)
 }
 
 func MakeUpdateSubCategoryController(db *mongo.Database) *controllers_category.UpdateSubCategoryController {
@@ -58,8 +58,8 @@ func MakeUpdateSubCategoryController(db *mongo.Database) *controllers_category.U
 func MakeImportCategoryController(db *mongo.Database) *controllers.ImportCategoryController {
 	importCategory := category_repository.NewImportCategoriesRepository(db)
 	findCategorysByWorkspaceId := category_repository.NewFindCategoriesRepository(db)
-	findCategoryByName := category_repository.NewFindByNameMongoRepository(db)
-	return controllers.NewImportCategoryController(importCategory, findCategorysByWorkspaceId, findCategoryByName)
+	findCategoryByNameAndType := category_repository.NewFindByNameAndTypeMongoRepository(db)
+	return controllers.NewImportCategoryController(importCategory, findCategorysByWorkspaceId, findCategoryByNameAndType)
 }
 
 func MakeImportSubCategoryController(db *mongo.Database) *controllers_category.ImportSubCategoryController {
