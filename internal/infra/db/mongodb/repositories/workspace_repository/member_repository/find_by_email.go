@@ -45,6 +45,14 @@ func (r *FindMemberByEmailRepository) FindByEmailAndWorkspaceId(email string, wo
 		return nil, err
 	}
 
+	if workspace.Owner == user.Id {
+		return &models.Member{
+			MemberId: user.Id,
+			Role:     "owner",
+			ID:       user.Id,
+		}, nil
+	}
+
 	// Verificar se o usuário é membro do workspace
 	for _, member := range workspace.Members {
 		if member.MemberId == user.Id {
