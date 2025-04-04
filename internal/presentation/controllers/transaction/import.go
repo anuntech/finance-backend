@@ -292,7 +292,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	}
 
 	// Processar campos personalizados
-	var customFields []models.TransactionCustomField
+	customFields := make([]models.TransactionCustomField, 0)
 	for _, cf := range txImport.CustomFields {
 		customField, err := c.FindCustomFieldByNameRepository.FindByNameAndWorkspaceId(cf.CustomField, workspaceId)
 		if err != nil {
@@ -316,7 +316,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	}
 
 	// Processar tags
-	var tags []models.TransactionTags
+	tags := make([]models.TransactionTags, 0)
 	for _, tag := range txImport.Tags {
 		if tag.Tag == "" {
 			continue
