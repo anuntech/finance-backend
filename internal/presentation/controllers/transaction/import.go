@@ -21,7 +21,9 @@ import (
 )
 
 // Interfaces auxiliares para busca por nome
-type FindMemberByNameRepository interface {
+type FindMemberByEmailRepository interface {
+	FindByEmailAndWorkspaceId(email string, workspaceId primitive.ObjectID) (*models.Member, error)
+	// Mantém o método antigo para compatibilidade
 	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Member, error)
 }
 
@@ -40,7 +42,7 @@ type ImportTransactionController struct {
 	// Repositórios para busca por nome
 	FindAccountByNameRepository     usecase.FindAccountByNameAndWorkspaceIdRepository
 	FindCategoryByNameRepository    usecase.FindCategoryByNameAndWorkspaceIdRepository
-	FindMemberByNameRepository      FindMemberByNameRepository
+	FindMemberByEmailRepository     FindMemberByEmailRepository
 	FindCustomFieldByNameRepository FindCustomFieldByNameRepository
 }
 
@@ -52,7 +54,7 @@ func NewImportTransactionController(
 	findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository,
 	findAccountByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository,
 	findCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository,
-	findMemberByNameRepository FindMemberByNameRepository,
+	findMemberByEmailRepository FindMemberByEmailRepository,
 	findCustomFieldByNameRepository FindCustomFieldByNameRepository,
 ) *ImportTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -66,7 +68,7 @@ func NewImportTransactionController(
 		FindCustomFieldByIdRepository:   findCustomFieldByIdRepository,
 		FindAccountByNameRepository:     findAccountByNameRepository,
 		FindCategoryByNameRepository:    findCategoryByNameRepository,
-		FindMemberByNameRepository:      findMemberByNameRepository,
+		FindMemberByEmailRepository:     findMemberByEmailRepository,
 		FindCustomFieldByNameRepository: findCustomFieldByNameRepository,
 	}
 }
@@ -77,7 +79,7 @@ type TransactionImportItem struct {
 	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"omitempty,min=3,max=30"`
-	AssignedTo  string `json:"assignedTo" validate:"required,min=3"` // Nome do membro
+	AssignedTo  string `json:"assignedTo" validate:"required,email"` // Email do membro
 	Balance     struct {
 		Value              float64 `json:"value" validate:"required,min=0.01"`
 		Discount           float64 `json:"discount" validate:"omitempty,min=0.01"`
@@ -206,13 +208,13 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		confirmationDate = &parsedConfDate
 	}
 
-	// Buscar membro por nome
-	member, err := c.FindMemberByNameRepository.FindByNameAndWorkspaceId(txImport.AssignedTo, workspaceId)
+	// Buscar membro por email
+	member, err := c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId(txImport.AssignedTo, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 	if member == nil {
-		return nil, errors.New("member not found: " + txImport.AssignedTo)
+		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
 	// Buscar conta por nome

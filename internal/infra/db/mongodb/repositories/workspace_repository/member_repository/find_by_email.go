@@ -10,15 +10,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FindMemberByNameRepository struct {
+type FindMemberByEmailRepository struct {
 	db *mongo.Database
 }
 
-func NewFindMemberByNameRepository(db *mongo.Database) *FindMemberByNameRepository {
-	return &FindMemberByNameRepository{db}
+func NewFindMemberByEmailRepository(db *mongo.Database) *FindMemberByEmailRepository {
+	return &FindMemberByEmailRepository{db}
 }
 
-func (r *FindMemberByNameRepository) FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Member, error) {
+func (r *FindMemberByEmailRepository) FindByEmailAndWorkspaceId(email string, workspaceId primitive.ObjectID) (*models.Member, error) {
 	collection := r.db.Collection("workspaces")
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
@@ -34,10 +34,10 @@ func (r *FindMemberByNameRepository) FindByNameAndWorkspaceId(name string, works
 		return nil, err
 	}
 
-	// Buscar usuários por nome para obter seus IDs
+	// Buscar usuários por email para obter seus IDs
 	usersCollection := r.db.Collection("users")
 	var user models.WorkspaceUser
-	err = usersCollection.FindOne(ctx, bson.M{"name": name}).Decode(&user)
+	err = usersCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -53,4 +53,14 @@ func (r *FindMemberByNameRepository) FindByNameAndWorkspaceId(name string, works
 	}
 
 	return nil, nil
+}
+
+// Manter a implementação antiga para compatibilidade
+// mas internamente ela chama a versão que usa email
+func NewFindMemberByNameRepository(db *mongo.Database) *FindMemberByEmailRepository {
+	return NewFindMemberByEmailRepository(db)
+}
+
+func (r *FindMemberByEmailRepository) FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Member, error) {
+	return r.FindByEmailAndWorkspaceId(name, workspaceId)
 }

@@ -104,10 +104,10 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
 	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 
-	// Repositórios para busca por nome
+	// Repositórios para busca por nome/email
 	findAccountByNameRepository := account_repository.NewFindByNameMongoRepository(db)
 	findCategoryByNameRepository := category_repository.NewFindByNameMongoRepository(db)
-	findMemberByNameRepository := member_repository.NewFindMemberByNameRepository(workspaceDb)
+	findMemberByEmailRepository := member_repository.NewFindMemberByEmailRepository(workspaceDb)
 	findCustomFieldByNameRepository := custom_field_repository.NewFindCustomFieldByNameRepository(db)
 
 	return transaction.NewImportTransactionController(
@@ -118,7 +118,7 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 		findCustomFieldByIdRepository,
 		findAccountByNameRepository,
 		findCategoryByNameRepository,
-		findMemberByNameRepository,
+		findMemberByEmailRepository,
 		findCustomFieldByNameRepository,
 	)
 }
