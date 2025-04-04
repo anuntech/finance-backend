@@ -302,6 +302,10 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			return nil, errors.New("custom field not found: " + cf.CustomField)
 		}
 
+		if (customField.Type != txImport.Type) && (customField.Type != "ALL") {
+			return nil, errors.New("custom field type mismatch: " + customField.Type + " != " + txImport.Type)
+		}
+
 		// Assume IDs como ObjectIDs
 		customFieldId, err := primitive.ObjectIDFromHex(customField.Id)
 		if err != nil {

@@ -19,16 +19,17 @@ func NewFindCustomFieldByNameRepository(db *mongo.Database) *FindCustomFieldByNa
 }
 
 func (r *FindCustomFieldByNameRepository) FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.CustomField, error) {
-	collection := r.db.Collection("customfield")
+	collection := r.db.Collection("custom_field")
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
 	// Buscar campo personalizado por nome e workspace
+
 	var customField models.CustomField
 	err := collection.FindOne(ctx, bson.M{
 		"name":         name,
-		"workspace_id": workspaceId.Hex(),
+		"workspace_id": workspaceId,
 	}).Decode(&customField)
 
 	if err != nil {
