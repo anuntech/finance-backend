@@ -16,13 +16,13 @@ type ImportCategoryController struct {
 	ImportCategoriesRepository   usecase.ImportCategoriesRepository
 	Validate                     *validator.Validate
 	FindCategoriesRepository     usecase.FindCategoriesRepository
-	FindCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository
+	FindCategoryByNameRepository usecase.FindCategoryByNameAndTypeRepository
 }
 
 func NewImportCategoryController(
 	importUseCase usecase.ImportCategoriesRepository,
 	findCategorys usecase.FindCategoriesRepository,
-	findCategoryByName usecase.FindCategoryByNameAndWorkspaceIdRepository,
+	findCategoryByName usecase.FindCategoryByNameAndTypeRepository,
 ) *ImportCategoryController {
 	validate := validator.New()
 
@@ -94,7 +94,7 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		categoryNameSet[cat.Name] = true
 
 		// Verificar se o nome já existe no workspace
-		existingCategory, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(cat.Name, workspaceId)
+		existingCategory, err := c.FindCategoryByNameRepository.Find(cat.Name, cat.Type, workspaceId)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "erro ao verificar duplicidade de nomes de categorias: " + err.Error(),

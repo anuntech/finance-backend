@@ -14,8 +14,8 @@ type FindCategoriesRepository interface {
 	Find(globalFilters *presentationHelpers.GlobalFilterParams) ([]models.Category, error)
 }
 
-type FindCategoryByNameAndWorkspaceIdRepository interface {
-	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Category, error)
+type FindCategoryByNameAndTypeRepository interface {
+	Find(name string, typeCategory string, workspaceId primitive.ObjectID) (*models.Category, error)
 }
 
 type UpdateCategoryRepository interface {

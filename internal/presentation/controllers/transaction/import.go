@@ -41,10 +41,10 @@ type ImportTransactionController struct {
 	FindCategoryByIdRepository    usecase.FindCategoryByIdRepository
 	FindCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository
 	// Repositórios para busca por nome
-	FindAccountByNameRepository     usecase.FindAccountByNameAndWorkspaceIdRepository
-	FindCategoryByNameRepository    usecase.FindCategoryByNameAndWorkspaceIdRepository
-	FindMemberByEmailRepository     FindMemberByEmailRepository
-	FindCustomFieldByNameRepository FindCustomFieldByNameRepository
+	FindAccountByNameRepository         usecase.FindAccountByNameAndWorkspaceIdRepository
+	FindCategoryByNameAndTypeRepository usecase.FindCategoryByNameAndTypeRepository
+	FindMemberByEmailRepository         FindMemberByEmailRepository
+	FindCustomFieldByNameRepository     FindCustomFieldByNameRepository
 }
 
 func NewImportTransactionController(
@@ -54,23 +54,23 @@ func NewImportTransactionController(
 	findCategoryByIdRepository usecase.FindCategoryByIdRepository,
 	findCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository,
 	findAccountByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository,
-	findCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository,
+	findCategoryByNameAndTypeRepository usecase.FindCategoryByNameAndTypeRepository,
 	findMemberByEmailRepository FindMemberByEmailRepository,
 	findCustomFieldByNameRepository FindCustomFieldByNameRepository,
 ) *ImportTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &ImportTransactionController{
-		Validate:                        validate,
-		FindMemberByIdRepository:        findMemberByIdRepository,
-		CreateTransactionRepository:     createTransactionRepository,
-		FindAccountByIdRepository:       findAccountByIdRepository,
-		FindCategoryByIdRepository:      findCategoryByIdRepository,
-		FindCustomFieldByIdRepository:   findCustomFieldByIdRepository,
-		FindAccountByNameRepository:     findAccountByNameRepository,
-		FindCategoryByNameRepository:    findCategoryByNameRepository,
-		FindMemberByEmailRepository:     findMemberByEmailRepository,
-		FindCustomFieldByNameRepository: findCustomFieldByNameRepository,
+		Validate:                            validate,
+		FindMemberByIdRepository:            findMemberByIdRepository,
+		CreateTransactionRepository:         createTransactionRepository,
+		FindAccountByIdRepository:           findAccountByIdRepository,
+		FindCategoryByIdRepository:          findCategoryByIdRepository,
+		FindCustomFieldByIdRepository:       findCustomFieldByIdRepository,
+		FindAccountByNameRepository:         findAccountByNameRepository,
+		FindCategoryByNameAndTypeRepository: findCategoryByNameAndTypeRepository,
+		FindMemberByEmailRepository:         findMemberByEmailRepository,
+		FindCustomFieldByNameRepository:     findCustomFieldByNameRepository,
 	}
 }
 
@@ -264,16 +264,12 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	var subCategoryId *primitive.ObjectID
 
 	if txImport.Category != nil && *txImport.Category != "" {
-		category, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(*txImport.Category, workspaceId)
+		category, err := c.FindCategoryByNameAndTypeRepository.Find(*txImport.Category, txImport.Type, workspaceId)
 		if err != nil {
 			return nil, err
 		}
 		if category == nil {
 			return nil, errors.New("category not found: " + *txImport.Category)
-		}
-
-		if !strings.EqualFold(category.Type, txImport.Type) {
-			return nil, errors.New("category type does not match transaction type")
 		}
 
 		categoryId = &category.Id
@@ -326,7 +322,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			continue
 		}
 
-		category, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(tag.Tag, workspaceId)
+		category, err := c.FindCategoryByNameAndTypeRepository.Find(tag.Tag, "TAG", workspaceId)
 		if err != nil {
 			return nil, err
 		}

@@ -17,14 +17,14 @@ type CreateCategoryController struct {
 	Validate                     *validator.Validate
 	FindAccountById              usecase.FindAccountByIdRepository
 	FindCategoriesRepository     usecase.FindCategoriesRepository
-	FindCategoryByNameRepository usecase.FindCategoryByNameAndWorkspaceIdRepository
+	FindCategoryByNameRepository usecase.FindCategoryByNameAndTypeRepository
 }
 
 func NewCreateCategoryController(
 	createCategory usecase.CreateCategoryRepository,
 	findAccountById usecase.FindAccountByIdRepository,
 	findCategorysByWorkspaceId usecase.FindCategoriesRepository,
-	findCategoryByName usecase.FindCategoryByNameAndWorkspaceIdRepository,
+	findCategoryByName usecase.FindCategoryByNameAndTypeRepository,
 ) *CreateCategoryController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -72,7 +72,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	// Verificar se já existe uma categoria com o mesmo nome neste workspace
-	existingCategory, err := c.FindCategoryByNameRepository.FindByNameAndWorkspaceId(body.Name, workspaceId)
+	existingCategory, err := c.FindCategoryByNameRepository.Find(body.Name, body.Type, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error checking category name",

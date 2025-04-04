@@ -10,20 +10,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type FindByNameMongoRepository struct {
+type FindByNameAndTypeMongoRepository struct {
 	Db *mongo.Database
 }
 
-func NewFindByNameMongoRepository(db *mongo.Database) *FindByNameMongoRepository {
-	return &FindByNameMongoRepository{
+func NewFindByNameAndTypeMongoRepository(db *mongo.Database) *FindByNameAndTypeMongoRepository {
+	return &FindByNameAndTypeMongoRepository{
 		Db: db,
 	}
 }
 
-func (r *FindByNameMongoRepository) FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Category, error) {
+func (r *FindByNameAndTypeMongoRepository) Find(name string, typeCategory string, workspaceId primitive.ObjectID) (*models.Category, error) {
 	collection := r.Db.Collection("category")
 
-	filter := bson.M{"name": name, "workspace_id": workspaceId}
+	filter := bson.M{"name": name, "type": typeCategory, "workspace_id": workspaceId}
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
