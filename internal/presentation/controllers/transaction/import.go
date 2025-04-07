@@ -385,7 +385,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		Invoice:     txImport.Invoice,
 		Type:        txImport.Type,
 		Supplier:    txImport.Supplier,
-		AssignedTo:  member.ID,
+		AssignedTo:  member.MemberId,
 		CreatedBy:   userID,
 		WorkspaceId: workspaceId,
 		Balance: models.TransactionBalance{
