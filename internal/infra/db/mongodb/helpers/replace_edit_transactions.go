@@ -69,7 +69,14 @@ func CalculateCurrentCount(transaction *models.Transaction, year int, month int)
 	case "REPEAT":
 		// Para transações com repetição fixa, procuramos qual parcela cai no mês desejado
 		for i := int(transaction.RepeatSettings.InitialInstallment); i <= transaction.RepeatSettings.Count; i++ {
-			installmentDueDate := computeInstallmentDueDate(dateRef, transaction.RepeatSettings.Interval, i-1)
+			var installmentDueDate time.Time
+
+			// Para o caso CUSTOM, aplicamos o CustomDay direto aqui
+			if transaction.RepeatSettings.Interval == "CUSTOM" && transaction.RepeatSettings.CustomDay > 0 {
+				installmentDueDate = dateRef.AddDate(0, 0, transaction.RepeatSettings.CustomDay*(i-1))
+			} else {
+				installmentDueDate = computeInstallmentDueDate(dateRef, transaction.RepeatSettings.Interval, i-1)
+			}
 
 			// Verificamos se esta parcela cai no mês/período filtrado
 			if !installmentDueDate.Before(targetDate) && installmentDueDate.Before(endOfMonth) {
@@ -108,8 +115,27 @@ func computeInstallmentDueDate(initial time.Time, interval string, offset int) t
 		return initial.AddDate(0, 3*offset, 0)
 	case "YEARLY":
 		return initial.AddDate(offset, 0, 0)
+	case "CUSTOM":
+		// Para CUSTOM no helper, usamos mensal como padrão
+		// (O valor real será calculado no repository que tem acesso ao CustomDay)
+		return initial.AddDate(0, offset, 0)
 	default:
 		// Caso o intervalo não seja reconhecido, utiliza-se mensal como padrão
 		return initial.AddDate(0, offset, 0)
 	}
+}
+
+// Função auxiliar para obter o número de dias em um mês
+func daysInMonth(date time.Time) int {
+	year, month, _ := date.Date()
+	// Pegar o primeiro dia do próximo mês e subtrair 1 dia
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, date.Location()).Day()
+}
+
+// Função auxiliar para obter o mínimo entre dois inteiros
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -121,7 +121,7 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 // 	return filter
 // }
 
-func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int) time.Time {
+func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int, customDay ...int) time.Time {
 	switch interval {
 	// case "DAILY":
 	// 	return initial.AddDate(0, 0, offset)
@@ -133,6 +133,13 @@ func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, int
 		return initial.AddDate(0, 3*offset, 0)
 	case "YEARLY":
 		return initial.AddDate(offset, 0, 0)
+	case "CUSTOM":
+		// Se temos o customDay como parâmetro, usamos ele
+		if len(customDay) > 0 && customDay[0] > 0 {
+			return initial.AddDate(0, 0, customDay[0]*offset)
+		}
+		// Fallback para intervalo mensal
+		return initial.AddDate(0, offset, 0)
 	default:
 		// Caso o intervalo não seja reconhecido, utiliza-se mensal como padrão
 		return initial.AddDate(0, offset, 0)
@@ -161,7 +168,14 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 			installmentCounter := 1
 			for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
 				// Calculate the due date for this installment
-				installmentDueDate := r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
+				var installmentDueDate time.Time
+
+				// Se for intervalo CUSTOM, passa o CustomDay
+				if tx.RepeatSettings.Interval == "CUSTOM" {
+					installmentDueDate = r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1, tx.RepeatSettings.CustomDay)
+				} else {
+					installmentDueDate = r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
+				}
 
 				// Check if this installment is within the date range
 				if (!installmentDueDate.Before(startOfMonth) && installmentDueDate.Before(endOfMonth)) || startOfMonth.IsZero() || endOfMonth.IsZero() {
@@ -190,10 +204,8 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 					originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
 					originalRegDay := tx.RegistrationDate.Day()
 
-					// Ensure the day exists in the month
-					if originalRegDay > daysInMonth(installmentDueDate) {
-						originalRegDay = daysInMonth(installmentDueDate)
-					}
+					// Ensure the day exists in the month using min
+					originalRegDay = min(originalRegDay, daysInMonth(installmentDueDate))
 
 					newRegDate := time.Date(
 						installmentDueDate.Year(), installmentDueDate.Month(), originalRegDay,
@@ -273,9 +285,7 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 				// Mantém o mesmo dia do mês da transação original
 				originalDay := dateRef.Day()
-				if originalDay > daysInMonth(currentDate) {
-					originalDay = daysInMonth(currentDate)
-				}
+				originalDay = min(originalDay, daysInMonth(currentDate))
 
 				// Atualiza o DueDate para este mês
 				newDueDate := time.Date(
@@ -293,9 +303,7 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 					// Atualiza o RegistrationDate
 					originalRegHour, originalRegMin, originalRegSec := tx.RegistrationDate.Clock()
 					originalRegDay := tx.RegistrationDate.Day()
-					if originalRegDay > daysInMonth(currentDate) {
-						originalRegDay = daysInMonth(currentDate)
-					}
+					originalRegDay = min(originalRegDay, daysInMonth(currentDate))
 
 					newRegDate := time.Date(
 						currentDate.Year(), currentDate.Month(), originalRegDay,

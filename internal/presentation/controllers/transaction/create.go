@@ -65,7 +65,8 @@ type TransactionBody struct {
 	RepeatSettings struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
 		Count              int        `json:"count" validate:"min=2,max=367"`
-		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
+		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY CUSTOM"`
+		CustomDay          int        `json:"customDay" validate:"required_if=Interval CUSTOM"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate       string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed   bool    `json:"isConfirmed"`
@@ -382,6 +383,7 @@ func createTransaction(body *TransactionBody) (*models.Transaction, error) {
 			InitialInstallment: body.RepeatSettings.InitialInstallment,
 			Count:              body.RepeatSettings.Count,
 			Interval:           body.RepeatSettings.Interval,
+			CustomDay:          body.RepeatSettings.CustomDay,
 		},
 		CustomFields:     customFields,
 		IsConfirmed:      body.IsConfirmed,

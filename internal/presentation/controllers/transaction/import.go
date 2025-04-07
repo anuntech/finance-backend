@@ -92,7 +92,8 @@ type TransactionImportItem struct {
 	RepeatSettings struct {
 		InitialInstallment time.Month `json:"initialInstallment" validate:"min=1"`
 		Count              int        `json:"count" validate:"min=2,max=367"`
-		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY"`
+		Interval           string     `json:"interval" validate:"oneof=DAILY WEEKLY MONTHLY QUARTERLY YEARLY CUSTOM"`
+		CustomDay          int        `json:"customDay" validate:"omitempty,required_if=Interval CUSTOM"`
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate     string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed bool    `json:"isConfirmed"`
@@ -368,6 +369,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			InitialInstallment: txImport.RepeatSettings.InitialInstallment,
 			Count:              txImport.RepeatSettings.Count,
 			Interval:           txImport.RepeatSettings.Interval,
+			CustomDay:          txImport.RepeatSettings.CustomDay,
+		}
+
+		if txImport.RepeatSettings.Interval == "CUSTOM" {
+			repeatSettings.CustomDay = txImport.RepeatSettings.CustomDay
 		}
 	}
 

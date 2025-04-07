@@ -19,7 +19,8 @@ type TransactionRepeatSettings struct {
 	InitialInstallment time.Month `bson:"initial_installment" json:"initialInstallment,omitempty"`
 	Count              int        `bson:"count" json:"count,omitempty"`
 	CurrentCount       int        `bson:"-" json:"currentCount,omitempty"`
-	Interval           string     `bson:"interval" json:"interval,omitempty"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY
+	Interval           string     `bson:"interval" json:"interval,omitempty"` // MONTHLY | DAILY | WEEKLY | QUARTERLY | YEARLY | CUSTOM
+	CustomDay          int        `bson:"custom_day" json:"customDay,omitempty"`
 }
 
 type TransactionTags struct {
