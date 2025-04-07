@@ -303,8 +303,8 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			return nil, errors.New("custom field not found: " + cf.CustomField)
 		}
 
-		if (customField.Type != txImport.Type) && (customField.Type != "ALL") {
-			return nil, errors.New("custom field type mismatch: " + customField.Type + " != " + txImport.Type)
+		if (customField.TransactionType != txImport.Type) && (customField.TransactionType != "ALL") {
+			return nil, errors.New("custom field type mismatch: " + customField.TransactionType + " != " + txImport.Type)
 		}
 
 		// Assume IDs como ObjectIDs
