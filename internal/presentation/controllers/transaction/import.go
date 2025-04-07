@@ -22,10 +22,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Interfaces auxiliares para busca por nome
 type FindMemberByEmailRepository interface {
 	FindByEmailAndWorkspaceId(email string, workspaceId primitive.ObjectID) (*models.Member, error)
-	// Mantém o método antigo para compatibilidade
+
 	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.Member, error)
 }
 
@@ -41,7 +40,7 @@ type ImportTransactionController struct {
 	FindAccountByIdRepository     usecase.FindAccountByIdRepository
 	FindCategoryByIdRepository    usecase.FindCategoryByIdRepository
 	FindCustomFieldByIdRepository usecase.FindCustomFieldByIdRepository
-	// Repositórios para busca por nome
+
 	FindAccountByNameRepository         usecase.FindAccountByNameAndWorkspaceIdRepository
 	FindCategoryByNameAndTypeRepository usecase.FindCategoryByNameAndTypeRepository
 	FindMemberByEmailRepository         FindMemberByEmailRepository
@@ -81,7 +80,7 @@ type TransactionImportItem struct {
 	Invoice     string `json:"invoice" validate:"omitempty,min=2,max=50"`
 	Type        string `json:"type" validate:"required,oneof=EXPENSE RECIPE"`
 	Supplier    string `json:"supplier" validate:"omitempty,min=3,max=30"`
-	AssignedTo  string `json:"assignedTo" validate:"required,email"` // Email do membro
+	AssignedTo  string `json:"assignedTo" validate:"required,email"`
 	Balance     struct {
 		Value              float64 `json:"value" validate:"required,min=0.01"`
 		Discount           float64 `json:"discount" validate:"omitempty,min=0.01"`
@@ -98,17 +97,17 @@ type TransactionImportItem struct {
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate     string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed bool    `json:"isConfirmed"`
-	Category    *string `json:"category" validate:"omitempty"`    // Nome da categoria
-	SubCategory *string `json:"subCategory" validate:"omitempty"` // Nome da subcategoria
+	Category    *string `json:"category" validate:"omitempty"`
+	SubCategory *string `json:"subCategory" validate:"omitempty"`
 	Tags        []struct {
-		Tag    string `json:"tag" validate:"omitempty"`    // Nome da tag
-		SubTag string `json:"subTag" validate:"omitempty"` // Nome da subtag
+		Tag    string `json:"tag" validate:"omitempty"`
+		SubTag string `json:"subTag" validate:"omitempty"`
 	} `json:"tags" validate:"omitempty"`
 	CustomFields []struct {
-		CustomField string `json:"customField" validate:"required"` // Nome do campo personalizado
+		CustomField string `json:"customField" validate:"required"`
 		Value       string `json:"value" validate:"required,max=100"`
 	} `json:"customFields" validate:"omitempty"`
-	Account          string  `json:"account" validate:"required"` // Nome da conta
+	Account          string  `json:"account" validate:"required"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
@@ -147,7 +146,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	// Limite de transações
 	if len(body.Transactions) > 100 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "maximum of 100 transactions per import",
@@ -162,7 +160,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	errs := make(chan errorInfo, len(body.Transactions))
 
-	// Iniciando uma goroutine para cada transação
 	for i, txImport := range body.Transactions {
 		wg.Add(1)
 		go func(index int, tx TransactionImportItem) {
@@ -171,46 +168,39 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			})
 			defer wg.Done()
 
-			// Converte a transação importada para o modelo interno
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
 				errs <- errorInfo{index: index, err: err}
 				return
 			}
 
-			// Cria a transação
 			createdTx, err := c.CreateTransactionRepository.Create(transaction)
 			if err != nil {
 				errs <- errorInfo{index: index, err: fmt.Errorf("error creating transaction: %w", err)}
 				return
 			}
 
-			// Calcula o balanço líquido
 			recipeTx := *createdTx
 			recipeTx.Type = "RECIPE"
 			recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
 			createdTx.Balance.NetBalance = recipeNetBalance
 
-			// Armazena o resultado no slice na posição correta
 			importedTransactions[index] = createdTx
 		}(i, txImport)
 	}
 
-	// Goroutine para monitorar erros e fechar o canal após todas as tarefas finalizarem
 	go func() {
-		defer utils.Recovery(&wg) // Também protegemos essa goroutine
+		defer utils.Recovery(&wg)
 		wg.Wait()
 		close(errs)
 	}()
 
-	// Verifica se ocorreu algum erro
 	for e := range errs {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: fmt.Sprintf("error processing transaction #%d: %s", e.index+1, e.err.Error()),
 		}, http.StatusBadRequest)
 	}
 
-	// Remove valores nil do slice de resultados (caso alguma goroutine tenha terminado com erro)
 	finalTransactions := make([]*models.Transaction, 0, len(importedTransactions))
 	for _, tx := range importedTransactions {
 		if tx != nil {
@@ -222,7 +212,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
-	// Parse dates
+
 	parseDate := func(date string) (time.Time, error) {
 		location := time.UTC
 		return time.ParseInLocation("2006-01-02T15:04:05Z", date, location)
@@ -247,7 +237,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		confirmationDate = &parsedConfDate
 	}
 
-	// Buscar membro por email
 	member, err := c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId(txImport.AssignedTo, workspaceId)
 	if err != nil {
 		return nil, err
@@ -256,7 +245,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
-	// Buscar conta por nome
 	account, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(txImport.Account, workspaceId)
 	if err != nil {
 		return nil, err
@@ -265,7 +253,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("account not found: " + txImport.Account)
 	}
 
-	// Buscar categoria e subcategoria por nome
 	var categoryId *primitive.ObjectID
 	var subCategoryId *primitive.ObjectID
 
@@ -280,7 +267,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 		categoryId = &category.Id
 
-		// Buscar subcategoria se fornecida
 		if txImport.SubCategory != nil && *txImport.SubCategory != "" {
 			found := false
 			for _, subCat := range category.SubCategories {
@@ -297,7 +283,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		}
 	}
 
-	// Processar campos personalizados
 	customFields := make([]models.TransactionCustomField, 0)
 	for _, cf := range txImport.CustomFields {
 		customField, err := c.FindCustomFieldByNameRepository.FindByNameAndWorkspaceId(cf.CustomField, workspaceId)
@@ -312,7 +297,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			return nil, errors.New("custom field type mismatch: " + customField.TransactionType + " != " + txImport.Type)
 		}
 
-		// Assume IDs como ObjectIDs
 		customFieldId, err := primitive.ObjectIDFromHex(customField.Id)
 		if err != nil {
 			return nil, errors.New("invalid custom field ID")
@@ -325,7 +309,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		})
 	}
 
-	// Processar tags
 	tags := make([]models.TransactionTags, 0)
 	for _, tag := range txImport.Tags {
 		if tag.Tag == "" {
@@ -346,15 +329,14 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 		tags = append(tags, models.TransactionTags{
 			TagId:    category.Id,
-			SubTagId: primitive.NilObjectID, // Inicializa como nulo
+			SubTagId: primitive.NilObjectID,
 		})
 
-		// Processa subtag se fornecida
 		if tag.SubTag != "" {
 			found := false
 			for _, subCat := range category.SubCategories {
 				if strings.EqualFold(subCat.Name, tag.SubTag) {
-					// Atualiza o último elemento adicionado
+
 					tags[len(tags)-1].SubTagId = subCat.Id
 					found = true
 					break
@@ -367,7 +349,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		}
 	}
 
-	// Criar a estrutura de RepeatSettings
 	var repeatSettings *models.TransactionRepeatSettings
 	if txImport.Frequency == "REPEAT" {
 		repeatSettings = &models.TransactionRepeatSettings{
@@ -382,7 +363,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		}
 	}
 
-	// Montar a transação final
 	transaction := &models.Transaction{
 		Id:          primitive.NewObjectID(),
 		Name:        txImport.Name,

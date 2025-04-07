@@ -173,16 +173,23 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
+
+		// Se não tiver categoria, não valida
 		if transaction.CategoryId == nil {
 			return
 		}
-		if transaction.SubCategoryId == nil {
-			if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, primitive.NilObjectID); err != nil {
-				errChan <- err
-			}
-			return
+
+		// Garante que categoryId não é nil antes de desreferenciar
+		categoryId := *transaction.CategoryId
+
+		// Se não tiver subcategoria, passa o ID nulo
+		var subCategoryId primitive.ObjectID
+		if transaction.SubCategoryId != nil {
+			subCategoryId = *transaction.SubCategoryId
 		}
-		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
+
+		// Faz a validação com os valores extraídos
+		if err := c.validateCategory(workspaceId, categoryId, transaction.Type, subCategoryId); err != nil {
 			errChan <- err
 		}
 	}()
@@ -482,6 +489,10 @@ func (c *CreateTransactionController) validateCategory(workspaceId primitive.Obj
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "category type does not match transaction type",
 		}, http.StatusBadRequest)
+	}
+
+	if subCategoryId == primitive.NilObjectID {
+		return nil
 	}
 
 	for _, subCategory := range category.SubCategories {
