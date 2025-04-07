@@ -15,6 +15,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/utils"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -134,7 +135,13 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	wg.Add(1)
 	go func() {
+		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error in validateAssignedMember: panic recovered",
+			}, http.StatusInternalServerError)
+		})
 		defer wg.Done()
+
 		if err := c.validateAssignedMember(workspaceId, assignedTo); err != nil {
 			errChan <- err
 			return
@@ -144,6 +151,11 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	wg.Add(1)
 	go func() {
+		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error in validateAccount: panic recovered",
+			}, http.StatusInternalServerError)
+		})
 		defer wg.Done()
 		if transaction.AccountId == nil {
 			return
@@ -155,8 +167,19 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	wg.Add(1)
 	go func() {
+		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error in validateCategory: panic recovered",
+			}, http.StatusInternalServerError)
+		})
 		defer wg.Done()
 		if transaction.CategoryId == nil {
+			return
+		}
+		if transaction.SubCategoryId == nil {
+			if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, primitive.NilObjectID); err != nil {
+				errChan <- err
+			}
 			return
 		}
 		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
@@ -166,6 +189,11 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	wg.Add(1)
 	go func() {
+		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error in custom fields validation: panic recovered",
+			}, http.StatusInternalServerError)
+		})
 		defer wg.Done()
 
 		seenCustomFields := make(map[string]bool)
@@ -207,6 +235,11 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	wg.Add(1)
 	go func() {
+		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error in tags validation: panic recovered",
+			}, http.StatusInternalServerError)
+		})
 		defer wg.Done()
 		seenTags := make(map[string]bool)
 

@@ -16,6 +16,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/utils"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -165,6 +166,9 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	for i, txImport := range body.Transactions {
 		wg.Add(1)
 		go func(index int, tx TransactionImportItem) {
+			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
+			})
 			defer wg.Done()
 
 			// Converte a transação importada para o modelo interno
@@ -194,6 +198,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	// Goroutine para monitorar erros e fechar o canal após todas as tarefas finalizarem
 	go func() {
+		defer utils.Recovery(&wg) // Também protegemos essa goroutine
 		wg.Wait()
 		close(errs)
 	}()
