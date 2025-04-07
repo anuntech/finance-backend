@@ -162,15 +162,37 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 		switch tx.Frequency {
 		case "REPEAT":
-			// Create multiple instances like the RECURRING case
 			var txInstances []models.Transaction
 
-			installmentCounter := 1
+			// Calcular a parcela de base - esta será usada para iniciar o contador
+			baseInstallment := int(tx.RepeatSettings.InitialInstallment)
+
+			// Ajusta o contador para começar do número correto da parcela
+			// com base no mês de início da busca
+			if !startOfMonth.IsZero() {
+				for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
+					var installmentDueDate time.Time
+
+					if tx.RepeatSettings.Interval == "CUSTOM" {
+						installmentDueDate = r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1, tx.RepeatSettings.CustomDay)
+					} else {
+						installmentDueDate = r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1)
+					}
+
+					// Se esta data for anterior ao mês de início da busca, incrementamos a base
+					if installmentDueDate.Before(startOfMonth) {
+						baseInstallment = i + 1
+					}
+				}
+			}
+
+			// Inicializa o contador a partir da parcela de base
+			installmentCounter := baseInstallment
+
+			// Agora itera sobre as parcelas como antes
 			for i := int(tx.RepeatSettings.InitialInstallment); i <= tx.RepeatSettings.Count; i++ {
-				// Calculate the due date for this installment
 				var installmentDueDate time.Time
 
-				// Se for intervalo CUSTOM, passa o CustomDay
 				if tx.RepeatSettings.Interval == "CUSTOM" {
 					installmentDueDate = r.computeInstallmentDueDate(dateRef, tx.RepeatSettings.Interval, i-1, tx.RepeatSettings.CustomDay)
 				} else {

@@ -67,7 +67,9 @@ func CalculateCurrentCount(transaction *models.Transaction, year int, month int)
 
 	switch transaction.Frequency {
 	case "REPEAT":
-		// Para transações com repetição fixa, procuramos qual parcela cai no mês desejado
+		// Determinar qual parcela vem antes do mês alvo para encontrar a base
+		baseInstallment := int(transaction.RepeatSettings.InitialInstallment)
+
 		for i := int(transaction.RepeatSettings.InitialInstallment); i <= transaction.RepeatSettings.Count; i++ {
 			var installmentDueDate time.Time
 
@@ -78,12 +80,24 @@ func CalculateCurrentCount(transaction *models.Transaction, year int, month int)
 				installmentDueDate = computeInstallmentDueDate(dateRef, transaction.RepeatSettings.Interval, i-1)
 			}
 
+			// Se esta instalação vem antes do mês alvo, atualizamos a base
+			if installmentDueDate.Before(targetDate) {
+				baseInstallment = i
+			}
+
 			// Verificamos se esta parcela cai no mês/período filtrado
 			if !installmentDueDate.Before(targetDate) && installmentDueDate.Before(endOfMonth) {
 				return i
 			}
 		}
-		return 0 // Nenhuma parcela encontrada para o mês
+
+		// Se não encontramos uma parcela exata neste mês, retornamos a base + 1
+		// Isso mantém a sequência consistente
+		if baseInstallment < transaction.RepeatSettings.Count {
+			return baseInstallment + 1
+		}
+
+		return baseInstallment
 
 	case "RECURRING":
 		// Para transações recorrentes, calculamos o número de meses entre a data de referência e a data alvo
