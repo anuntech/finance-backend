@@ -2,10 +2,13 @@ package transaction
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -41,17 +44,23 @@ type UpdateManyBalanceRequest struct {
 }
 
 type UpdateManyTransactionController struct {
-	FindTransactionByIdRepository usecase.FindTransactionByIdRepository
-	UpdateTransactionRepository   usecase.UpdateTransactionRepository
+	FindTransactionByIdRepository     usecase.FindTransactionByIdRepository
+	FindByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository
+	UpdateTransactionRepository       usecase.UpdateTransactionRepository
+	CreateEditTransactionRepository   usecase.CreateEditTransactionRepository
 }
 
 func NewUpdateManyTransactionController(
 	findTransactionById usecase.FindTransactionByIdRepository,
+	findByIdEditTransaction usecase.FindByIdEditTransactionRepository,
 	updateTransaction usecase.UpdateTransactionRepository,
+	createEditTransaction usecase.CreateEditTransactionRepository,
 ) *UpdateManyTransactionController {
 	return &UpdateManyTransactionController{
-		FindTransactionByIdRepository: findTransactionById,
-		UpdateTransactionRepository:   updateTransaction,
+		FindTransactionByIdRepository:     findTransactionById,
+		FindByIdEditTransactionRepository: findByIdEditTransaction,
+		UpdateTransactionRepository:       updateTransaction,
+		CreateEditTransactionRepository:   createEditTransaction,
 	}
 }
 
@@ -72,28 +81,100 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 
 	ids := r.UrlParams.Get("ids")
 	idsSlice := strings.Split(ids, ",")
-	idsObjectID := []primitive.ObjectID{}
 
-	for _, id := range idsSlice {
-		objectID, err := primitive.ObjectIDFromHex(id)
-		if err != nil {
+	type TransactionIdentifier struct {
+		ID                primitive.ObjectID
+		IsInstallment     bool
+		InstallmentNumber int
+	}
+
+	transactionIdentifiers := []TransactionIdentifier{}
+
+	for _, idString := range idsSlice {
+		// Check if ID contains installment number (format: objectID-installmentNumber)
+		parts := strings.Split(idString, "-")
+
+		if len(parts) == 2 {
+			// This is an installment transaction
+			mainID, err := primitive.ObjectIDFromHex(parts[0])
+			if err != nil {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "Invalid transaction ID format: " + idString,
+				}, http.StatusBadRequest)
+			}
+
+			installmentNumber, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "Invalid installment number in transaction ID: " + idString,
+				}, http.StatusBadRequest)
+			}
+
+			transactionIdentifiers = append(transactionIdentifiers, TransactionIdentifier{
+				ID:                mainID,
+				IsInstallment:     true,
+				InstallmentNumber: installmentNumber,
+			})
+		} else if len(parts) == 1 {
+			// Regular transaction
+			objectID, err := primitive.ObjectIDFromHex(parts[0])
+			if err != nil {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "Invalid transaction ID format: " + idString,
+				}, http.StatusBadRequest)
+			}
+
+			transactionIdentifiers = append(transactionIdentifiers, TransactionIdentifier{
+				ID:                objectID,
+				IsInstallment:     false,
+				InstallmentNumber: 0,
+			})
+		} else {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid transaction ID format",
+				Error: "Invalid transaction ID format: " + idString,
 			}, http.StatusBadRequest)
 		}
-		idsObjectID = append(idsObjectID, objectID)
 	}
 
 	successCount := 0
 	failedCount := 0
 	updatedTransactions := []any{}
 
-	for _, id := range idsObjectID {
-		transaction, err := c.FindTransactionByIdRepository.Find(id, workspaceId)
-		if err != nil || transaction == nil {
-			failedCount++
-			continue
+	fmt.Println(transactionIdentifiers)
+
+	for _, identifier := range transactionIdentifiers {
+		var transaction *models.Transaction
+		var err error
+
+		if identifier.IsInstallment {
+			// For installment transactions, first check for edited transactions
+			transaction, err = c.FindByIdEditTransactionRepository.Find(identifier.ID, identifier.InstallmentNumber, workspaceId)
+			if err != nil {
+				failedCount++
+				continue
+			}
+
+			// If no edited transaction, try to find the main transaction
+			if transaction == nil {
+				mainTransaction, err := c.FindTransactionByIdRepository.Find(identifier.ID, workspaceId)
+				if err != nil || mainTransaction == nil {
+					failedCount++
+					continue
+				}
+
+				transaction = mainTransaction
+				transaction.MainCount = &identifier.InstallmentNumber
+				transaction.MainId = &identifier.ID
+			}
+		} else {
+			transaction, err = c.FindTransactionByIdRepository.Find(identifier.ID, workspaceId)
+			if err != nil || transaction == nil {
+				failedCount++
+				continue
+			}
 		}
+
+		fmt.Println(transaction)
 
 		// Update only non-nil fields
 		if body.Name != nil {
@@ -195,7 +276,22 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 
 		transaction.UpdatedAt = time.Now()
 
-		updatedTransaction, err := c.UpdateTransactionRepository.Update(id, transaction)
+		fmt.Println(identifier.IsInstallment)
+
+		if identifier.IsInstallment {
+			response, err := c.CreateEditTransactionRepository.Create(transaction)
+			if err != nil {
+				fmt.Println(err)
+				failedCount++
+				continue
+			}
+
+			successCount++
+			updatedTransactions = append(updatedTransactions, response)
+			continue
+		}
+
+		updatedTransaction, err := c.UpdateTransactionRepository.Update(transaction.Id, transaction)
 		if err != nil {
 			failedCount++
 		} else {
@@ -204,10 +300,10 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 		}
 	}
 
-	return helpers.CreateResponse(map[string]interface{}{
+	return helpers.CreateResponse(map[string]any{
 		"success":      successCount,
 		"failed":       failedCount,
-		"total":        len(idsObjectID),
+		"total":        len(transactionIdentifiers),
 		"transactions": updatedTransactions,
 	}, http.StatusOK)
 }

@@ -125,10 +125,14 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 
 func MakeUpdateManyTransactionController(db *mongo.Database) *transaction.UpdateManyTransactionController {
 	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
+	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	updateTransactionRepository := transaction_repository.NewUpdateTransactionRepository(db)
+	createEditTransactionRepository := edit_transaction_repository.NewCreateEditTransactionRepository(db)
 
 	return transaction.NewUpdateManyTransactionController(
 		findTransactionByIdRepository,
+		findByIdEditTransactionRepository,
 		updateTransactionRepository,
+		createEditTransactionRepository,
 	)
 }
