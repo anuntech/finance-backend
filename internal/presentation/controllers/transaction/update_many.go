@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -140,8 +139,6 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 	failedCount := 0
 	updatedTransactions := []any{}
 
-	fmt.Println(transactionIdentifiers)
-
 	for _, identifier := range transactionIdentifiers {
 		var transaction *models.Transaction
 		var err error
@@ -173,8 +170,6 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 				continue
 			}
 		}
-
-		fmt.Println(transaction)
 
 		// Update only non-nil fields
 		if body.Name != nil {
@@ -276,12 +271,9 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 
 		transaction.UpdatedAt = time.Now()
 
-		fmt.Println(identifier.IsInstallment)
-
 		if identifier.IsInstallment {
 			response, err := c.CreateEditTransactionRepository.Create(transaction)
 			if err != nil {
-				fmt.Println(err)
 				failedCount++
 				continue
 			}
