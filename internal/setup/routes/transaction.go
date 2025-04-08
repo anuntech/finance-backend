@@ -51,4 +51,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("PATCH /transaction", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeUpdateManyTransactionController(db)),
+			workspaceDb,
+		),
+	))
 }

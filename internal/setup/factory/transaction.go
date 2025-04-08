@@ -122,3 +122,13 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 		findCustomFieldByNameRepository,
 	)
 }
+
+func MakeUpdateManyTransactionController(db *mongo.Database) *transaction.UpdateManyTransactionController {
+	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
+	updateTransactionRepository := transaction_repository.NewUpdateTransactionRepository(db)
+
+	return transaction.NewUpdateManyTransactionController(
+		findTransactionByIdRepository,
+		updateTransactionRepository,
+	)
+}
