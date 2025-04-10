@@ -16,3 +16,11 @@ type FindByIdEditTransactionRepository interface {
 type UpdateEditTransactionRepository interface {
 	Update(transaction *models.Transaction) (*models.Transaction, error)
 }
+
+type DeleteEditTransactionRepository interface {
+	Delete(editTransactionParams []struct {
+		MainId      primitive.ObjectID
+		MainCount   int
+		WorkspaceId primitive.ObjectID
+	}) error
+}

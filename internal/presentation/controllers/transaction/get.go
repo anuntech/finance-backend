@@ -301,7 +301,15 @@ func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions [
 		return nil, editErrors[0]
 	}
 
-	return transactions, nil
+	// Filter out transactions if main transaction is marked as deleted
+	filteredTransactions := transactions[:0]
+	for _, tx := range transactions {
+		if !tx.IsDeleted {
+			filteredTransactions = append(filteredTransactions, tx)
+		}
+	}
+
+	return filteredTransactions, nil
 }
 
 func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {

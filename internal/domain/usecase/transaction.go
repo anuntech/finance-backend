@@ -31,4 +31,9 @@ type UpdateTransactionRepository interface {
 
 type DeleteTransactionRepository interface {
 	Delete(transactionIds []primitive.ObjectID, workspaceId primitive.ObjectID) error
+	DeleteEditTransactions(editTransactionParams []struct {
+		MainId      primitive.ObjectID
+		MainCount   int
+		WorkspaceId primitive.ObjectID
+	}, findTransactionById FindTransactionByIdRepository) error
 }

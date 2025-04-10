@@ -39,6 +39,7 @@ type Transaction struct {
 	Name             string                     `bson:"name" json:"name"`
 	MainId           *primitive.ObjectID        `bson:"main_id" json:"mainId,omitempty"`
 	MainCount        *int                       `bson:"main_count" json:"mainCount,omitempty"`
+	IsDeleted        bool                       `bson:"is_deleted" json:"isDeleted"`
 	Description      string                     `bson:"description" json:"description,omitempty"`
 	CreatedBy        primitive.ObjectID         `bson:"created_by" json:"createdBy"` // email
 	Invoice          string                     `bson:"invoice" json:"invoice,omitempty"`
