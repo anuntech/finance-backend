@@ -76,9 +76,9 @@ func (c *ImportCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	if len(currentCategories)+len(body.Categories) > 50 {
+	if len(currentCategories)+len(body.Categories) > 500 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "importação excede o número máximo de categorias permitidas (50)",
+			Error: "importação excede o número máximo de categorias permitidas 500",
 		}, http.StatusBadRequest)
 	}
 

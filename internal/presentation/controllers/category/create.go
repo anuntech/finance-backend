@@ -108,9 +108,9 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	if len(categorys) >= 50 {
+	if len(categorys) >= 500 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "user has reached the maximum number of categories",
+			Error: "user has reached the maximum number of 500 categories",
 		}, http.StatusBadRequest)
 	}
 
