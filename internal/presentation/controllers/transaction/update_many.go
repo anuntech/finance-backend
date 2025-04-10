@@ -45,7 +45,7 @@ type UpdateManyBalanceRequest struct {
 
 // CustomFieldUpdate is the request body for updating custom fields
 type CustomFieldUpdate struct {
-	CustomFieldId string  `json:"customFieldId"`
+	CustomFieldId string  `json:"id"`
 	Value         *string `json:"value,omitempty"`
 }
 
@@ -279,9 +279,7 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 			}
 		}
 
-		// Handle custom fields update
 		if len(body.CustomFields) > 0 {
-			// Create a map of existing custom fields for easy lookup
 			existingCustomFields := make(map[string]int)
 			for i, cf := range transaction.CustomFields {
 				existingCustomFields[cf.CustomFieldId.Hex()] = i
@@ -293,25 +291,24 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 					continue
 				}
 
-				// Validate that the custom field exists in the workspace
 				customField, err := c.FindCustomFieldByIdRepository.Find(customFieldId, workspaceId)
 				if err != nil || customField == nil {
 					continue
 				}
 
 				if idx, exists := existingCustomFields[customFieldId.Hex()]; exists {
-					// Update existing custom field
 					if newCF.Value != nil {
 						transaction.CustomFields[idx].Value = *newCF.Value
 					}
-				} else {
-					// Add new custom field
-					if newCF.Value != nil {
-						transaction.CustomFields = append(transaction.CustomFields, models.TransactionCustomField{
-							CustomFieldId: customFieldId,
-							Value:         *newCF.Value,
-						})
-					}
+
+					continue
+				}
+
+				if newCF.Value != nil {
+					transaction.CustomFields = append(transaction.CustomFields, models.TransactionCustomField{
+						CustomFieldId: customFieldId,
+						Value:         *newCF.Value,
+					})
 				}
 			}
 		}
