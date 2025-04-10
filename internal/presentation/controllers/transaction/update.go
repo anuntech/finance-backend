@@ -12,6 +12,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/utils"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -152,6 +153,11 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.RecoveryWithCallback(&wg, func(r any) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error finding custom field",
+			}, http.StatusInternalServerError)
+		})
 
 		seenCustomFields := make(map[string]bool)
 
@@ -162,6 +168,7 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "duplicate custom field detected: " + compositeKey,
 				}, http.StatusBadRequest)
+				return
 			}
 			seenCustomFields[compositeKey] = true
 
@@ -170,12 +177,14 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "error finding custom field",
 				}, http.StatusInternalServerError)
+				return
 			}
 
 			if customFieldParsed == nil {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 					Error: "custom field not found",
 				}, http.StatusNotFound)
+				return
 			}
 		}
 	}()
@@ -183,6 +192,11 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.RecoveryWithCallback(&wg, func(r any) {
+			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error finding custom field",
+			}, http.StatusInternalServerError)
+		})
 		seenTags := make(map[string]bool)
 
 		for _, tag := range transaction.Tags {
