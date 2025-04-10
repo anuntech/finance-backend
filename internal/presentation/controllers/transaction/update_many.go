@@ -31,6 +31,7 @@ type UpdateManyRequest struct {
 	AccountId        *string                   `json:"accountId,omitempty"`
 	RegistrationDate *string                   `json:"registrationDate,omitempty"`
 	ConfirmationDate *string                   `json:"confirmationDate,omitempty"`
+	CustomFields     []CustomFieldUpdate       `json:"customFields,omitempty"`
 }
 
 // UpdateManyBalanceRequest is the request body for updating balance fields in multiple transactions
@@ -42,11 +43,18 @@ type UpdateManyBalanceRequest struct {
 	InterestPercentage *float64 `json:"interestPercentage,omitempty"`
 }
 
+// CustomFieldUpdate is the request body for updating custom fields
+type CustomFieldUpdate struct {
+	CustomFieldId string  `json:"customFieldId"`
+	Value         *string `json:"value,omitempty"`
+}
+
 type UpdateManyTransactionController struct {
 	FindTransactionByIdRepository     usecase.FindTransactionByIdRepository
 	FindByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository
 	UpdateTransactionRepository       usecase.UpdateTransactionRepository
 	CreateEditTransactionRepository   usecase.CreateEditTransactionRepository
+	FindCustomFieldByIdRepository     usecase.FindCustomFieldByIdRepository
 }
 
 func NewUpdateManyTransactionController(
@@ -54,12 +62,14 @@ func NewUpdateManyTransactionController(
 	findByIdEditTransaction usecase.FindByIdEditTransactionRepository,
 	updateTransaction usecase.UpdateTransactionRepository,
 	createEditTransaction usecase.CreateEditTransactionRepository,
+	findCustomFieldById usecase.FindCustomFieldByIdRepository,
 ) *UpdateManyTransactionController {
 	return &UpdateManyTransactionController{
 		FindTransactionByIdRepository:     findTransactionById,
 		FindByIdEditTransactionRepository: findByIdEditTransaction,
 		UpdateTransactionRepository:       updateTransaction,
 		CreateEditTransactionRepository:   createEditTransaction,
+		FindCustomFieldByIdRepository:     findCustomFieldById,
 	}
 }
 
@@ -266,6 +276,43 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 				}
 			} else {
 				transaction.ConfirmationDate = nil
+			}
+		}
+
+		// Handle custom fields update
+		if len(body.CustomFields) > 0 {
+			// Create a map of existing custom fields for easy lookup
+			existingCustomFields := make(map[string]int)
+			for i, cf := range transaction.CustomFields {
+				existingCustomFields[cf.CustomFieldId.Hex()] = i
+			}
+
+			for _, newCF := range body.CustomFields {
+				customFieldId, err := primitive.ObjectIDFromHex(newCF.CustomFieldId)
+				if err != nil {
+					continue
+				}
+
+				// Validate that the custom field exists in the workspace
+				customField, err := c.FindCustomFieldByIdRepository.Find(customFieldId, workspaceId)
+				if err != nil || customField == nil {
+					continue
+				}
+
+				if idx, exists := existingCustomFields[customFieldId.Hex()]; exists {
+					// Update existing custom field
+					if newCF.Value != nil {
+						transaction.CustomFields[idx].Value = *newCF.Value
+					}
+				} else {
+					// Add new custom field
+					if newCF.Value != nil {
+						transaction.CustomFields = append(transaction.CustomFields, models.TransactionCustomField{
+							CustomFieldId: customFieldId,
+							Value:         *newCF.Value,
+						})
+					}
+				}
 			}
 		}
 
