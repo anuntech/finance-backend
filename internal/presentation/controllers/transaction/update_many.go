@@ -277,16 +277,6 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 				transaction.RegistrationDate = registrationDate
 			}
 		}
-		if body.ConfirmationDate != nil {
-			if *body.ConfirmationDate != "" {
-				confirmationDate, err := time.Parse(time.RFC3339, *body.ConfirmationDate)
-				if err == nil {
-					transaction.ConfirmationDate = &confirmationDate
-				}
-			} else {
-				transaction.ConfirmationDate = nil
-			}
-		}
 
 		if len(body.CustomFields) > 0 {
 			existingCustomFields := make(map[string]int)
