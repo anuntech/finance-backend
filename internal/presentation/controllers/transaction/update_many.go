@@ -227,6 +227,10 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 		}
 		if body.IsConfirmed != nil {
 			transaction.IsConfirmed = *body.IsConfirmed
+
+			if !*body.IsConfirmed {
+				transaction.ConfirmationDate = nil
+			}
 		}
 		if body.CategoryId != nil {
 			if *body.CategoryId != "" {
