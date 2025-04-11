@@ -41,7 +41,7 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	var body ImportSubCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid request body",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 	}
 
@@ -55,7 +55,7 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	categoryId, err := primitive.ObjectIDFromHex(categoryIdStr)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid categoryId format",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -63,25 +63,25 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	workspaceId, err := primitive.ObjectIDFromHex(workspaceIdStr)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error fetching category",
+			Error: "Erro ao buscar a categoria.",
 		}, http.StatusInternalServerError)
 	}
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category not found",
+			Error: "Categoria não encontrada.",
 		}, http.StatusNotFound)
 	}
 
 	if len(category.SubCategories)+len(body.SubCategories) > 50 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "import exceeds maximum allowed subcategories (50)",
+			Error: "A importação excede o número máximo permitido de subcategorias (50).",
 		}, http.StatusBadRequest)
 	}
 
@@ -90,7 +90,7 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	for _, subCat := range body.SubCategories {
 		if importNameSet[subCat.Name] {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "import contains duplicate subcategory names: " + subCat.Name,
+				Error: "A importação contém nomes de subcategorias duplicados: " + subCat.Name,
 			}, http.StatusBadRequest)
 		}
 		importNameSet[subCat.Name] = true
@@ -105,7 +105,7 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	for _, newSubCat := range body.SubCategories {
 		if existingNameSet[newSubCat.Name] {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "a subcategory with the name '" + newSubCat.Name + "' already exists in this category",
+				Error: "Já existe uma subcategoria com o nome '" + newSubCat.Name + "' nesta categoria.",
 			}, http.StatusConflict)
 		}
 	}
@@ -122,7 +122,7 @@ func (c *ImportSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	_, err = c.UpdateCategoryRepository.CreateSubCategories(subCategoryInputs, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error importing subcategories: " + err.Error(),
+			Error: "Erro ao importar subcategorias: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 

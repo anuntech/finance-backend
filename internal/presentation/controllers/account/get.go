@@ -29,7 +29,7 @@ func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *pre
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 
@@ -41,7 +41,7 @@ func (c *GetAccountsController) Handle(r presentationProtocols.HttpRequest) *pre
 	accounts, err := c.FindAccountByWorkspaceIdRepository.Find(globalFilters)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when retrieving accounts",
+			Error: "ocorreu um erro ao buscar as contas",
 		}, http.StatusInternalServerError)
 	}
 

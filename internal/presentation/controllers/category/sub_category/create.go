@@ -43,7 +43,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	var body subCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 
 	}
@@ -57,14 +57,14 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	categoryId, err := primitive.ObjectIDFromHex(body.CategoryId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid account id",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace id",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -72,12 +72,12 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	if err != nil {
 		log.Println(err.Error())
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error while finding a category",
+			Error: "Ocorreu um erro ao buscar a categoria.",
 		}, http.StatusInternalServerError)
 	}
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category not found",
+			Error: "Categoria não encontrada.",
 		}, http.StatusNotFound)
 	}
 
@@ -85,7 +85,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	for _, existingSubCat := range category.SubCategories {
 		if existingSubCat.Name == body.SubCategory.Name {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "a subcategory with this name already exists in this category",
+				Error: "Já existe uma subcategoria com este nome nesta categoria.",
 			}, http.StatusConflict)
 		}
 	}
@@ -96,7 +96,7 @@ func (c *CreateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	}, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating SubCategory",
+			Error: "Erro ao criar subcategoria.",
 		}, http.StatusInternalServerError)
 	}
 

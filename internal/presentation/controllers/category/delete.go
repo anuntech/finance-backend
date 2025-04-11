@@ -24,7 +24,7 @@ func (c *DeleteCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -36,7 +36,7 @@ func (c *DeleteCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid category ID format",
+				Error: "Formato do ID da categoria inválido.",
 			}, http.StatusBadRequest)
 		}
 		idsObjectID = append(idsObjectID, objectID)
@@ -45,7 +45,7 @@ func (c *DeleteCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	err = c.DeleteCategoryRepository.Delete(idsObjectID, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when deleting category: " + err.Error(),
+			Error: "Ocorreu um erro ao excluir a categoria: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 

@@ -41,7 +41,7 @@ func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -49,7 +49,7 @@ func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	var body CustomFieldBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 	}
 
@@ -63,7 +63,7 @@ func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	// For SELECT type, options are required
 	if body.Type == "SELECT" && len(body.Options) == 0 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Options are required for SELECT type",
+			Error: "Opções são obrigatórias para o tipo SELEÇÃO.",
 		}, http.StatusBadRequest)
 	}
 
@@ -80,7 +80,7 @@ func (c *CreateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	createdCustomField, err := c.CreateCustomFieldRepository.Create(customField)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: "Erro ao criar campo personalizado.",
 		}, http.StatusInternalServerError)
 	}
 

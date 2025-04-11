@@ -29,7 +29,7 @@ func (c *GetCategoriesController) Handle(r presentationProtocols.HttpRequest) *p
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -41,7 +41,7 @@ func (c *GetCategoriesController) Handle(r presentationProtocols.HttpRequest) *p
 	categories, err := c.FindCategoriesRepository.Find(globalFilters)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when retrieving categories",
+			Error: "Ocorreu um erro ao buscar as categorias.",
 		}, http.StatusInternalServerError)
 	}
 

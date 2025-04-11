@@ -23,27 +23,27 @@ func (c *GetCustomFieldByIdController) Handle(r presentationProtocols.HttpReques
 	customFieldId, err := primitive.ObjectIDFromHex(r.Req.PathValue("customFieldId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid custom field ID format",
+			Error: "Formato do ID do campo personalizado inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	customField, err := c.FindCustomFieldByIdRepository.Find(customFieldId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: "Ocorreu um erro ao buscar o campo personalizado.",
 		}, http.StatusInternalServerError)
 	}
 
 	if customField == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Custom field not found",
+			Error: "Campo personalizado não encontrado.",
 		}, http.StatusNotFound)
 	}
 

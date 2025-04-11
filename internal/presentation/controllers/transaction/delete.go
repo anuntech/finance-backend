@@ -30,7 +30,7 @@ func (c *DeleteTransactionController) Handle(r presentationProtocols.HttpRequest
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 
@@ -56,14 +56,14 @@ func (c *DeleteTransactionController) Handle(r presentationProtocols.HttpRequest
 			mainId, err := primitive.ObjectIDFromHex(parts[0])
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid transaction main ID format: " + idString,
+					Error: "Formato do ID principal da transação inválido: " + idString,
 				}, http.StatusBadRequest)
 			}
 
 			count, err := strconv.Atoi(parts[1])
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid installment number in: " + idString,
+					Error: "Número da parcela inválido em: " + idString,
 				}, http.StatusBadRequest)
 			}
 
@@ -81,13 +81,13 @@ func (c *DeleteTransactionController) Handle(r presentationProtocols.HttpRequest
 			objectID, err := primitive.ObjectIDFromHex(idString)
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid transaction ID format: " + idString,
+					Error: "Formato do ID da transação inválido: " + idString,
 				}, http.StatusBadRequest)
 			}
 			idsObjectID = append(idsObjectID, objectID)
 		} else {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid ID format: " + idString,
+				Error: "Formato de ID inválido: " + idString,
 			}, http.StatusBadRequest)
 		}
 	}
@@ -97,7 +97,7 @@ func (c *DeleteTransactionController) Handle(r presentationProtocols.HttpRequest
 		err = c.DeleteTransactionRepository.Delete(idsObjectID, workspaceId)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "An error occurred when deleting transactions: " + err.Error(),
+				Error: "Ocorreu um erro ao excluir as transações: " + err.Error(),
 			}, http.StatusInternalServerError)
 		}
 	}
@@ -107,7 +107,7 @@ func (c *DeleteTransactionController) Handle(r presentationProtocols.HttpRequest
 		err = c.DeleteTransactionRepository.DeleteEditTransactions(editTransactionParams, c.FindTransactionByIdRepository)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "An error occurred when marking edit transactions as deleted: " + err.Error(),
+				Error: "Ocorreu um erro ao marcar as transações editadas como excluídas: " + err.Error(),
 			}, http.StatusInternalServerError)
 		}
 	}

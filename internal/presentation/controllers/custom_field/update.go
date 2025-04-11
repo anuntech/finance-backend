@@ -42,14 +42,14 @@ func (c *UpdateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	customFieldId, err := primitive.ObjectIDFromHex(r.Req.PathValue("customFieldId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid custom field ID format",
+			Error: "Formato do ID do campo personalizado inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -57,13 +57,13 @@ func (c *UpdateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	existingCustomField, err := c.FindCustomFieldByIdRepository.Find(customFieldId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Error finding custom field: " + err.Error(),
+			Error: "Erro ao buscar o campo personalizado.",
 		}, http.StatusInternalServerError)
 	}
 
 	if existingCustomField == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Custom field not found",
+			Error: "Campo personalizado não encontrado.",
 		}, http.StatusNotFound)
 	}
 
@@ -71,7 +71,7 @@ func (c *UpdateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	var body UpdateCustomFieldBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid request body",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 	}
 
@@ -85,7 +85,7 @@ func (c *UpdateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	// For SELECT type, options are required
 	if body.Type == "SELECT" && len(body.Options) == 0 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Options are required for SELECT type",
+			Error: "Opções são obrigatórias para o tipo SELEÇÃO.",
 		}, http.StatusBadRequest)
 	}
 
@@ -102,7 +102,7 @@ func (c *UpdateCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	updatedCustomField, err := c.UpdateCustomFieldRepository.Update(customFieldId, customField)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Error updating custom field: " + err.Error(),
+			Error: "Erro ao atualizar o campo personalizado.",
 		}, http.StatusInternalServerError)
 	}
 

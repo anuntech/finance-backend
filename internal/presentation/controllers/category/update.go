@@ -43,7 +43,7 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	var body UpdateCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 	}
 
@@ -56,21 +56,21 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid categoryId format",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category not found",
+			Error: "Categoria não encontrada.",
 		}, http.StatusNotFound)
 	}
 
@@ -79,13 +79,13 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		existingCategory, err := c.FindCategoryByNameRepository.Find(body.Name, body.Type, workspaceId)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error checking category name",
+				Error: "Erro ao verificar o nome da categoria.",
 			}, http.StatusInternalServerError)
 		}
 
 		if existingCategory != nil && existingCategory.Id != categoryId {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "a category with this name already exists in this workspace",
+				Error: "Já existe uma categoria com este nome neste espaço de trabalho.",
 			}, http.StatusConflict)
 		}
 	}
@@ -97,7 +97,7 @@ func (c *UpdateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	err = c.UpdateCategoryRepository.UpdateCategory(category)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error updating category",
+			Error: "Erro ao atualizar a categoria.",
 		}, http.StatusInternalServerError)
 	}
 

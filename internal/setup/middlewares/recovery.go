@@ -1,8 +1,7 @@
 package middlewares
 
 import (
-	"bytes"
-	"io"
+	"encoding/json"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -12,15 +11,18 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("PANIC ERROR: %v\n", err)
+				log.Printf("ERRO CRÍTICO: %v\n", err)
 				stack := debug.Stack()
-				log.Printf("Stack trace: %s\n", stack)
+				log.Printf("Rastreamento da pilha: %s\n", stack)
 
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				_, err := io.Copy(w, bytes.NewReader(stack))
-				if err != nil {
-					return
+
+				errorResponse := map[string]string{
+					"error": "Desculpe, encontramos um problema inesperado. Nossa equipe técnica foi notificada e já está trabalhando para resolver. Por favor, tente novamente em alguns instantes.",
 				}
+
+				json.NewEncoder(w).Encode(errorResponse)
 			}
 		}()
 		next.ServeHTTP(w, r)

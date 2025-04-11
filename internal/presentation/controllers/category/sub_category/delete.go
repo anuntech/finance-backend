@@ -24,14 +24,14 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid categoryId format",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -43,7 +43,7 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid category ID format",
+				Error: "Formato do ID da subcategoria inválido.",
 			}, http.StatusBadRequest)
 		}
 		idsObjectID = append(idsObjectID, objectID)
@@ -52,7 +52,7 @@ func (c *DeleteSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	err = c.UpdateCategoryRepository.DeleteSubCategory(idsObjectID, categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when deleting sub category: " + err.Error(),
+			Error: "Ocorreu um erro ao excluir a subcategoria: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 

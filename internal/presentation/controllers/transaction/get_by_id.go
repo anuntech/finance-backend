@@ -23,21 +23,21 @@ func (c *GetTransactionByIdController) Handle(r presentationProtocols.HttpReques
 	transactionId, err := primitive.ObjectIDFromHex(r.Req.PathValue("transactionId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid transactionId format",
+			Error: "formato do ID da transação inválido",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 
 	transaction, err := c.FindTransactionByIdRepository.Find(transactionId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: "erro ao buscar a transação: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 

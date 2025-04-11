@@ -58,7 +58,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 
@@ -70,7 +70,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(globalFilters)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when retrieving transactions",
+			Error: "ocorreu um erro ao buscar as transações",
 		}, http.StatusInternalServerError)
 	}
 
@@ -79,7 +79,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	transactions, err = c.replaceTransactionIfEditRepeat(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when replacing transactions",
+			Error: "ocorreu um erro ao processar as transações",
 		}, http.StatusInternalServerError)
 	}
 
@@ -93,7 +93,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		transactions, err = c.filterTransactionsBySearch(transactions, params.Search)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "an error occurred when filtering transactions by search",
+				Error: "ocorreu um erro ao filtrar as transações pela pesquisa",
 			}, http.StatusInternalServerError)
 		}
 
@@ -106,7 +106,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when filtering transactions",
+			Error: "ocorreu um erro ao filtrar as transações",
 		}, http.StatusInternalServerError)
 	}
 
@@ -117,7 +117,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	transactions, err = c.putTransactionCustomFieldTypes(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred when putting transaction custom field types",
+			Error: "ocorreu um erro ao processar os campos personalizados",
 		}, http.StatusInternalServerError)
 	}
 
@@ -217,7 +217,7 @@ func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions [
 				}
 
 				if customFieldFound == nil {
-					customErrors = append(customErrors, errors.New("custom field not found"))
+					customErrors = append(customErrors, errors.New("campo personalizado não encontrado"))
 					return
 				}
 

@@ -29,7 +29,7 @@ func (c *GetCustomFieldsController) Handle(r presentationProtocols.HttpRequest) 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -41,7 +41,7 @@ func (c *GetCustomFieldsController) Handle(r presentationProtocols.HttpRequest) 
 	customFields, err := c.FindCustomFieldsRepository.Find(globalFilters)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Error finding custom fields: " + err.Error(),
+			Error: "Ocorreu um erro ao buscar os campos personalizados.",
 		}, http.StatusInternalServerError)
 	}
 

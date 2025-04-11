@@ -53,7 +53,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	var body CreateCategoryBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 
 	}
@@ -67,7 +67,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace id",
+			Error: "ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -75,13 +75,13 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	existingCategory, err := c.FindCategoryByNameRepository.Find(body.Name, body.Type, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error checking category name",
+			Error: "Erro ao verificar o nome da categoria.",
 		}, http.StatusInternalServerError)
 	}
 
 	if existingCategory != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "a category with this name already exists in this workspace",
+			Error: "Já existe uma categoria com este nome neste espaço de trabalho.",
 		}, http.StatusConflict)
 	}
 
@@ -91,7 +91,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 		for _, subCat := range body.SubCategories {
 			if nameSet[subCat.Name] {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "subcategory names must be unique within the same category",
+					Error: "Os nomes das subcategorias devem ser únicos dentro da mesma categoria.",
 				}, http.StatusBadRequest)
 			}
 			nameSet[subCat.Name] = true
@@ -104,13 +104,13 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding categories",
+			Error: "Erro ao buscar categorias.",
 		}, http.StatusInternalServerError)
 	}
 
 	if len(categorys) >= 500 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "user has reached the maximum number of 500 categories",
+			Error: "Você atingiu o limite máximo de 500 categorias.",
 		}, http.StatusBadRequest)
 	}
 
@@ -133,7 +133,7 @@ func (c *CreateCategoryController) Handle(r presentationProtocols.HttpRequest) *
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating category",
+			Error: "Erro ao criar categoria.",
 		}, http.StatusInternalServerError)
 	}
 

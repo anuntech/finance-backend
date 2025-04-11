@@ -29,7 +29,7 @@ func (c *DeleteCustomFieldController) Handle(r presentationProtocols.HttpRequest
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid category ID format",
+				Error: "Formato do ID do campo personalizado inválido.",
 			}, http.StatusBadRequest)
 		}
 		idsObjectID = append(idsObjectID, objectID)
@@ -38,14 +38,14 @@ func (c *DeleteCustomFieldController) Handle(r presentationProtocols.HttpRequest
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	err = c.DeleteCustomFieldRepository.Delete(idsObjectID, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Error deleting custom fields: " + err.Error(),
+			Error: "Ocorreu um erro ao excluir os campos personalizados.",
 		}, http.StatusInternalServerError)
 	}
 

@@ -90,7 +90,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	var body TransactionBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "formato da solicitação inválido",
 		}, http.StatusBadRequest)
 	}
 
@@ -103,14 +103,14 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction, err := createTransaction(&body)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating transaction: " + err.Error(),
+			Error: "erro ao criar a transação: " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 
 	userObjectID, err := primitive.ObjectIDFromHex(r.Header.Get("userId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid user ID format",
+			Error: "formato do ID do usuário inválido",
 		}, http.StatusBadRequest)
 	}
 	transaction.CreatedBy = userObjectID
@@ -118,14 +118,14 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	assignedTo, err := primitive.ObjectIDFromHex(body.AssignedTo)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid assignedTo ID format",
+			Error: "formato do ID do responsável inválido",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace ID format",
+			Error: "formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 	transaction.WorkspaceId = workspaceId
@@ -137,7 +137,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	go func() {
 		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error in validateAssignedMember: panic recovered",
+				Error: "erro na validação do responsável: ocorreu um erro inesperado",
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
@@ -153,7 +153,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	go func() {
 		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error in validateAccount: panic recovered",
+				Error: "erro na validação da conta: ocorreu um erro inesperado",
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
@@ -169,7 +169,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	go func() {
 		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error in validateCategory: panic recovered",
+				Error: "erro na validação da categoria: ocorreu um erro inesperado",
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
@@ -198,7 +198,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	go func() {
 		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error in custom fields validation: panic recovered",
+				Error: "erro na validação dos campos personalizados: ocorreu um erro inesperado",
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
@@ -208,7 +208,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		for _, customField := range transaction.CustomFields {
 			if customField.CustomFieldId.IsZero() {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "invalid custom field ID",
+					Error: "ID do campo personalizado inválido",
 				}, http.StatusBadRequest)
 				return
 			}
@@ -217,7 +217,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 			if seenCustomFields[compositeKey] {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "duplicate custom field detected: " + compositeKey,
+					Error: "campo personalizado duplicado detectado: " + compositeKey,
 				}, http.StatusBadRequest)
 				return
 			}
@@ -226,14 +226,14 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 			customFieldParsed, err := c.FindCustomFieldByIdRepository.Find(customField.CustomFieldId, workspaceId)
 			if err != nil {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "error finding custom field",
+					Error: "erro ao buscar campo personalizado",
 				}, http.StatusInternalServerError)
 				return
 			}
 
 			if customFieldParsed == nil {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "custom field not found",
+					Error: "campo personalizado não encontrado",
 				}, http.StatusNotFound)
 				return
 			}
@@ -244,7 +244,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	go func() {
 		defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "error in tags validation: panic recovered",
+				Error: "erro na validação das tags: ocorreu um erro inesperado",
 			}, http.StatusInternalServerError)
 		})
 		defer wg.Done()
@@ -255,7 +255,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 
 			if seenTags[compositeKey] {
 				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "duplicate tag detected: " + compositeKey,
+					Error: "tag duplicada detectada: " + compositeKey,
 				}, http.StatusBadRequest)
 				return
 			}
@@ -278,7 +278,7 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 	transaction, err = c.CreateTransactionRepository.Create(transaction)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error creating transaction",
+			Error: "erro ao criar a transação",
 		}, http.StatusInternalServerError)
 	}
 
@@ -441,13 +441,13 @@ func (c *CreateTransactionController) validateAssignedMember(workspaceId primiti
 	member, err := c.FindMemberByIdRepository.Find(workspaceId, assignedTo)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding member",
+			Error: "erro ao buscar membro",
 		}, http.StatusInternalServerError)
 	}
 
 	if member == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "AssignedTo is not a member of the workspace",
+			Error: "o responsável não é um membro da área de trabalho",
 		}, http.StatusNotFound)
 	}
 
@@ -458,13 +458,13 @@ func (c *CreateTransactionController) validateAccount(workspaceId primitive.Obje
 	account, err := c.FindAccountByIdRepository.Find(accountId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding account",
+			Error: "erro ao buscar conta",
 		}, http.StatusInternalServerError)
 	}
 
 	if account == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "account not found",
+			Error: "conta não encontrada",
 		}, http.StatusNotFound)
 	}
 
@@ -475,19 +475,19 @@ func (c *CreateTransactionController) validateCategory(workspaceId primitive.Obj
 	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding category",
+			Error: "erro ao buscar categoria",
 		}, http.StatusInternalServerError)
 	}
 
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category not found",
+			Error: "categoria não encontrada",
 		}, http.StatusNotFound)
 	}
 
 	if !strings.EqualFold(category.Type, transactionType) {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category type does not match transaction type",
+			Error: "o tipo da categoria não corresponde ao tipo da transação",
 		}, http.StatusBadRequest)
 	}
 
@@ -502,7 +502,7 @@ func (c *CreateTransactionController) validateCategory(workspaceId primitive.Obj
 	}
 
 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-		Error: "sub category not found",
+		Error: "subcategoria não encontrada",
 	}, http.StatusNotFound)
 }
 
@@ -510,19 +510,19 @@ func (c *CreateTransactionController) validateTag(workspaceId primitive.ObjectID
 	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error finding tag",
+			Error: "erro ao buscar tag",
 		}, http.StatusInternalServerError)
 	}
 
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "tag not found",
+			Error: "tag não encontrada",
 		}, http.StatusNotFound)
 	}
 
 	if !strings.EqualFold(category.Type, "TAG") {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "tag type does not match transaction type",
+			Error: "o tipo da tag não corresponde ao tipo da transação",
 		}, http.StatusBadRequest)
 	}
 
@@ -537,6 +537,6 @@ func (c *CreateTransactionController) validateTag(workspaceId primitive.ObjectID
 	}
 
 	return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-		Error: "sub tag not found",
+		Error: "subtag não encontrada",
 	}, http.StatusNotFound)
 }

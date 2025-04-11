@@ -23,21 +23,21 @@ func (c *GetCategoryByIdController) Handle(r presentationProtocols.HttpRequest) 
 	categoryId, err := primitive.ObjectIDFromHex(r.Req.PathValue("categoryId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid categoryId format",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: "Erro ao buscar a categoria.",
 		}, http.StatusInternalServerError)
 	}
 

@@ -40,14 +40,14 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	categoryId, err := primitive.ObjectIDFromHex(categoryIdStr)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid categoryId format",
+			Error: "Formato do ID da categoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	subCategoryId, err := primitive.ObjectIDFromHex(subCategoryIdStr)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid subCategoryId format",
+			Error: "Formato do ID da subcategoria inválido.",
 		}, http.StatusBadRequest)
 	}
 
@@ -55,14 +55,14 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	workspaceId, err := primitive.ObjectIDFromHex(workspaceIdStr)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspaceId format",
+			Error: "Formato do ID do espaço de trabalho inválido.",
 		}, http.StatusBadRequest)
 	}
 
 	var body subCategoryUpdateBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "Requisição inválida. Por favor, verifique os dados enviados.",
 		}, http.StatusBadRequest)
 	}
 
@@ -75,12 +75,12 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	category, err := c.FindCategoryById.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "an error occurred while finding the category",
+			Error: "Ocorreu um erro ao buscar a categoria.",
 		}, http.StatusInternalServerError)
 	}
 	if category == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "category not found",
+			Error: "Categoria não encontrada.",
 		}, http.StatusNotFound)
 	}
 
@@ -95,7 +95,7 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 
 	if currentSubCategory == nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "subcategory not found in this category",
+			Error: "Subcategoria não encontrada nesta categoria.",
 		}, http.StatusNotFound)
 	}
 
@@ -105,7 +105,7 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 		for _, existingSubCat := range category.SubCategories {
 			if existingSubCat.Name == body.Name && existingSubCat.Id != subCategoryId {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "a subcategory with this name already exists in this category",
+					Error: "Já existe uma subcategoria com este nome nesta categoria.",
 				}, http.StatusConflict)
 			}
 		}
@@ -118,7 +118,7 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	}, categoryId, subCategoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error updating SubCategory",
+			Error: "Erro ao atualizar a subcategoria.",
 		}, http.StatusInternalServerError)
 	}
 
@@ -126,7 +126,7 @@ func (c *UpdateSubCategoryController) Handle(r presentationProtocols.HttpRequest
 	err = c.UpdateCategoryRepository.UpdateCategory(category)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error updating category total amount",
+			Error: "Erro ao atualizar o valor total da categoria.",
 		}, http.StatusInternalServerError)
 	}
 

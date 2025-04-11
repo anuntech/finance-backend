@@ -76,14 +76,14 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 	var body UpdateManyRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid body request",
+			Error: "Formato da solicitação inválido",
 		}, http.StatusBadRequest)
 	}
 
 	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Invalid workspace ID format",
+			Error: "Formato do ID da área de trabalho inválido",
 		}, http.StatusBadRequest)
 	}
 
@@ -107,14 +107,14 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 			mainID, err := primitive.ObjectIDFromHex(parts[0])
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid transaction ID format: " + idString,
+					Error: "Formato do ID da transação inválido: " + idString,
 				}, http.StatusBadRequest)
 			}
 
 			installmentNumber, err := strconv.Atoi(parts[1])
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid installment number in transaction ID: " + idString,
+					Error: "Número da parcela inválido na transação: " + idString,
 				}, http.StatusBadRequest)
 			}
 
@@ -128,7 +128,7 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 			objectID, err := primitive.ObjectIDFromHex(parts[0])
 			if err != nil {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Invalid transaction ID format: " + idString,
+					Error: "Formato do ID da transação inválido: " + idString,
 				}, http.StatusBadRequest)
 			}
 
@@ -139,7 +139,7 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 			})
 		} else {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Invalid transaction ID format: " + idString,
+				Error: "Formato do ID da transação inválido: " + idString,
 			}, http.StatusBadRequest)
 		}
 	}
@@ -237,7 +237,7 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 				}
 			} else {
 				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-					Error: "Confirmation date is required when transaction is confirmed! ID: " + identifier.ID.Hex(),
+					Error: "Data de confirmação é obrigatória quando a transação é confirmada! ID: " + identifier.ID.Hex(),
 				}, http.StatusBadRequest)
 			}
 		}
