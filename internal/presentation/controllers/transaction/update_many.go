@@ -9,6 +9,7 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -277,6 +278,9 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 				transaction.RegistrationDate = registrationDate
 			}
 		}
+
+		recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(transaction)
+		transaction.Balance.NetBalance = recipeNetBalance
 
 		if len(body.CustomFields) > 0 {
 			existingCustomFields := make(map[string]int)
