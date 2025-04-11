@@ -162,6 +162,9 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 		switch tx.Frequency {
 		case "REPEAT":
+			if tx.RepeatSettings == nil {
+				continue
+			}
 			var txInstances []models.Transaction
 
 			// Calcular a parcela de base - esta será usada para iniciar o contador

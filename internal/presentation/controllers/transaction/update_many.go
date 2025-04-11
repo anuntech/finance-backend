@@ -23,7 +23,6 @@ type UpdateManyRequest struct {
 	Supplier         *string                   `json:"supplier,omitempty"`
 	AssignedTo       *string                   `json:"assignedTo,omitempty"`
 	Balance          *UpdateManyBalanceRequest `json:"balance,omitempty"`
-	Frequency        *string                   `json:"frequency,omitempty"`
 	DueDate          *string                   `json:"dueDate,omitempty"`
 	IsConfirmed      *bool                     `json:"isConfirmed,omitempty"`
 	CategoryId       *string                   `json:"categoryId,omitempty"`
@@ -219,9 +218,6 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 			if body.Balance.InterestPercentage != nil {
 				transaction.Balance.InterestPercentage = *body.Balance.InterestPercentage
 			}
-		}
-		if body.Frequency != nil {
-			transaction.Frequency = *body.Frequency
 		}
 		if body.DueDate != nil {
 			dueDate, err := time.Parse(time.RFC3339, *body.DueDate)
