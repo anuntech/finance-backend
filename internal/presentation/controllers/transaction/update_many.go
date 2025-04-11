@@ -230,6 +230,15 @@ func (c *UpdateManyTransactionController) Handle(r presentationProtocols.HttpReq
 
 			if !*body.IsConfirmed {
 				transaction.ConfirmationDate = nil
+			} else if body.ConfirmationDate != nil {
+				confirmationDate, err := time.Parse(time.RFC3339, *body.ConfirmationDate)
+				if err == nil {
+					transaction.ConfirmationDate = &confirmationDate
+				}
+			} else {
+				return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "Confirmation date is required when transaction is confirmed! ID: " + identifier.ID.Hex(),
+				}, http.StatusBadRequest)
 			}
 		}
 		if body.CategoryId != nil {

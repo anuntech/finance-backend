@@ -154,7 +154,7 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 	for _, tx := range transactions {
 		var dateRef time.Time
-		if tx.IsConfirmed {
+		if tx.IsConfirmed && tx.ConfirmationDate != nil {
 			dateRef = *tx.ConfirmationDate
 		} else {
 			dateRef = tx.DueDate
@@ -264,6 +264,11 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 				tx.RepeatSettings = &models.TransactionRepeatSettings{
 					Interval: "MONTHLY", // Assume monthly as default interval
 				}
+			}
+
+			// Skip confirmed transactions without a confirmation date
+			if tx.IsConfirmed && tx.ConfirmationDate == nil {
+				continue
 			}
 
 			// Para transações recorrentes, precisamos criar uma instância para cada mês no intervalo
