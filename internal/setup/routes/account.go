@@ -51,4 +51,11 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /account/transfer", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeTransferenceAccountController(db)),
+			workspaceDb,
+		),
+	))
 }

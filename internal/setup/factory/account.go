@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/account_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/bank_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/transaction_repository"
 	controllers "github.com/anuntech/finance-backend/internal/presentation/controllers/account"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -43,4 +44,11 @@ func MakeImportAccountController(db *mongo.Database) *controllers.ImportAccountC
 	findAccountByWorkspaceId := account_repository.NewFindAccountsRepository(db)
 	findByNameRepository := account_repository.NewFindByNameMongoRepository(db)
 	return controllers.NewImportAccountController(importAccounts, findAccountByWorkspaceId, findByNameRepository)
+}
+
+func MakeTransferenceAccountController(db *mongo.Database) *controllers.TransferenceAccountController {
+	findAccountById := account_repository.NewFindByIdMongoRepository(db)
+	updateAccount := account_repository.NewUpdateAccountMongoRepository(db)
+	createTransaction := transaction_repository.NewCreateTransactionRepository(db)
+	return controllers.NewTransferenceAccountController(findAccountById, updateAccount, createTransaction)
 }
