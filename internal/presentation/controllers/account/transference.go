@@ -128,7 +128,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 	}
 
 	// Get current time for transactions
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// Create expense transaction for source account
 	expenseTransaction := &models.Transaction{
