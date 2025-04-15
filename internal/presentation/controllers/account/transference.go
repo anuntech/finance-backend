@@ -15,21 +15,18 @@ import (
 
 type TransferenceAccountController struct {
 	FindAccountByIdRepository   usecase.FindAccountByIdRepository
-	UpdateAccountRepository     usecase.UpdateAccountRepository
 	CreateTransactionRepository usecase.CreateTransactionRepository
 	Validate                    *validator.Validate
 }
 
 func NewTransferenceAccountController(
 	findAccountById usecase.FindAccountByIdRepository,
-	updateAccount usecase.UpdateAccountRepository,
 	createTransaction usecase.CreateTransactionRepository,
 ) *TransferenceAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &TransferenceAccountController{
 		FindAccountByIdRepository:   findAccountById,
-		UpdateAccountRepository:     updateAccount,
 		CreateTransactionRepository: createTransaction,
 		Validate:                    validate,
 	}
@@ -198,29 +195,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusInternalServerError)
 	}
 
-	// Update source account balance
-	sourceAccount.Balance -= body.Amount
-	sourceAccount.UpdatedAt = now
-	updatedSourceAccount, err := c.UpdateAccountRepository.Update(sourceAccountId, sourceAccount)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "An error occurred when updating source account balance",
-		}, http.StatusInternalServerError)
-	}
-
-	// Update destination account balance
-	destinationAccount.Balance += body.Amount
-	destinationAccount.UpdatedAt = now
-	updatedDestinationAccount, err := c.UpdateAccountRepository.Update(destinationAccountId, destinationAccount)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "An error occurred when updating destination account balance",
-		}, http.StatusInternalServerError)
-	}
-
 	return helpers.CreateResponse(&TransferenceAccountControllerResponse{
-		SourceAccount:      updatedSourceAccount,
-		DestinationAccount: updatedDestinationAccount,
 		ExpenseTransaction: createdExpenseTransaction,
 		ReceiptTransaction: createdReceiptTransaction,
 	}, http.StatusOK)

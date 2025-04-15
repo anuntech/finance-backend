@@ -48,7 +48,6 @@ func MakeImportAccountController(db *mongo.Database) *controllers.ImportAccountC
 
 func MakeTransferenceAccountController(db *mongo.Database) *controllers.TransferenceAccountController {
 	findAccountById := account_repository.NewFindByIdMongoRepository(db)
-	updateAccount := account_repository.NewUpdateAccountMongoRepository(db)
 	createTransaction := transaction_repository.NewCreateTransactionRepository(db)
-	return controllers.NewTransferenceAccountController(findAccountById, updateAccount, createTransaction)
+	return controllers.NewTransferenceAccountController(findAccountById, createTransaction)
 }
