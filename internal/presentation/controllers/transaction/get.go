@@ -12,7 +12,6 @@ import (
 
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
-	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	workspace_user_repository "github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/user_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
@@ -75,13 +74,6 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	}
 
 	slices.Reverse(transactions)
-
-	transactions, err = c.replaceTransactionIfEditRepeat(transactions)
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "ocorreu um erro ao processar as transações",
-		}, http.StatusInternalServerError)
-	}
 
 	params := &GetTransactionParams{
 		DateType: r.UrlParams.Get("dateType"),
@@ -233,83 +225,6 @@ func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions [
 	}
 
 	return transactions, nil
-}
-
-func (c *GetTransactionController) replaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
-	wg := sync.WaitGroup{}
-	editErrors := []error{}
-
-	for i, transaction := range transactions {
-		wg.Add(1)
-
-		go func(i int, transaction models.Transaction) {
-			defer wg.Done()
-
-			// Make sure RepeatSettings exists
-			if transaction.RepeatSettings == nil {
-				transaction.RepeatSettings = &models.TransactionRepeatSettings{}
-			}
-
-			// Store the current count (installment number) before potential replacement
-			currentCount := transaction.RepeatSettings.CurrentCount
-
-			editTransaction, err := c.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
-			if err != nil {
-				editErrors = append(editErrors, err)
-				return
-			}
-
-			if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
-				repeatSettings := *transaction.RepeatSettings
-				frequency := transaction.Frequency
-				totalBalance := transaction.TotalBalance
-				balance := transaction.Balance
-				id := transaction.Id
-
-				// Preserve the installment number/current count
-				installmentNumber := repeatSettings.CurrentCount
-
-				transactions[i] = *editTransaction
-				transactions[i].Frequency = frequency
-				transactions[i].RepeatSettings = &repeatSettings
-
-				// Restore the installment number after replacing with edited transaction
-				transactions[i].RepeatSettings.CurrentCount = installmentNumber
-
-				transactions[i].Id = id
-				transactions[i].MainCount = nil
-				transactions[i].MainId = nil
-				if transactions[i].Frequency == "DO_NOT_REPEAT" {
-					transactions[i].Balance = balance
-				}
-				transactions[i].TotalBalance = totalBalance
-			} else if currentCount > 0 {
-				// If no edit was found but we had a currentCount, make sure to preserve it
-				transactions[i].RepeatSettings.CurrentCount = currentCount
-			}
-
-			transactionCopy := transactions[i]
-			transactionCopy.Type = "RECIPE"
-			calc := infraHelpers.CalculateOneTransactionBalance(&transactionCopy)
-			transactions[i].Balance.NetBalance = calc
-		}(i, transaction)
-	}
-
-	wg.Wait()
-
-	if len(editErrors) > 0 {
-		return nil, editErrors[0]
-	}
-
-	// Filter out transactions if main transaction is marked as deleted
-	filteredTransactions := transactions[:0]
-	for _, tx := range transactions {
-		if !tx.IsDeleted {
-			filteredTransactions = append(filteredTransactions, tx)
-		}
-	}
-
-	return filteredTransactions, nil
 }
 
 func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {

@@ -4,7 +4,10 @@ import (
 	"context"
 	"time"
 
+	"sync"
+
 	"github.com/anuntech/finance-backend/internal/domain/models"
+	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,11 +15,12 @@ import (
 )
 
 type TransactionRepository struct {
-	db *mongo.Database
+	db                                *mongo.Database
+	FindByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository
 }
 
-func NewTransactionRepository(db *mongo.Database) *TransactionRepository {
-	return &TransactionRepository{db: db}
+func NewTransactionRepository(db *mongo.Database, findByIdEditTransactionRepository usecase.FindByIdEditTransactionRepository) *TransactionRepository {
+	return &TransactionRepository{db: db, FindByIdEditTransactionRepository: findByIdEditTransactionRepository}
 }
 
 func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterParams) ([]models.Transaction, error) {
@@ -70,6 +74,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 
 	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	transactions = r.applyRepeatAndRecurringLogicTransactions(transactions, startOfMonth, endOfMonth)
+	transactions, err = r.replaceTransactionIfEditRepeat(transactions)
+	if err != nil {
+		return nil, err
+	}
 
 	return transactions, nil
 }
@@ -376,4 +384,81 @@ func daysInMonth(date time.Time) int {
 	year, month, _ := date.Date()
 	// Pegar o primeiro dia do próximo mês e subtrair 1 dia
 	return time.Date(year, month+1, 0, 0, 0, 0, 0, date.Location()).Day()
+}
+
+func (r *TransactionRepository) replaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
+	wg := sync.WaitGroup{}
+	editErrors := []error{}
+
+	for i, transaction := range transactions {
+		wg.Add(1)
+
+		go func(i int, transaction models.Transaction) {
+			defer wg.Done()
+
+			// Make sure RepeatSettings exists
+			if transaction.RepeatSettings == nil {
+				transaction.RepeatSettings = &models.TransactionRepeatSettings{}
+			}
+
+			// Store the current count (installment number) before potential replacement
+			currentCount := transaction.RepeatSettings.CurrentCount
+
+			editTransaction, err := r.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
+			if err != nil {
+				editErrors = append(editErrors, err)
+				return
+			}
+
+			if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
+				repeatSettings := *transaction.RepeatSettings
+				frequency := transaction.Frequency
+				totalBalance := transaction.TotalBalance
+				balance := transaction.Balance
+				id := transaction.Id
+
+				// Preserve the installment number/current count
+				installmentNumber := repeatSettings.CurrentCount
+
+				transactions[i] = *editTransaction
+				transactions[i].Frequency = frequency
+				transactions[i].RepeatSettings = &repeatSettings
+
+				// Restore the installment number after replacing with edited transaction
+				transactions[i].RepeatSettings.CurrentCount = installmentNumber
+
+				transactions[i].Id = id
+				transactions[i].MainCount = nil
+				transactions[i].MainId = nil
+				if transactions[i].Frequency == "DO_NOT_REPEAT" {
+					transactions[i].Balance = balance
+				}
+				transactions[i].TotalBalance = totalBalance
+			} else if currentCount > 0 {
+				// If no edit was found but we had a currentCount, make sure to preserve it
+				transactions[i].RepeatSettings.CurrentCount = currentCount
+			}
+
+			transactionCopy := transactions[i]
+			transactionCopy.Type = "RECIPE"
+			calc := helpers.CalculateOneTransactionBalance(&transactionCopy)
+			transactions[i].Balance.NetBalance = calc
+		}(i, transaction)
+	}
+
+	wg.Wait()
+
+	if len(editErrors) > 0 {
+		return nil, editErrors[0]
+	}
+
+	// Filter out transactions if main transaction is marked as deleted
+	filteredTransactions := transactions[:0]
+	for _, tx := range transactions {
+		if !tx.IsDeleted {
+			filteredTransactions = append(filteredTransactions, tx)
+		}
+	}
+
+	return filteredTransactions, nil
 }

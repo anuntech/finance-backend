@@ -30,7 +30,10 @@ func MakeCreateTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 }
 
 func MakeGetTransactionController(workspaceDb *mongo.Database, db *mongo.Database) *transaction.GetTransactionController {
-	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(db)
+	findTransactionsByWorkspaceIdAndMonthRepository := transaction_repository.NewTransactionRepository(
+		db,
+		edit_transaction_repository.NewFindByIdEditTransactionRepository(db),
+	)
 	findByIdEditTransactionRepository := edit_transaction_repository.NewFindByIdEditTransactionRepository(db)
 	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
@@ -108,7 +111,6 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 	findCategoryByIdRepository := category_repository.NewFindCategoryByIdRepository(db)
 	findCustomFieldByIdRepository := custom_field_repository.NewFindCustomFieldByIdRepository(db)
 
-	// Repositórios para busca por nome/email
 	findAccountByNameRepository := account_repository.NewFindByNameMongoRepository(db)
 	findCategoryByNameAndTypeRepository := category_repository.NewFindByNameAndTypeMongoRepository(db)
 	findMemberByEmailRepository := member_repository.NewFindMemberByEmailRepository(workspaceDb)
