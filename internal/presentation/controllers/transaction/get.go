@@ -66,7 +66,14 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		return errHttp
 	}
 
-	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(globalFilters)
+	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
+		Month:       globalFilters.Month,
+		Year:        globalFilters.Year,
+		Type:        globalFilters.Type,
+		InitialDate: globalFilters.InitialDate,
+		FinalDate:   globalFilters.FinalDate,
+		WorkspaceId: workspaceId,
+	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "ocorreu um erro ao buscar as transações",

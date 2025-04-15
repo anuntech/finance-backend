@@ -9,7 +9,6 @@ import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
-	presentationHelpers "github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -23,7 +22,7 @@ func NewTransactionRepository(db *mongo.Database, findByIdEditTransactionReposit
 	return &TransactionRepository{db: db, FindByIdEditTransactionRepository: findByIdEditTransactionRepository}
 }
 
-func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterParams) ([]models.Transaction, error) {
+func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error) {
 	collection := r.db.Collection("transaction")
 
 	var startOfMonth, endOfMonth time.Time
@@ -54,6 +53,10 @@ func (r *TransactionRepository) Find(filters *presentationHelpers.GlobalFilterPa
 	}
 	if filters.Type != "" {
 		filter["type"] = filters.Type
+	}
+
+	if len(filters.AccountIds) > 0 {
+		filter["account_id"] = bson.M{"$in": filters.AccountIds}
 	}
 
 	// filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)

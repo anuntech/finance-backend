@@ -14,10 +14,11 @@ import (
 )
 
 type TransferenceAccountController struct {
-	FindAccountByIdRepository   usecase.FindAccountByIdRepository
-	UpdateAccountRepository     usecase.UpdateAccountRepository
-	CreateTransactionRepository usecase.CreateTransactionRepository
-	Validate                    *validator.Validate
+	FindAccountByIdRepository               usecase.FindAccountByIdRepository
+	UpdateAccountRepository                 usecase.UpdateAccountRepository
+	CreateTransactionRepository             usecase.CreateTransactionRepository
+	Validate                                *validator.Validate
+	FindTransactionsByWorkspaceIdRepository usecase.FindTransactionsByWorkspaceIdRepository
 }
 
 func NewTransferenceAccountController(
@@ -120,8 +121,25 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusNotFound)
 	}
 
+	transactions, err := c.FindTransactionsByWorkspaceIdRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
+		WorkspaceId: workspaceId,
+		AccountIds:  []primitive.ObjectID{sourceAccountId, destinationAccountId},
+	})
+
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "An error occurred when finding transactions",
+		}, http.StatusInternalServerError)
+	}
+
+	var balance float64
+
+	for _, transaction := range transactions {
+		balance += transaction.Balance.NetBalance
+	}
+
 	// Check if source account has enough balance
-	if sourceAccount.Balance < body.Amount {
+	if sourceAccount.Balance+balance < body.Amount {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Source account doesn't have enough balance for this transfer",
 		}, http.StatusBadRequest)

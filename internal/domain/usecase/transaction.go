@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"github.com/anuntech/finance-backend/internal/domain/models"
-	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -11,14 +10,17 @@ type CreateTransactionRepository interface {
 }
 
 type FindTransactionsByWorkspaceIdInputRepository struct {
-	WorkspaceId primitive.ObjectID
 	Month       int
 	Year        int
 	Type        string
+	InitialDate string
+	FinalDate   string
+	WorkspaceId primitive.ObjectID
+	AccountIds  []primitive.ObjectID
 }
 
 type FindTransactionsByWorkspaceIdRepository interface {
-	Find(data *helpers.GlobalFilterParams) ([]models.Transaction, error)
+	Find(data *FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error)
 }
 
 type FindTransactionByIdRepository interface {
