@@ -120,13 +120,6 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusNotFound)
 	}
 
-	// Check if source account has enough balance
-	if sourceAccount.Balance < body.Amount {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "Source account doesn't have enough balance for this transfer",
-		}, http.StatusBadRequest)
-	}
-
 	userId, err := primitive.ObjectIDFromHex(r.Header.Get("userId"))
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
