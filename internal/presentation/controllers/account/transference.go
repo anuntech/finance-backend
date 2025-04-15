@@ -133,11 +133,11 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 	// Create expense transaction for source account
 	expenseTransaction := &models.Transaction{
 		Id:         primitive.NewObjectID(),
-		Name:       "Transfer to " + destinationAccount.Name,
+		Name:       "Transferência interna para " + destinationAccount.Name,
 		IsDeleted:  false,
 		CreatedBy:  workspaceId, // Using workspaceId as createdBy since we don't have user info
 		Type:       "EXPENSE",
-		Supplier:   "Internal Transfer",
+		Supplier:   "Transferência interna",
 		AssignedTo: userId, // Using workspaceId as assignedTo since we don't have user info
 		Balance: models.TransactionBalance{
 			Value:      body.Amount,
@@ -159,11 +159,11 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 	// Create receipt transaction for destination account
 	receiptTransaction := &models.Transaction{
 		Id:         primitive.NewObjectID(),
-		Name:       "Transfer from " + sourceAccount.Name,
+		Name:       "Transferência interna de " + sourceAccount.Name,
 		IsDeleted:  false,
 		CreatedBy:  workspaceId, // Using workspaceId as createdBy since we don't have user info
 		Type:       "RECIPE",
-		Supplier:   "Internal Transfer",
+		Supplier:   "Transferência interna",
 		AssignedTo: userId, // Using workspaceId as assignedTo since we don't have user info
 		Balance: models.TransactionBalance{
 			Value:      body.Amount,
