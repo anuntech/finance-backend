@@ -14,11 +14,10 @@ import (
 )
 
 type TransferenceAccountController struct {
-	FindAccountByIdRepository               usecase.FindAccountByIdRepository
-	UpdateAccountRepository                 usecase.UpdateAccountRepository
-	CreateTransactionRepository             usecase.CreateTransactionRepository
-	Validate                                *validator.Validate
-	FindTransactionsByWorkspaceIdRepository usecase.FindTransactionsByWorkspaceIdRepository
+	FindAccountByIdRepository   usecase.FindAccountByIdRepository
+	UpdateAccountRepository     usecase.UpdateAccountRepository
+	CreateTransactionRepository usecase.CreateTransactionRepository
+	Validate                    *validator.Validate
 }
 
 func NewTransferenceAccountController(
@@ -37,9 +36,9 @@ func NewTransferenceAccountController(
 }
 
 type TransferenceAccountControllerBody struct {
-	SourceAccountId      string  `json:"sourceAccountId" validate:"required,mongodb"`
-	DestinationAccountId string  `json:"destinationAccountId" validate:"required,mongodb"`
-	Amount               float64 `json:"amount" validate:"required,min=0.01"`
+	SourceAccountId      string  `json:"sourceAccountId" validate:"required"`
+	DestinationAccountId string  `json:"destinationAccountId" validate:"required"`
+	Amount               float64 `json:"amount" validate:"required,gt=0"`
 }
 
 type TransferenceAccountControllerResponse struct {
@@ -121,25 +120,8 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusNotFound)
 	}
 
-	transactions, err := c.FindTransactionsByWorkspaceIdRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
-		WorkspaceId: workspaceId,
-		AccountIds:  []primitive.ObjectID{sourceAccountId, destinationAccountId},
-	})
-
-	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "An error occurred when finding transactions",
-		}, http.StatusInternalServerError)
-	}
-
-	var balance float64
-
-	for _, transaction := range transactions {
-		balance += transaction.Balance.NetBalance
-	}
-
 	// Check if source account has enough balance
-	if sourceAccount.Balance+balance < body.Amount {
+	if sourceAccount.Balance < body.Amount {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Source account doesn't have enough balance for this transfer",
 		}, http.StatusBadRequest)
@@ -200,6 +182,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		WorkspaceId:      workspaceId,
 	}
 
+	// Create expense transaction
 	createdExpenseTransaction, err := c.CreateTransactionRepository.Create(expenseTransaction)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -207,6 +190,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusInternalServerError)
 	}
 
+	// Create receipt transaction
 	createdReceiptTransaction, err := c.CreateTransactionRepository.Create(receiptTransaction)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -214,6 +198,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusInternalServerError)
 	}
 
+	// Update source account balance
 	sourceAccount.Balance -= body.Amount
 	sourceAccount.UpdatedAt = now
 	updatedSourceAccount, err := c.UpdateAccountRepository.Update(sourceAccountId, sourceAccount)
@@ -223,6 +208,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		}, http.StatusInternalServerError)
 	}
 
+	// Update destination account balance
 	destinationAccount.Balance += body.Amount
 	destinationAccount.UpdatedAt = now
 	updatedDestinationAccount, err := c.UpdateAccountRepository.Update(destinationAccountId, destinationAccount)
