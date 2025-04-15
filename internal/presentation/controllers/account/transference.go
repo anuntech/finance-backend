@@ -164,7 +164,7 @@ func (c *TransferenceAccountController) Handle(r presentationProtocols.HttpReque
 		CreatedBy:  workspaceId, // Using workspaceId as createdBy since we don't have user info
 		Type:       "RECIPE",
 		Supplier:   "Internal Transfer",
-		AssignedTo: workspaceId, // Using workspaceId as assignedTo since we don't have user info
+		AssignedTo: userId, // Using workspaceId as assignedTo since we don't have user info
 		Balance: models.TransactionBalance{
 			Value:      body.Amount,
 			Discount:   0,
