@@ -52,11 +52,6 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		"workspace_id": filters.WorkspaceId,
 	}
 
-	if filters.Limit > 0 {
-		filter["$limit"] = filters.Limit
-		filter["$skip"] = filters.Offset
-	}
-
 	if filters.Type != "" {
 		filter["type"] = filters.Type
 	}
@@ -88,55 +83,34 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		return nil, err
 	}
 
+	transactions = r.applyPagination(transactions, filters)
+
 	return transactions, nil
 }
 
-// func (r *TransactionRepository) createNormalFilter(startOfMonth, endOfMonth time.Time) []bson.M {
-// 	orRepeatAndRecurringLogic := []bson.M{
-// 		{
-// 			"$and": []bson.M{
-// 				{"is_confirmed": false},
-// 				{"due_date": bson.M{"$lt": endOfMonth}},
-// 			},
-// 		},
-// 		{
-// 			"$and": []bson.M{
-// 				{"is_confirmed": true},
-// 				{"confirmation_date": bson.M{"$lt": endOfMonth}},
-// 			},
-// 		},
-// 	}
+func (r *TransactionRepository) applyPagination(transactions []models.Transaction, filters *usecase.FindTransactionsByWorkspaceIdInputRepository) []models.Transaction {
+	if filters.Limit <= 0 {
+		return transactions
+	}
 
-// 	filter := []bson.M{
-// 		{
-// 			"frequency": "DO_NOT_REPEAT",
-// 			"$or": []bson.M{
-// 				{
-// 					"$and": []bson.M{
-// 						{"is_confirmed": false},
-// 						{"due_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-// 					},
-// 				},
-// 				{
-// 					"$and": []bson.M{
-// 						{"is_confirmed": true},
-// 						{"confirmation_date": bson.M{"$gte": startOfMonth, "$lt": endOfMonth}},
-// 					},
-// 				},
-// 			},
-// 		},
-// 		{
-// 			"frequency": "RECURRING",
-// 			"$or":       orRepeatAndRecurringLogic,
-// 		},
-// 		{
-// 			"frequency": "REPEAT",
-// 			"$or":       orRepeatAndRecurringLogic,
-// 		},
-// 	}
+	totalItems := len(transactions)
+	if totalItems == 0 {
+		return transactions
+	}
 
-// 	return filter
-// }
+	// Make sure offset is within bounds
+	if filters.Offset >= totalItems {
+		return []models.Transaction{}
+	}
+
+	// Calculate the end index with bounds checking
+	endIndex := filters.Offset + filters.Limit
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	return transactions[filters.Offset:endIndex]
+}
 
 func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int, customDay ...int) time.Time {
 	switch interval {

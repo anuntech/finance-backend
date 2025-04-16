@@ -78,7 +78,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "ocorreu um erro ao buscar as transações",
+			Error: "ocorreu um erro ao buscar as transações " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
 
