@@ -301,6 +301,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				SubCategories: []models.SubCategoryCategory{},
 				CreatedAt:     time.Now(),
 				UpdatedAt:     time.Now(),
+				Icon:          "BookCopy",
 			}
 
 			// If subcategory is specified, add it to the new category
@@ -395,6 +396,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				Id:            primitive.NewObjectID(),
 				Name:          tag.Tag,
 				Type:          "TAG",
+				Icon:          "BookCopy",
 				WorkspaceId:   workspaceId,
 				SubCategories: []models.SubCategoryCategory{},
 				CreatedAt:     time.Now(),
