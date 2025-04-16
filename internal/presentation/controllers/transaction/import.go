@@ -32,6 +32,14 @@ type FindCustomFieldByNameRepository interface {
 	FindByNameAndWorkspaceId(name string, workspaceId primitive.ObjectID) (*models.CustomField, error)
 }
 
+type CreateAccountRepository interface {
+	Create(account *models.Account) (*models.Account, error)
+}
+
+type CreateCategoryRepository interface {
+	Create(category *models.Category) (*models.Category, error)
+}
+
 type ImportTransactionController struct {
 	Validate                      *validator.Validate
 	Translator                    ut.Translator
@@ -45,6 +53,9 @@ type ImportTransactionController struct {
 	FindCategoryByNameAndTypeRepository usecase.FindCategoryByNameAndTypeRepository
 	FindMemberByEmailRepository         FindMemberByEmailRepository
 	FindCustomFieldByNameRepository     FindCustomFieldByNameRepository
+
+	CreateAccountRepository  CreateAccountRepository
+	CreateCategoryRepository CreateCategoryRepository
 }
 
 func NewImportTransactionController(
@@ -57,6 +68,8 @@ func NewImportTransactionController(
 	findCategoryByNameAndTypeRepository usecase.FindCategoryByNameAndTypeRepository,
 	findMemberByEmailRepository FindMemberByEmailRepository,
 	findCustomFieldByNameRepository FindCustomFieldByNameRepository,
+	createAccountRepository CreateAccountRepository,
+	createCategoryRepository CreateCategoryRepository,
 ) *ImportTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -71,6 +84,8 @@ func NewImportTransactionController(
 		FindCategoryByNameAndTypeRepository: findCategoryByNameAndTypeRepository,
 		FindMemberByEmailRepository:         findMemberByEmailRepository,
 		FindCustomFieldByNameRepository:     findCustomFieldByNameRepository,
+		CreateAccountRepository:             createAccountRepository,
+		CreateCategoryRepository:            createCategoryRepository,
 	}
 }
 
@@ -245,12 +260,26 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
+	// Try to find account, create if not found
 	account, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(txImport.Account, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 	if account == nil {
-		return nil, errors.New("account not found: " + txImport.Account)
+		// Create a new account
+		newAccount := &models.Account{
+			Id:          primitive.NewObjectID(),
+			Name:        txImport.Account,
+			Balance:     0,
+			WorkspaceId: workspaceId,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		account, err = c.CreateAccountRepository.Create(newAccount)
+		if err != nil {
+			return nil, fmt.Errorf("error creating account: %w", err)
+		}
 	}
 
 	var categoryId *primitive.ObjectID
@@ -261,24 +290,65 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		if err != nil {
 			return nil, err
 		}
+
 		if category == nil {
-			return nil, errors.New("category not found: " + *txImport.Category)
-		}
-
-		categoryId = &category.Id
-
-		if txImport.SubCategory != nil && *txImport.SubCategory != "" {
-			found := false
-			for _, subCat := range category.SubCategories {
-				if strings.EqualFold(subCat.Name, *txImport.SubCategory) {
-					subCategoryId = &subCat.Id
-					found = true
-					break
-				}
+			// Create a new category
+			newCategory := &models.Category{
+				Id:            primitive.NewObjectID(),
+				Name:          *txImport.Category,
+				Type:          txImport.Type,
+				WorkspaceId:   workspaceId,
+				SubCategories: []models.SubCategoryCategory{},
+				CreatedAt:     time.Now(),
+				UpdatedAt:     time.Now(),
 			}
 
-			if !found {
-				return nil, errors.New("subcategory not found: " + *txImport.SubCategory)
+			// If subcategory is specified, add it to the new category
+			if txImport.SubCategory != nil && *txImport.SubCategory != "" {
+				subCatId := primitive.NewObjectID()
+				newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
+					Id:   subCatId,
+					Name: *txImport.SubCategory,
+				})
+				subCategoryId = &subCatId
+			}
+
+			category, err = c.CreateCategoryRepository.Create(newCategory)
+			if err != nil {
+				return nil, fmt.Errorf("error creating category: %w", err)
+			}
+
+			categoryId = &category.Id
+		} else {
+			categoryId = &category.Id
+
+			if txImport.SubCategory != nil && *txImport.SubCategory != "" {
+				found := false
+				for _, subCat := range category.SubCategories {
+					if strings.EqualFold(subCat.Name, *txImport.SubCategory) {
+						subCategoryId = &subCat.Id
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					// Add the subcategory to the existing category
+					updatedCategory := *category
+					subCatId := primitive.NewObjectID()
+					updatedCategory.SubCategories = append(updatedCategory.SubCategories, models.SubCategoryCategory{
+						Id:   subCatId,
+						Name: *txImport.SubCategory,
+					})
+
+					// Update the category with the new subcategory
+					_, err = c.CreateCategoryRepository.Create(&updatedCategory)
+					if err != nil {
+						return nil, fmt.Errorf("error updating category with new subcategory: %w", err)
+					}
+
+					subCategoryId = &subCatId
+				}
 			}
 		}
 	}
@@ -320,32 +390,86 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			return nil, err
 		}
 		if category == nil {
-			return nil, errors.New("tag not found: " + tag.Tag)
-		}
+			// Create a new tag category
+			newTag := &models.Category{
+				Id:            primitive.NewObjectID(),
+				Name:          tag.Tag,
+				Type:          "TAG",
+				WorkspaceId:   workspaceId,
+				SubCategories: []models.SubCategoryCategory{},
+				CreatedAt:     time.Now(),
+				UpdatedAt:     time.Now(),
+			}
 
-		if !strings.EqualFold(category.Type, "TAG") {
-			return nil, errors.New("category is not a tag: " + tag.Tag)
-		}
+			// If subtag is specified, add it to the new tag
+			if tag.SubTag != "" {
+				subTagId := primitive.NewObjectID()
+				newTag.SubCategories = append(newTag.SubCategories, models.SubCategoryCategory{
+					Id:   subTagId,
+					Name: tag.SubTag,
+				})
 
-		tags = append(tags, models.TransactionTags{
-			TagId:    category.Id,
-			SubTagId: primitive.NilObjectID,
-		})
+				category, err = c.CreateCategoryRepository.Create(newTag)
+				if err != nil {
+					return nil, fmt.Errorf("error creating tag: %w", err)
+				}
 
-		if tag.SubTag != "" {
+				tags = append(tags, models.TransactionTags{
+					TagId:    category.Id,
+					SubTagId: subTagId,
+				})
+			} else {
+				category, err = c.CreateCategoryRepository.Create(newTag)
+				if err != nil {
+					return nil, fmt.Errorf("error creating tag: %w", err)
+				}
+
+				tags = append(tags, models.TransactionTags{
+					TagId:    category.Id,
+					SubTagId: primitive.NilObjectID,
+				})
+			}
+		} else {
+			if !strings.EqualFold(category.Type, "TAG") {
+				return nil, errors.New("category is not a tag: " + tag.Tag)
+			}
+
+			tags = append(tags, models.TransactionTags{
+				TagId:    category.Id,
+				SubTagId: primitive.NilObjectID,
+			})
+
+			if tag.SubTag == "" {
+				continue
+			}
+
 			found := false
 			for _, subCat := range category.SubCategories {
 				if strings.EqualFold(subCat.Name, tag.SubTag) {
-
 					tags[len(tags)-1].SubTagId = subCat.Id
 					found = true
 					break
 				}
 			}
 
-			if !found {
-				return nil, errors.New("subtag not found: " + tag.SubTag)
+			if found {
+				continue
 			}
+			// Add the subtag to the existing tag
+			updatedTag := *category
+			subTagId := primitive.NewObjectID()
+			updatedTag.SubCategories = append(updatedTag.SubCategories, models.SubCategoryCategory{
+				Id:   subTagId,
+				Name: tag.SubTag,
+			})
+
+			// Update the tag with the new subtag
+			_, err = c.CreateCategoryRepository.Create(&updatedTag)
+			if err != nil {
+				return nil, fmt.Errorf("error updating tag with new subtag: %w", err)
+			}
+
+			tags[len(tags)-1].SubTagId = subTagId
 		}
 	}
 
