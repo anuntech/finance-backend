@@ -265,7 +265,12 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	if err != nil {
 		return nil, err
 	}
+
 	if account == nil {
+		bankId, err := primitive.ObjectIDFromHex("67a50b176aa2af7fd5e6abe5")
+		if err != nil {
+			return nil, err
+		}
 		// Create a new account
 		newAccount := &models.Account{
 			Id:          primitive.NewObjectID(),
@@ -274,6 +279,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			WorkspaceId: workspaceId,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
+			BankId:      bankId,
 		}
 
 		account, err = c.CreateAccountRepository.Create(newAccount)
