@@ -17,6 +17,8 @@ type FindTransactionsByWorkspaceIdInputRepository struct {
 	FinalDate   string
 	WorkspaceId primitive.ObjectID
 	AccountIds  []primitive.ObjectID
+	Limit       int
+	Offset      int
 }
 
 type FindTransactionsByWorkspaceIdRepository interface {

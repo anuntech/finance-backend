@@ -17,11 +17,15 @@ type GlobalFilterParams struct {
 	InitialDate string `json:"initialDate" validate:"omitempty,datetime=2006-01-02"`
 	FinalDate   string `json:"finalDate" validate:"omitempty,datetime=2006-01-02"`
 	WorkspaceId primitive.ObjectID
+	Limit       int `json:"limit" validate:"omitempty,min=1,max=100"`
+	Offset      int `json:"offset" validate:"omitempty,min=0"`
 }
 
 func GetGlobalFilterByQueries(urlQueries *url.Values, workspaceId primitive.ObjectID, validator *validator.Validate) (*GlobalFilterParams, *presentationProtocols.HttpResponse) {
 	monthInt, _ := strconv.Atoi(urlQueries.Get("month"))
 	yearInt, _ := strconv.Atoi(urlQueries.Get("year"))
+	limitInt, _ := strconv.Atoi(urlQueries.Get("limit"))
+	offsetInt, _ := strconv.Atoi(urlQueries.Get("offset"))
 
 	params := &GlobalFilterParams{
 		Month:       monthInt,
@@ -30,6 +34,8 @@ func GetGlobalFilterByQueries(urlQueries *url.Values, workspaceId primitive.Obje
 		WorkspaceId: workspaceId,
 		InitialDate: urlQueries.Get("initialDate"),
 		FinalDate:   urlQueries.Get("finalDate"),
+		Limit:       limitInt,
+		Offset:      offsetInt,
 	}
 
 	err := validator.Struct(params)

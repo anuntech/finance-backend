@@ -51,6 +51,12 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
 	}
+
+	if filters.Limit > 0 {
+		filter["$limit"] = filters.Limit
+		filter["$skip"] = filters.Offset
+	}
+
 	if filters.Type != "" {
 		filter["type"] = filters.Type
 	}

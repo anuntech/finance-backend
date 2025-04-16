@@ -73,6 +73,8 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		InitialDate: globalFilters.InitialDate,
 		FinalDate:   globalFilters.FinalDate,
 		WorkspaceId: workspaceId,
+		Limit:       globalFilters.Limit,
+		Offset:      globalFilters.Offset,
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
