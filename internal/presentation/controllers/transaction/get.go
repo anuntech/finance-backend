@@ -346,7 +346,6 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 
 	wg := sync.WaitGroup{}
 	var mu sync.Mutex
-	var once sync.Once
 
 	wg.Add(len(transactions))
 	for i := range transactions {
@@ -355,6 +354,8 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 			defer wg.Done()
 
 			tx := &transactions[i]
+
+			var once sync.Once
 
 			addToFiltered := func() {
 				once.Do(func() {
