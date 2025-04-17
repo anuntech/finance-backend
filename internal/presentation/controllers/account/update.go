@@ -13,20 +13,27 @@ import (
 )
 
 type UpdateAccountController struct {
-	UpdateAccountRepository usecase.UpdateAccountRepository
-	Validate                *validator.Validate
-	FindBankById            usecase.FindBankByIdRepository
-	FindAccountById         usecase.FindAccountByIdRepository
+	UpdateAccountRepository     usecase.UpdateAccountRepository
+	Validate                    *validator.Validate
+	FindBankById                usecase.FindBankByIdRepository
+	FindAccountById             usecase.FindAccountByIdRepository
+	FindAccountByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository
 }
 
-func NewUpdateAccountController(updateAccount usecase.UpdateAccountRepository, findBankById usecase.FindBankByIdRepository, findAccountById usecase.FindAccountByIdRepository) *UpdateAccountController {
+func NewUpdateAccountController(
+	updateAccount usecase.UpdateAccountRepository,
+	findBankById usecase.FindBankByIdRepository,
+	findAccountById usecase.FindAccountByIdRepository,
+	findByNameRepository usecase.FindAccountByNameAndWorkspaceIdRepository,
+) *UpdateAccountController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &UpdateAccountController{
-		UpdateAccountRepository: updateAccount,
-		Validate:                validate,
-		FindBankById:            findBankById,
-		FindAccountById:         findAccountById,
+		UpdateAccountRepository:     updateAccount,
+		Validate:                    validate,
+		FindBankById:                findBankById,
+		FindAccountById:             findAccountById,
+		FindAccountByNameRepository: findByNameRepository,
 	}
 }
 
@@ -37,8 +44,8 @@ type UpdateAccountControllerBody struct {
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	id := r.Req.PathValue("id")
-	if _, err := primitive.ObjectIDFromHex(id); err != nil {
+	id, err := primitive.ObjectIDFromHex(r.Req.PathValue("id"))
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Invalid account ID format",
 		}, http.StatusBadRequest)
@@ -53,7 +60,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: err.Error(),
+			Error: helpers.GetErrorMessages(c.Validate, err),
 		}, http.StatusUnprocessableEntity)
 	}
 
@@ -63,7 +70,14 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusBadRequest)
 	}
 
-	accountToVerify, err := c.FindAccountById.Find(id, r.Header.Get("workspaceId"))
+	workspaceId, err := primitive.ObjectIDFromHex(r.Header.Get("workspaceId"))
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Invalid workspace ID format",
+		}, http.StatusBadRequest)
+	}
+
+	accountToVerify, err := c.FindAccountById.Find(id, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "an error occurred when finding account",
@@ -74,6 +88,23 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "account not found",
 		}, http.StatusNotFound)
+	}
+
+	// Verificar se já existe outra conta com o mesmo nome neste workspace
+	// que não seja a conta sendo atualizada
+	if accountToVerify.Name != body.Name {
+		existingAccount, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(body.Name, workspaceId)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "an error occurred when checking for account name",
+			}, http.StatusInternalServerError)
+		}
+
+		if existingAccount != nil && existingAccount.Id != id {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "an account with this name already exists in this workspace",
+			}, http.StatusConflict)
+		}
 	}
 
 	bank, err := c.FindBankById.Find(body.BankId)
@@ -89,7 +120,7 @@ func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *p
 		}, http.StatusNotFound)
 	}
 
-	account, err := c.UpdateAccountRepository.Update(id, &models.AccountInput{
+	account, err := c.UpdateAccountRepository.Update(id, &models.Account{
 		Name:    body.Name,
 		Balance: body.Balance,
 		BankId:  bank.Id,

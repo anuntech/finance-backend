@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"slices"
@@ -36,7 +37,10 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 		}
 
 		myApplicationsCollection := db.Collection("myapplications")
-		myApplications := myApplicationsCollection.FindOne(helpers.Ctx, bson.M{"workspaceId": workspaceObjectID})
+		ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+		defer cancel()
+
+		myApplications := myApplicationsCollection.FindOne(ctx, bson.M{"workspaceId": workspaceObjectID})
 		if myApplications.Err() != nil {
 			http.Error(w, "Workspace not found", http.StatusNotFound)
 			return
@@ -55,7 +59,8 @@ func IsAllowed(next http.Handler, db *mongo.Database) http.Handler {
 		}
 
 		collection := db.Collection("workspaces")
-		result := collection.FindOne(helpers.Ctx, bson.M{"_id": workspaceObjectID})
+
+		result := collection.FindOne(ctx, bson.M{"_id": workspaceObjectID})
 
 		if result.Err() != nil {
 			http.Error(w, "Workspace not found", http.StatusNotFound)

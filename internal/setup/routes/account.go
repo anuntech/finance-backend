@@ -31,9 +31,16 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 		),
 	))
 
-	server.Handle("DELETE /account/{id}", middlewares.VerifyAccessToken(
+	server.Handle("DELETE /account", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeDeleteAccountController(db)),
+			workspaceDb,
+		),
+	))
+
+	server.Handle("POST /account/import", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeImportAccountController(db)),
 			workspaceDb,
 		),
 	))
@@ -41,6 +48,13 @@ func AccountRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo
 	server.Handle("PUT /account/{id}", middlewares.VerifyAccessToken(
 		middlewares.IsAllowed(
 			adapters.AdaptRoute(factory.MakeUpdateAccountController(db)),
+			workspaceDb,
+		),
+	))
+
+	server.Handle("POST /account/transfer", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeTransferenceAccountController(db)),
 			workspaceDb,
 		),
 	))
