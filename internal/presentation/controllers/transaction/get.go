@@ -15,6 +15,7 @@ import (
 	workspace_user_repository "github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/user_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/utils"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -345,18 +346,22 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 
 	wg := sync.WaitGroup{}
 	var mu sync.Mutex
+	var once sync.Once
 
 	wg.Add(len(transactions))
 	for i := range transactions {
 		go func(i int) {
+			defer utils.Recovery(&wg)
 			defer wg.Done()
 
 			tx := &transactions[i]
 
 			addToFiltered := func() {
-				mu.Lock()
-				defer mu.Unlock()
-				filtered = append(filtered, *tx)
+				once.Do(func() {
+					mu.Lock()
+					defer mu.Unlock()
+					filtered = append(filtered, *tx)
+				})
 			}
 
 			if c.ContainsIgnoreCase(tx.Name, search) ||
@@ -387,30 +392,45 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 				}
 			}
 
-			categoryMatch, err := filterByCategory(tx)
-			if err != nil {
-				return
-			}
+			wg2 := sync.WaitGroup{}
+			wg2.Add(1)
+			go func() {
+				defer wg2.Done()
+				categoryMatch, err := filterByCategory(tx)
+				if err != nil {
+					return
+				}
 
-			if categoryMatch {
-				addToFiltered()
-				return
-			}
+				if categoryMatch {
+					addToFiltered()
+					return
+				}
+			}()
 
-			tagMatch, err := filterByTag(tx)
-			if err != nil {
-				return
-			}
+			wg2.Add(1)
+			go func() {
+				defer wg2.Done()
+				tagMatch, err := filterByTag(tx)
+				if err != nil {
+					return
+				}
 
-			if tagMatch {
-				addToFiltered()
-				return
-			}
+				if tagMatch {
+					addToFiltered()
+					return
+				}
+			}()
 
-			if filterByAssignedTo(tx.AssignedTo) {
-				addToFiltered()
-				return
-			}
+			wg2.Add(1)
+			go func() {
+				defer wg2.Done()
+				if filterByAssignedTo(tx.AssignedTo) {
+					addToFiltered()
+					return
+				}
+			}()
+
+			wg2.Wait()
 		}(i)
 	}
 
