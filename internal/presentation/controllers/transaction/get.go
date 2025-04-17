@@ -416,6 +416,10 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 
 	wg.Wait()
 
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+
 	return filtered, nil
 }
 
