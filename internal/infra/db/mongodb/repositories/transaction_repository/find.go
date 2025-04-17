@@ -23,7 +23,7 @@ func NewTransactionRepository(db *mongo.Database, findByIdEditTransactionReposit
 	return &TransactionRepository{db: db, FindByIdEditTransactionRepository: findByIdEditTransactionRepository}
 }
 
-func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) (*usecase.FindTransactionsByWorkspaceIdOutputRepository, error) {
+func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error) {
 	collection := r.db.Collection("transaction")
 
 	var startOfMonth, endOfMonth time.Time
@@ -83,38 +83,7 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 	slices.Reverse(transactions)
 
-	totalCount := len(transactions)
-
-	paginatedTransactions := r.applyPagination(transactions, filters)
-
-	return &usecase.FindTransactionsByWorkspaceIdOutputRepository{
-		Transactions: paginatedTransactions,
-		HasNextPage:  filters.Offset+filters.Limit < totalCount,
-	}, nil
-}
-
-func (r *TransactionRepository) applyPagination(transactions []models.Transaction, filters *usecase.FindTransactionsByWorkspaceIdInputRepository) []models.Transaction {
-	if filters.Limit <= 0 {
-		return transactions
-	}
-
-	totalItems := len(transactions)
-	if totalItems == 0 {
-		return transactions
-	}
-
-	// Make sure offset is within bounds
-	if filters.Offset >= totalItems {
-		return []models.Transaction{}
-	}
-
-	// Calculate the end index with bounds checking
-	endIndex := filters.Offset + filters.Limit
-	if endIndex > totalItems {
-		endIndex = totalItems
-	}
-
-	return transactions[filters.Offset:endIndex]
+	return transactions, nil
 }
 
 func (r *TransactionRepository) computeInstallmentDueDate(initial time.Time, interval string, offset int, customDay ...int) time.Time {

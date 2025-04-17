@@ -21,13 +21,8 @@ type FindTransactionsByWorkspaceIdInputRepository struct {
 	Offset      int
 }
 
-type FindTransactionsByWorkspaceIdOutputRepository struct {
-	Transactions []models.Transaction
-	HasNextPage  bool
-}
-
 type FindTransactionsByWorkspaceIdRepository interface {
-	Find(data *FindTransactionsByWorkspaceIdInputRepository) (*FindTransactionsByWorkspaceIdOutputRepository, error)
+	Find(data *FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error)
 }
 
 type FindTransactionByIdRepository interface {

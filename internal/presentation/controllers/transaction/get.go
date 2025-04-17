@@ -65,7 +65,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		return errHttp
 	}
 
-	transactionRequest, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
+	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
 		Month:       globalFilters.Month,
 		Year:        globalFilters.Year,
 		Type:        globalFilters.Type,
@@ -88,17 +88,24 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		Search:   r.UrlParams.Get("search"),
 	}
 
-	transactions := transactionRequest.Transactions
+	type GetTransactionResponse struct {
+		Transactions []models.Transaction `json:"transactions"`
+		HasNextPage  bool                 `json:"hasNextPage"`
+	}
 
 	if params.Search != "" {
 		transactions, err = c.filterTransactionsBySearch(transactions, params.Search)
+		transactions = c.applyPagination(transactions, globalFilters.Limit, globalFilters.Offset)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "ocorreu um erro ao filtrar as transações pela pesquisa",
 			}, http.StatusInternalServerError)
 		}
 
-		return helpers.CreateResponse(transactions, http.StatusOK)
+		return helpers.CreateResponse(&GetTransactionResponse{
+			Transactions: transactions,
+			HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < len(transactions),
+		}, http.StatusOK)
 	}
 
 	if params.DateType != "" {
@@ -122,14 +129,9 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	type GetTransactionResponse struct {
-		Transactions []models.Transaction `json:"transactions"`
-		HasNextPage  bool                 `json:"hasNextPage"`
-	}
-
 	return helpers.CreateResponse(&GetTransactionResponse{
 		Transactions: transactions,
-		HasNextPage:  transactionRequest.HasNextPage,
+		HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < len(transactions),
 	}, http.StatusOK)
 }
 
@@ -207,6 +209,30 @@ func (c *GetTransactionController) sortTransactions(transactions []models.Transa
 			return transactions[i].RegistrationDate.Before(transactions[j].RegistrationDate)
 		})
 	}
+}
+
+func (c *GetTransactionController) applyPagination(transactions []models.Transaction, limit int, offset int) []models.Transaction {
+	if limit <= 0 {
+		return transactions
+	}
+
+	totalItems := len(transactions)
+	if totalItems == 0 {
+		return transactions
+	}
+
+	// Make sure offset is within bounds
+	if offset >= totalItems {
+		return []models.Transaction{}
+	}
+
+	// Calculate the end index with bounds checking
+	endIndex := offset + limit
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	return transactions[offset:endIndex]
 }
 
 func (c *GetTransactionController) putTransactionCustomFieldTypes(transactions []models.Transaction) ([]models.Transaction, error) {
