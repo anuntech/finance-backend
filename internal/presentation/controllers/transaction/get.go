@@ -84,6 +84,11 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
+	// Ensure transactions is never nil
+	if transactions == nil {
+		transactions = []models.Transaction{}
+	}
+
 	params := &GetTransactionParams{
 		DateType: r.UrlParams.Get("dateType"),
 		Sort:     r.UrlParams.Get("sort"),
