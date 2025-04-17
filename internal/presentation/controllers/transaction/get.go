@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -81,8 +80,6 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 			Error: "ocorreu um erro ao buscar as transações " + err.Error(),
 		}, http.StatusInternalServerError)
 	}
-
-	slices.Reverse(transactions)
 
 	params := &GetTransactionParams{
 		DateType: r.UrlParams.Get("dateType"),
