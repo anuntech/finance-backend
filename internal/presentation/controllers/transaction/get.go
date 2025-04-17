@@ -65,7 +65,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		return errHttp
 	}
 
-	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
+	transactionRequest, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
 		Month:       globalFilters.Month,
 		Year:        globalFilters.Year,
 		Type:        globalFilters.Type,
@@ -75,6 +75,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		Limit:       globalFilters.Limit,
 		Offset:      globalFilters.Offset,
 	})
+
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "ocorreu um erro ao buscar as transações " + err.Error(),
@@ -86,6 +87,8 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		Sort:     r.UrlParams.Get("sort"),
 		Search:   r.UrlParams.Get("search"),
 	}
+
+	transactions := transactionRequest.Transactions
 
 	if params.Search != "" {
 		transactions, err = c.filterTransactionsBySearch(transactions, params.Search)
@@ -119,7 +122,15 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		}, http.StatusInternalServerError)
 	}
 
-	return helpers.CreateResponse(transactions, http.StatusOK)
+	type GetTransactionResponse struct {
+		Transactions []models.Transaction `json:"transactions"`
+		HasNextPage  bool                 `json:"hasNextPage"`
+	}
+
+	return helpers.CreateResponse(&GetTransactionResponse{
+		Transactions: transactions,
+		HasNextPage:  transactionRequest.HasNextPage,
+	}, http.StatusOK)
 }
 
 func (c *GetTransactionController) filterTransactionsByDateType(transactions []models.Transaction, globalFilters *helpers.GlobalFilterParams, params *GetTransactionParams) ([]models.Transaction, error) {

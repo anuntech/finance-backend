@@ -23,7 +23,7 @@ func NewTransactionRepository(db *mongo.Database, findByIdEditTransactionReposit
 	return &TransactionRepository{db: db, FindByIdEditTransactionRepository: findByIdEditTransactionRepository}
 }
 
-func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) ([]models.Transaction, error) {
+func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspaceIdInputRepository) (*usecase.FindTransactionsByWorkspaceIdOutputRepository, error) {
 	collection := r.db.Collection("transaction")
 
 	var startOfMonth, endOfMonth time.Time
@@ -61,8 +61,6 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		filter["account_id"] = bson.M{"$in": filters.AccountIds}
 	}
 
-	// filter["$or"] = r.createNormalFilter(startOfMonth, endOfMonth)
-
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
@@ -77,7 +75,6 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		return nil, err
 	}
 
-	// Lógica para filtrar parcelas já passadas e ajustar o initialInstallment
 	transactions = r.applyRepeatAndRecurringLogicTransactions(transactions, startOfMonth, endOfMonth)
 	transactions, err = r.replaceTransactionIfEditRepeat(transactions)
 	if err != nil {
@@ -86,9 +83,14 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 	slices.Reverse(transactions)
 
-	transactions = r.applyPagination(transactions, filters)
+	totalCount := len(transactions)
 
-	return transactions, nil
+	paginatedTransactions := r.applyPagination(transactions, filters)
+
+	return &usecase.FindTransactionsByWorkspaceIdOutputRepository{
+		Transactions: paginatedTransactions,
+		HasNextPage:  filters.Offset+filters.Limit < totalCount,
+	}, nil
 }
 
 func (r *TransactionRepository) applyPagination(transactions []models.Transaction, filters *usecase.FindTransactionsByWorkspaceIdInputRepository) []models.Transaction {
