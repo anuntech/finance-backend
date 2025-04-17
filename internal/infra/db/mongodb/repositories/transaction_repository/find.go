@@ -2,7 +2,6 @@ package transaction_repository
 
 import (
 	"context"
-	"slices"
 	"time"
 
 	"sync"
@@ -80,8 +79,6 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 	if err != nil {
 		return nil, err
 	}
-
-	slices.Reverse(transactions)
 
 	return transactions, nil
 }

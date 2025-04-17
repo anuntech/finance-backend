@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -88,6 +89,8 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		Search:   r.UrlParams.Get("search"),
 	}
 
+	slices.Reverse(transactions)
+
 	type GetTransactionResponse struct {
 		Transactions []models.Transaction `json:"transactions"`
 		HasNextPage  bool                 `json:"hasNextPage"`
@@ -95,6 +98,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 	if params.Search != "" {
 		transactions, err = c.filterTransactionsBySearch(transactions, params.Search)
+		length := len(transactions)
 		transactions = c.applyPagination(transactions, globalFilters.Limit, globalFilters.Offset)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -104,7 +108,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 		return helpers.CreateResponse(&GetTransactionResponse{
 			Transactions: transactions,
-			HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < len(transactions),
+			HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < length,
 		}, http.StatusOK)
 	}
 
@@ -278,7 +282,7 @@ func (c *GetTransactionController) ContainsIgnoreCase(s, substr string) bool {
 }
 
 func (c *GetTransactionController) filterTransactionsBySearch(transactions []models.Transaction, search string) ([]models.Transaction, error) {
-	filtered := make([]models.Transaction, 0, len(transactions)/2)
+	filtered := []models.Transaction{}
 
 	filterCategoryById := func(categoryId primitive.ObjectID, workspaceId primitive.ObjectID) (bool, error) {
 		category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
@@ -339,78 +343,65 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 		return c.ContainsIgnoreCase(user.Name, search)
 	}
 
-	wg := sync.WaitGroup{}
-	var mu sync.Mutex
-
-	wg.Add(len(transactions))
 	for i := range transactions {
-		go func(i int) {
-			defer wg.Done()
+		tx := &transactions[i]
 
-			tx := &transactions[i]
+		// Verificar se a transação corresponde aos critérios de busca
+		if c.ContainsIgnoreCase(tx.Name, search) ||
+			c.ContainsIgnoreCase(tx.Description, search) ||
+			c.ContainsIgnoreCase(tx.Supplier, search) ||
+			c.ContainsIgnoreCase(tx.Type, search) ||
+			c.ContainsIgnoreCase(tx.Frequency, search) ||
+			c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Value), search) ||
+			c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Discount), search) ||
+			c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Interest), search) ||
+			c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.DiscountPercentage), search) ||
+			c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.InterestPercentage), search) {
+			filtered = append(filtered, *tx)
+			continue
+		}
 
-			addToFiltered := func() {
-				mu.Lock()
-				defer mu.Unlock()
+		// Verificar correspondência de datas
+		if c.isDateMatch(tx.DueDate, search) ||
+			c.isDateMatch(tx.RegistrationDate, search) ||
+			(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
+			filtered = append(filtered, *tx)
+			continue
+		}
+
+		// Verificar campos customizados
+		matchFound := false
+		for _, cf := range tx.CustomFields {
+			if c.ContainsIgnoreCase(cf.Value, search) {
 				filtered = append(filtered, *tx)
+				matchFound = true
+				break
 			}
+		}
+		if matchFound {
+			continue
+		}
 
-			if c.ContainsIgnoreCase(tx.Name, search) ||
-				c.ContainsIgnoreCase(tx.Description, search) ||
-				c.ContainsIgnoreCase(tx.Supplier, search) ||
-				c.ContainsIgnoreCase(tx.Type, search) ||
-				c.ContainsIgnoreCase(tx.Frequency, search) ||
-				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Value), search) ||
-				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Discount), search) ||
-				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.Interest), search) ||
-				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.DiscountPercentage), search) ||
-				c.ContainsIgnoreCase(fmt.Sprintf("%.2f", tx.Balance.InterestPercentage), search) {
-				addToFiltered()
-				return
-			}
+		// Verificar categoria
+		categoryMatch, err := filterByCategory(tx)
+		if err == nil && categoryMatch {
+			filtered = append(filtered, *tx)
+			continue
+		}
 
-			if c.isDateMatch(tx.DueDate, search) ||
-				c.isDateMatch(tx.RegistrationDate, search) ||
-				(tx.ConfirmationDate != nil && c.isDateMatch(*tx.ConfirmationDate, search)) {
-				addToFiltered()
-				return
-			}
+		// Verificar tag
+		tagMatch, err := filterByTag(tx)
+		if err == nil && tagMatch {
+			filtered = append(filtered, *tx)
+			continue
+		}
 
-			for _, cf := range tx.CustomFields {
-				if c.ContainsIgnoreCase(cf.Value, search) {
-					addToFiltered()
-					return
-				}
-			}
-
-			categoryMatch, err := filterByCategory(tx)
-			if err != nil {
-				return
-			}
-
-			if categoryMatch {
-				addToFiltered()
-				return
-			}
-
-			tagMatch, err := filterByTag(tx)
-			if err != nil {
-				return
-			}
-
-			if tagMatch {
-				addToFiltered()
-				return
-			}
-
-			if filterByAssignedTo(tx.AssignedTo) {
-				addToFiltered()
-				return
-			}
-		}(i)
+		// Verificar responsável
+		if filterByAssignedTo(tx.AssignedTo) {
+			filtered = append(filtered, *tx)
+			continue
+		}
 	}
-
-	wg.Wait()
 
 	return filtered, nil
 }
