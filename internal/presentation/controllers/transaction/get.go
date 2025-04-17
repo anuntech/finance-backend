@@ -439,7 +439,7 @@ func (c *GetTransactionController) filterTransactionsBySearch(transactions []mod
 
 	sort.Slice(filtered, func(i, j int) bool {
 		if filtered[i].Id == filtered[j].Id {
-			return filtered[i].RepeatSettings.CurrentCount < filtered[j].RepeatSettings.CurrentCount
+			return filtered[i].RepeatSettings.CurrentCount > filtered[j].RepeatSettings.CurrentCount
 		}
 
 		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
