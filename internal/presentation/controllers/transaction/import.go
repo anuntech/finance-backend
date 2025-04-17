@@ -415,6 +415,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				newTag.SubCategories = append(newTag.SubCategories, models.SubCategoryCategory{
 					Id:   subTagId,
 					Name: tag.SubTag,
+					Icon: "BookCopy",
 				})
 
 				category, err = c.CreateCategoryRepository.Create(newTag)
