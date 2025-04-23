@@ -132,6 +132,8 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		c.sortTransactions(transactions, params)
 	}
 
+	transactionsCount := len(transactions)
+
 	transactions = c.applyPagination(transactions, globalFilters.Limit, globalFilters.Offset)
 	transactions, err = c.putTransactionCustomFieldTypes(transactions)
 	if err != nil {
@@ -142,7 +144,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 
 	return helpers.CreateResponse(&GetTransactionResponse{
 		Transactions: transactions,
-		HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < len(transactions),
+		HasNextPage:  globalFilters.Limit > 0 && globalFilters.Offset+globalFilters.Limit < transactionsCount,
 	}, http.StatusOK)
 }
 
