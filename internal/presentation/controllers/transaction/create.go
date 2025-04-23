@@ -83,7 +83,8 @@ type TransactionBody struct {
 	} `json:"customFields"`
 	AccountId        *string `json:"accountId" validate:"required,mongodb"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
+	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z,excluded_with=CreditCardId"`
+	CreditCardId     *string `json:"creditCardId" validate:"omitempty,mongodb"`
 }
 
 func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {

@@ -157,15 +157,14 @@ func (c *UpdateTransactionController) Handle(r presentationProtocols.HttpRequest
 			return
 		}
 
-		var subCategoryId primitive.ObjectID
-		if transaction.SubCategoryId != nil {
+		if transaction.SubCategoryId == nil {
 			errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "subcategoria não encontrada",
 			}, http.StatusNotFound)
 			return
 		}
 
-		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, subCategoryId); err != nil {
+		if err := c.validateCategory(workspaceId, *transaction.CategoryId, transaction.Type, *transaction.SubCategoryId); err != nil {
 			errChan <- err
 		}
 	}()
