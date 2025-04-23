@@ -27,11 +27,6 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 	var startOfMonth, endOfMonth time.Time
 
-	if filters.Month != 0 {
-		startOfMonth = time.Date(filters.Year, time.Month(filters.Month), 1, 0, 0, 0, 0, time.UTC)
-		endOfMonth = startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-	}
-
 	if filters.InitialDate != "" && filters.FinalDate != "" {
 		startDate, err := time.Parse("2006-01-02", filters.InitialDate)
 		if err != nil {
@@ -46,6 +41,9 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 		startOfMonth = startDate
 		endOfMonth = endDate
+	} else {
+		// for default use a high end month
+		endOfMonth = time.Date(2035, 12, 31, 23, 59, 59, 0, time.Local)
 	}
 
 	filter := bson.M{
