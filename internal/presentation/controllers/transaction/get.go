@@ -132,6 +132,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		c.sortTransactions(transactions, params)
 	}
 
+	transactions = c.applyPagination(transactions, globalFilters.Limit, globalFilters.Offset)
 	transactions, err = c.putTransactionCustomFieldTypes(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
