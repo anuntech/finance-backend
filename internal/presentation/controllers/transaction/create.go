@@ -71,7 +71,7 @@ type TransactionBody struct {
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate       string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed   bool    `json:"isConfirmed"`
-	CategoryId    *string `json:"categoryId" validate:"omitempty,mongodb"`
+	CategoryId    *string `json:"categoryId" validate:"required_with=SubCategoryId,omitempty,mongodb"`
 	SubCategoryId *string `json:"subCategoryId" validate:"omitempty,mongodb"`
 	Tags          []struct {
 		TagId    string `json:"tagId" validate:"omitempty,mongodb"`
