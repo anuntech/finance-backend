@@ -19,31 +19,26 @@ func NewCreateCreditCardRepository(db *mongo.Database) *CreateCreditCardReposito
 
 func (r *CreateCreditCardRepository) Create(creditCard *models.CreditCard) (*models.CreditCard, error) {
 	collection := r.Db.Collection("credit_card")
-
-	workspaceId, err := primitive.ObjectIDFromHex(creditCard.WorkspaceId)
-	if err != nil {
-		return nil, err
-	}
-
 	id := primitive.NewObjectID()
 	doc := map[string]interface{}{
 		"_id":          id,
-		"workspace_id": workspaceId,
+		"workspace_id": creditCard.WorkspaceId,
 		"name":         creditCard.Name,
 		"due_date":     creditCard.DueDate,
 		"close_date":   creditCard.CloseDate,
 		"limit":        creditCard.Limit,
 		"balance":      creditCard.Balance,
+		"flag":         creditCard.Flag,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
-	_, err = collection.InsertOne(ctx, doc)
+	_, err := collection.InsertOne(ctx, doc)
 	if err != nil {
 		return nil, err
 	}
 
-	creditCard.Id = id.Hex()
+	creditCard.Id = id
 	return creditCard, nil
 }
