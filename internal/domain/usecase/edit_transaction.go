@@ -11,6 +11,11 @@ type CreateEditTransactionRepository interface {
 
 type FindByIdEditTransactionRepository interface {
 	Find(mainId primitive.ObjectID, mainCount int, workspaceId primitive.ObjectID) (*models.Transaction, error)
+	FindMany(params []struct {
+		MainId      primitive.ObjectID
+		MainCount   int
+		WorkspaceId primitive.ObjectID
+	}) ([]*models.Transaction, error)
 }
 
 type UpdateEditTransactionRepository interface {
