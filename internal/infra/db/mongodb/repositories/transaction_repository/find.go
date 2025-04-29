@@ -42,7 +42,7 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		endOfMonth = endDate
 	} else {
 		// for default use a high end month
-		endOfMonth = time.Date(2035, 12, 31, 23, 59, 59, 0, time.Local)
+		endOfMonth = time.Date(2050, 12, 31, 23, 59, 59, 0, time.Local)
 	}
 
 	filter := bson.M{
