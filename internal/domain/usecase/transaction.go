@@ -7,6 +7,7 @@ import (
 
 type CreateTransactionRepository interface {
 	Create(transaction *models.Transaction) (*models.Transaction, error)
+	CreateMany(transactions []*models.Transaction) ([]*models.Transaction, error)
 }
 
 type FindTransactionsByWorkspaceIdInputRepository struct {

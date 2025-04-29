@@ -36,3 +36,35 @@ func (r *CreateTransactionRepository) Create(transaction *models.Transaction) (*
 
 	return transaction, nil
 }
+
+func (r *CreateTransactionRepository) CreateMany(transactions []*models.Transaction) ([]*models.Transaction, error) {
+	collection := r.Db.Collection("transaction")
+
+	// Prepare documents for insertion
+	docs := make([]any, len(transactions))
+	now := time.Now().UTC()
+
+	for i, tx := range transactions {
+		if tx.Id.IsZero() {
+			tx.Id = primitive.NewObjectID()
+		}
+		tx.CreatedAt = now
+		tx.UpdatedAt = now
+		docs[i] = tx
+	}
+
+	// Skip if no transactions to insert
+	if len(docs) == 0 {
+		return transactions, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	_, err := collection.InsertMany(ctx, docs)
+	if err != nil {
+		return nil, err
+	}
+
+	return transactions, nil
+}

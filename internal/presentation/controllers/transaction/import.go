@@ -174,7 +174,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		err   error
 	}
 	errs := make(chan errorInfo, len(body.Transactions))
-
+	createdTransactions := make([]*models.Transaction, len(body.Transactions))
 	for i, txImport := range body.Transactions {
 		wg.Add(1)
 		go func(index int, tx TransactionImportItem) {
@@ -189,18 +189,14 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 				return
 			}
 
-			createdTx, err := c.CreateTransactionRepository.Create(transaction)
-			if err != nil {
-				errs <- errorInfo{index: index, err: fmt.Errorf("error creating transaction: %w", err)}
-				return
-			}
+			createdTransactions[index] = transaction
 
-			recipeTx := *createdTx
+			recipeTx := *transaction
 			recipeTx.Type = "RECIPE"
 			recipeNetBalance := infraHelpers.CalculateOneTransactionBalance(&recipeTx)
-			createdTx.Balance.NetBalance = recipeNetBalance
+			recipeTx.Balance.NetBalance = recipeNetBalance
 
-			importedTransactions[index] = createdTx
+			importedTransactions[index] = transaction
 		}(i, txImport)
 	}
 
@@ -223,7 +219,14 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}
 
-	return helpers.CreateResponse(finalTransactions, http.StatusCreated)
+	createdTransactions, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: fmt.Sprintf("error creating transactions: %s", err.Error()),
+		}, http.StatusBadRequest)
+	}
+
+	return helpers.CreateResponse(createdTransactions, http.StatusCreated)
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
