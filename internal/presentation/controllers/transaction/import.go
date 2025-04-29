@@ -161,9 +161,9 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	if len(body.Transactions) > 100 {
+	if len(body.Transactions) > 5000 {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "maximum of 100 transactions per import",
+			Error: "maximum of 5000 transactions per import",
 		}, http.StatusBadRequest)
 	}
 
@@ -175,8 +175,8 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	errs := make(chan errorInfo, len(body.Transactions))
 	createdTransactions := make([]*models.Transaction, len(body.Transactions))
+	wg.Add(len(body.Transactions))
 	for i, txImport := range body.Transactions {
-		wg.Add(1)
 		go func(index int, tx TransactionImportItem) {
 			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
