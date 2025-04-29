@@ -29,9 +29,9 @@ func main() {
 	sm := http.Server{
 		Addr:         ":" + port,
 		Handler:      handler,
-		IdleTimeout:  60 * time.Second,
+		IdleTimeout:  200 * time.Second,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 100 * time.Second,
 	}
 
 	go func() {
