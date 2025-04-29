@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"sync"
-
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -339,72 +338,101 @@ func daysInMonth(date time.Time) int {
 }
 
 func (r *TransactionRepository) replaceTransactionIfEditRepeat(transactions []models.Transaction) ([]models.Transaction, error) {
-	wg := sync.WaitGroup{}
-	editErrors := []error{}
-
-	for i, transaction := range transactions {
-		wg.Add(1)
-
-		go func(i int, transaction models.Transaction) {
-			defer wg.Done()
-
-			// Make sure RepeatSettings exists
-			if transaction.RepeatSettings == nil {
-				transaction.RepeatSettings = &models.TransactionRepeatSettings{}
-			}
-
-			// Store the current count (installment number) before potential replacement
-			currentCount := transaction.RepeatSettings.CurrentCount
-
-			editTransaction, err := r.FindByIdEditTransactionRepository.Find(transaction.Id, transaction.RepeatSettings.CurrentCount, transaction.WorkspaceId)
-			if err != nil {
-				editErrors = append(editErrors, err)
-				return
-			}
-
-			if editTransaction != nil && *editTransaction.MainCount == transaction.RepeatSettings.CurrentCount {
-				repeatSettings := *transaction.RepeatSettings
-				frequency := transaction.Frequency
-				totalBalance := transaction.TotalBalance
-				balance := transaction.Balance
-				id := transaction.Id
-
-				// Preserve the installment number/current count
-				installmentNumber := repeatSettings.CurrentCount
-
-				transactions[i] = *editTransaction
-				transactions[i].Frequency = frequency
-				transactions[i].RepeatSettings = &repeatSettings
-
-				// Restore the installment number after replacing with edited transaction
-				transactions[i].RepeatSettings.CurrentCount = installmentNumber
-
-				transactions[i].Id = id
-				transactions[i].MainCount = nil
-				transactions[i].MainId = nil
-				if transactions[i].Frequency == "DO_NOT_REPEAT" {
-					transactions[i].Balance = balance
-				}
-				transactions[i].TotalBalance = totalBalance
-			} else if currentCount > 0 {
-				// If no edit was found but we had a currentCount, make sure to preserve it
-				transactions[i].RepeatSettings.CurrentCount = currentCount
-			}
-
-			transactionCopy := transactions[i]
-			transactionCopy.Type = "RECIPE"
-			calc := helpers.CalculateOneTransactionBalance(&transactionCopy)
-			transactions[i].Balance.NetBalance = calc
-		}(i, transaction)
+	// Skip processing if there are no transactions
+	if len(transactions) == 0 {
+		return transactions, nil
 	}
 
-	wg.Wait()
-
-	if len(editErrors) > 0 {
-		return nil, editErrors[0]
+	// Prepare params for batch query
+	var queryParams []struct {
+		MainId      primitive.ObjectID
+		MainCount   int
+		WorkspaceId primitive.ObjectID
 	}
 
-	// Filter out transactions if main transaction is marked as deleted
+	// Map to track transaction positions for quick access
+	transactionMap := make(map[string]int) // key: "mainId_mainCount_workspaceId"
+
+	// Collect all transactions to look up
+	for i, tx := range transactions {
+		if tx.RepeatSettings == nil {
+			tx.RepeatSettings = &models.TransactionRepeatSettings{}
+			continue
+		}
+
+		param := struct {
+			MainId      primitive.ObjectID
+			MainCount   int
+			WorkspaceId primitive.ObjectID
+		}{
+			MainId:      tx.Id,
+			MainCount:   tx.RepeatSettings.CurrentCount,
+			WorkspaceId: tx.WorkspaceId,
+		}
+
+		queryParams = append(queryParams, param)
+
+		// Create a unique key for this transaction in our map
+		key := tx.Id.Hex() + "_" + string(rune(tx.RepeatSettings.CurrentCount)) + "_" + tx.WorkspaceId.Hex()
+		transactionMap[key] = i
+	}
+
+	// Fetch all edited transactions with a single database call
+	editedTransactions, err := r.FindByIdEditTransactionRepository.FindMany(queryParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply edited transactions
+	for _, editTx := range editedTransactions {
+		if editTx.MainId == nil || editTx.MainCount == nil {
+			continue
+		}
+
+		// Create lookup key
+		key := editTx.MainId.Hex() + "_" + string(rune(*editTx.MainCount)) + "_" + editTx.WorkspaceId.Hex()
+		idx, exists := transactionMap[key]
+
+		if exists && *editTx.MainCount == transactions[idx].RepeatSettings.CurrentCount {
+			// Store original values we need to preserve
+			repeatSettings := *transactions[idx].RepeatSettings
+			frequency := transactions[idx].Frequency
+			totalBalance := transactions[idx].TotalBalance
+			balance := transactions[idx].Balance
+			id := transactions[idx].Id
+
+			// Preserve the installment number/current count
+			installmentNumber := repeatSettings.CurrentCount
+
+			// Replace with edited transaction
+			transactions[idx] = *editTx
+			transactions[idx].Frequency = frequency
+			transactions[idx].RepeatSettings = &repeatSettings
+
+			// Restore the installment number
+			transactions[idx].RepeatSettings.CurrentCount = installmentNumber
+
+			transactions[idx].Id = id
+			transactions[idx].MainCount = nil
+			transactions[idx].MainId = nil
+
+			if transactions[idx].Frequency == "DO_NOT_REPEAT" {
+				transactions[idx].Balance = balance
+			}
+
+			transactions[idx].TotalBalance = totalBalance
+		}
+	}
+
+	// Calculate balances for all transactions
+	for i := range transactions {
+		transactionCopy := transactions[i]
+		transactionCopy.Type = "RECIPE"
+		calc := helpers.CalculateOneTransactionBalance(&transactionCopy)
+		transactions[i].Balance.NetBalance = calc
+	}
+
+	// Filter out deleted transactions
 	filteredTransactions := transactions[:0]
 	for _, tx := range transactions {
 		if !tx.IsDeleted {

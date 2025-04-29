@@ -42,3 +42,43 @@ func (r *FindByIdEditTransactionRepository) Find(mainId primitive.ObjectID, main
 
 	return &transaction, nil
 }
+
+func (r *FindByIdEditTransactionRepository) FindMany(params []struct {
+	MainId      primitive.ObjectID
+	MainCount   int
+	WorkspaceId primitive.ObjectID
+}) ([]*models.Transaction, error) {
+	if len(params) == 0 {
+		return []*models.Transaction{}, nil
+	}
+
+	collection := r.Db.Collection("edit_transaction")
+
+	// Build the query with $or to fetch multiple transactions in one query
+	var orConditions []bson.M
+	for _, param := range params {
+		orConditions = append(orConditions, bson.M{
+			"main_id":      param.MainId,
+			"main_count":   param.MainCount,
+			"workspace_id": param.WorkspaceId,
+		})
+	}
+
+	filter := bson.M{"$or": orConditions}
+
+	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
+	defer cancel()
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var transactions []*models.Transaction
+	if err = cursor.All(ctx, &transactions); err != nil {
+		return nil, err
+	}
+
+	return transactions, nil
+}
