@@ -316,6 +316,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
 					Id:   subCatId,
 					Name: *txImport.SubCategory,
+					Icon: "BookCopy",
 				})
 				subCategoryId = &subCatId
 			}
@@ -346,6 +347,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					updatedCategory.SubCategories = append(updatedCategory.SubCategories, models.SubCategoryCategory{
 						Id:   subCatId,
 						Name: *txImport.SubCategory,
+						Icon: "BookCopy",
 					})
 
 					// Update the category with the new subcategory
