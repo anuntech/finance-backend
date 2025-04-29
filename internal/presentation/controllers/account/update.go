@@ -40,7 +40,7 @@ func NewUpdateAccountController(
 type UpdateAccountControllerBody struct {
 	Name    string  `validate:"required"`
 	BankId  string  `validate:"required"`
-	Balance float64 `validate:"required"`
+	Balance float64 `validate:"min=0,max=1000000000000000000"`
 }
 
 func (c *UpdateAccountController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
