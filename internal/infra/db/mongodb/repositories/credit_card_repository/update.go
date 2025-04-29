@@ -25,24 +25,20 @@ func NewUpdateCreditCardRepository(db *mongo.Database) *UpdateCreditCardReposito
 func (r *UpdateCreditCardRepository) Update(creditCardId primitive.ObjectID, creditCard *models.CreditCard) (*models.CreditCard, error) {
 	collection := r.Db.Collection("credit_card")
 
-	workspaceId, err := primitive.ObjectIDFromHex(creditCard.WorkspaceId)
-	if err != nil {
-		return nil, err
-	}
-
-	filter := bson.M{"_id": creditCardId, "workspace_id": workspaceId}
+	filter := bson.M{"_id": creditCardId, "workspace_id": creditCard.WorkspaceId}
 	update := bson.M{"$set": bson.M{
 		"name":       creditCard.Name,
 		"due_date":   creditCard.DueDate,
 		"close_date": creditCard.CloseDate,
 		"limit":      creditCard.Limit,
 		"updated_at": time.Now().UTC(),
+		"flag":       creditCard.Flag,
 	}}
 
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
-	_, err = collection.UpdateOne(ctx, filter, update)
+	_, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return nil, err
 	}

@@ -39,15 +39,15 @@ func NewCreateAccountController(
 
 type CreateAccountControllerResponse struct {
 	Id          string  `json:"id"`
-	Name        string  `json:"name" validate:"required"`
-	WorkspaceId string  `json:"workspaceId" validate:"required"`
-	BankId      string  `json:"bankId" validate:"required"`
-	Balance     float64 `json:"balance" validate:"required"`
+	Name        string  `json:"name"`
+	WorkspaceId string  `json:"workspaceId"`
+	BankId      string  `json:"bankId"`
+	Balance     float64 `json:"balance"`
 }
 
 type CreateAccountControllerBody struct {
 	Name    string  `validate:"required,min=3,max=255"`
-	Balance float64 `validate:"min=0"`
+	Balance float64 `validate:"min=0,max=1000000000000000000"`
 	BankId  string  `validate:"required"`
 }
 

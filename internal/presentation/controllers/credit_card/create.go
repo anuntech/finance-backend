@@ -38,7 +38,7 @@ type CreateCreditCardControllerBody struct {
 	DueDate   int     `json:"dueDate" validate:"required,min=1,max=31"`
 	CloseDate int     `json:"closeDate" validate:"required,min=1,max=31"`
 	Limit     float64 `json:"limit" validate:"min=0"`
-	Balance   float64 `json:"balance" validate:"min=0"`
+	Flag      string  `json:"flag" validate:"required,oneof=MASTERCARD VISA ELO HIPERCARD UNIONPAY AURA"`
 }
 
 // Handle processes the HTTP request for creating a credit card
@@ -77,11 +77,11 @@ func (c *CreateCreditCardController) Handle(r presentationProtocols.HttpRequest)
 
 	creditCard, err := c.CreateCreditCardRepository.Create(&models.CreditCard{
 		Name:        body.Name,
-		WorkspaceId: workspaceId.Hex(),
+		WorkspaceId: workspaceId,
 		DueDate:     body.DueDate,
 		CloseDate:   body.CloseDate,
 		Limit:       body.Limit,
-		Balance:     body.Balance,
+		Flag:        body.Flag,
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{

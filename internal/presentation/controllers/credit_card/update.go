@@ -41,6 +41,7 @@ type UpdateCreditCardControllerBody struct {
 	CloseDate int     `json:"closeDate" validate:"required,min=1,max=31"`
 	Limit     float64 `json:"limit" validate:"min=0"`
 	Balance   float64 `json:"balance" validate:"min=0"`
+	Flag      string  `json:"flag" validate:"required,oneof=MASTERCARD VISA ELO HIPERCARD UNIONPAY AURA"`
 }
 
 // Handle processes the HTTP request to update a credit card
@@ -78,19 +79,20 @@ func (c *UpdateCreditCardController) Handle(r presentationProtocols.HttpRequest)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{Error: "an error occurred when checking credit card name"}, http.StatusInternalServerError)
 		}
-		if other != nil && other.Id != id.Hex() {
+		if other != nil && other.Id != id {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{Error: "a credit card with this name already exists in this workspace"}, http.StatusConflict)
 		}
 	}
 
 	updated, err := c.UpdateCreditCardRepository.Update(id, &models.CreditCard{
 		Id:          existing.Id,
-		WorkspaceId: workspaceId.Hex(),
+		WorkspaceId: workspaceId,
 		Name:        body.Name,
 		DueDate:     body.DueDate,
 		CloseDate:   body.CloseDate,
 		Limit:       body.Limit,
 		Balance:     body.Balance,
+		Flag:        body.Flag,
 	})
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{Error: "an error occurred when updating credit card"}, http.StatusInternalServerError)
