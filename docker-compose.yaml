@@ -7,3 +7,10 @@ services:
       - "8080:8080"
     restart: always
     command: go run main.go
+    environment:
+      - MONGO_URL=${MONGO_URL}
+      - WORKSPACE_MONGO_URL=${WORKSPACE_MONGO_URL}
+      - SECRET_JWT=${SECRET_JWT}
+      - PORT=${PORT}
+      - APPLICATION_ID=${APPLICATION_ID}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
