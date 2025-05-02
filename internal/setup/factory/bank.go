@@ -17,3 +17,9 @@ func MakeGetBankByIdController(db *mongo.Database) *controllers.GetBankByIdContr
 
 	return controllers.NewGetBankByIdController(getBankByIdRepository)
 }
+
+func MakeGetBankByNameController(db *mongo.Database) *controllers.GetBankByNameController {
+	getBankByNameRepository := bank_repository.NewFindByNameMongoRepository(db)
+
+	return controllers.NewGetBankByNameController(getBankByNameRepository)
+}

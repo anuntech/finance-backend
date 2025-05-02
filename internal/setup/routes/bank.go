@@ -23,4 +23,11 @@ func BankRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *mongo.Da
 			workspaceDb,
 		),
 	))
+
+	server.Handle("GET /bank/search", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			middlewares.AllowCacheHeader(adapters.AdaptRoute(factory.MakeGetBankByNameController(db))),
+			workspaceDb,
+		),
+	))
 }
