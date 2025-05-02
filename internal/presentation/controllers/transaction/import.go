@@ -55,7 +55,8 @@ type ImportTransactionController struct {
 	FindCustomFieldByNameRepository     FindCustomFieldByNameRepository
 
 	CreateAccountRepository  CreateAccountRepository
-	CreateCategoryRepository CreateCategoryRepository
+	CreateCategoryRepository CreateCategoryRepository ``
+	FindBankByNameRepository usecase.FindBankByNameRepository
 }
 
 func NewImportTransactionController(
@@ -70,6 +71,7 @@ func NewImportTransactionController(
 	findCustomFieldByNameRepository FindCustomFieldByNameRepository,
 	createAccountRepository CreateAccountRepository,
 	createCategoryRepository CreateCategoryRepository,
+	findBankByNameRepository usecase.FindBankByNameRepository,
 ) *ImportTransactionController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -86,6 +88,7 @@ func NewImportTransactionController(
 		FindCustomFieldByNameRepository:     findCustomFieldByNameRepository,
 		CreateAccountRepository:             createAccountRepository,
 		CreateCategoryRepository:            createCategoryRepository,
+		FindBankByNameRepository:            findBankByNameRepository,
 	}
 }
 
@@ -270,10 +273,15 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	}
 
 	if account == nil {
-		bankId, err := primitive.ObjectIDFromHex("67a50b176aa2af7fd5e6abe5")
+		bank, err := c.FindBankByNameRepository.FindByName("Outro")
 		if err != nil {
 			return nil, err
 		}
+
+		if bank == nil {
+			return nil, errors.New("bank not found: " + txImport.Account)
+		}
+
 		// Create a new account
 		newAccount := &models.Account{
 			Id:          primitive.NewObjectID(),
@@ -282,7 +290,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			WorkspaceId: workspaceId,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
-			BankId:      bankId,
+			BankId:      bank.Id,
 		}
 
 		account, err = c.CreateAccountRepository.Create(newAccount)

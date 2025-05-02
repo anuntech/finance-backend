@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/account_repository"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/bank_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/category_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/custom_field_repository"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
@@ -118,7 +119,7 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 
 	createAccountRepository := account_repository.NewCreateAccountMongoRepository(db)
 	createCategoryRepository := category_repository.NewCreateCategoryRepository(db)
-
+	findBankByNameRepository := bank_repository.NewFindByNameMongoRepository(db)
 	return transaction.NewImportTransactionController(
 		findMemberByIdRepository,
 		createTransactionRepository,
@@ -131,6 +132,7 @@ func MakeImportTransactionController(workspaceDb *mongo.Database, db *mongo.Data
 		findCustomFieldByNameRepository,
 		createAccountRepository,
 		createCategoryRepository,
+		findBankByNameRepository,
 	)
 }
 

@@ -9,3 +9,7 @@ type FindAllBankRepository interface {
 type FindBankByIdRepository interface {
 	Find(string) (*models.Bank, error)
 }
+
+type FindBankByNameRepository interface {
+	FindByName(string) (*models.Bank, error)
+}
