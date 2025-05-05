@@ -125,7 +125,7 @@ type TransactionImportItem struct {
 		CustomField string `json:"customField" validate:"required"`
 		Value       string `json:"value" validate:"required,max=100"`
 	} `json:"customFields" validate:"omitempty"`
-	Account          string  `json:"account" validate:"required"`
+	Account          string  `json:"account"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
