@@ -27,11 +27,11 @@ func main() {
 	handler := middlewares.RecoveryMiddleware(middlewares.CorsMiddleware(setup.Server()))
 
 	sm := http.Server{
-		Addr:         ":" + port,
-		Handler:      handler,
-		IdleTimeout:  200 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 100 * time.Second,
+		Addr:    ":" + port,
+		Handler: handler,
+		// IdleTimeout:  200 * time.Second,
+		// ReadTimeout:  10 * time.Second,
+		// WriteTimeout: 100 * time.Second,
 	}
 
 	go func() {
