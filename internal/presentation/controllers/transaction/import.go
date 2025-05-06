@@ -55,8 +55,15 @@ type ImportTransactionController struct {
 	FindCustomFieldByNameRepository     FindCustomFieldByNameRepository
 
 	CreateAccountRepository  CreateAccountRepository
-	CreateCategoryRepository CreateCategoryRepository ``
+	CreateCategoryRepository CreateCategoryRepository
 	FindBankByNameRepository usecase.FindBankByNameRepository
+
+	// Caches
+	categoryCache    categoryCache
+	accountCache     accountCache
+	memberCache      memberCache
+	customFieldCache customFieldCache
+	bankCache        bankCache
 }
 
 func NewImportTransactionController(
@@ -89,6 +96,11 @@ func NewImportTransactionController(
 		CreateAccountRepository:             createAccountRepository,
 		CreateCategoryRepository:            createCategoryRepository,
 		FindBankByNameRepository:            findBankByNameRepository,
+		categoryCache:                       categoryCache{items: make(map[cacheKey]*models.Category)},
+		accountCache:                        accountCache{items: make(map[cacheKey]*models.Account)},
+		memberCache:                         memberCache{items: make(map[cacheKey]*models.Member)},
+		customFieldCache:                    customFieldCache{items: make(map[cacheKey]*models.CustomField)},
+		bankCache:                           bankCache{items: make(map[string]*models.Bank)},
 	}
 }
 
@@ -138,7 +150,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	var body ImportTransactionBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request",
+			Error: "invalid body request: " + err.Error(),
 		}, http.StatusBadRequest)
 	}
 
@@ -178,13 +190,25 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	errs := make(chan errorInfo, len(body.Transactions))
 	createdTransactions := make([]*models.Transaction, len(body.Transactions))
-	wg.Add(len(body.Transactions))
+	const workers = 100
+	sem := make(chan struct{}, workers)
+
 	for i, txImport := range body.Transactions {
+		// 1) bloqueia aqui se já houver 100 em execução
+		sem <- struct{}{}
+
+		// 2) agora sim a vaga foi conquistada: conta 1 no WaitGroup
+		wg.Add(1)
+
 		go func(index int, tx TransactionImportItem) {
+			defer func() {
+				<-sem     // libera a vaga
+				wg.Done() // decrementa só quem realmente executou
+			}()
+
 			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
 				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
 			})
-			defer wg.Done()
 
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
@@ -223,6 +247,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 
 	createdTransactions, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
+
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: fmt.Sprintf("error creating transactions: %s", err.Error()),
@@ -258,7 +283,8 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		confirmationDate = &parsedConfDate
 	}
 
-	member, err := c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId(txImport.AssignedTo, workspaceId)
+	// Use cache for member lookup
+	member, err := c.memberCache.getByEmail(txImport.AssignedTo, workspaceId, c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -266,20 +292,21 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
-	// Try to find account, create if not found
-	account, err := c.FindAccountByNameRepository.FindByNameAndWorkspaceId(txImport.Account, workspaceId)
+	// Try to find account with cache, create if not found
+	account, err := c.accountCache.getOrCreate(txImport.Account, workspaceId, c.FindAccountByNameRepository.FindByNameAndWorkspaceId, c.CreateAccountRepository.Create)
 	if err != nil {
 		return nil, err
 	}
 
 	if account == nil {
-		bank, err := c.FindBankByNameRepository.FindByName("Outro")
+		// Use bank cache
+		bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
 		if err != nil {
 			return nil, err
 		}
 
 		if bank == nil {
-			return nil, errors.New("bank not found: " + txImport.Account)
+			return nil, errors.New("bank not found: Outro")
 		}
 
 		// Create a new account
@@ -297,13 +324,19 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		if err != nil {
 			return nil, fmt.Errorf("error creating account: %w", err)
 		}
+
+		// Add to cache
+		c.accountCache.mu.Lock()
+		c.accountCache.items[cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}] = account
+		c.accountCache.mu.Unlock()
 	}
 
 	var categoryId *primitive.ObjectID
 	var subCategoryId *primitive.ObjectID
 
 	if txImport.Category != nil && *txImport.Category != "" {
-		category, err := c.FindCategoryByNameAndTypeRepository.Find(*txImport.Category, txImport.Type, workspaceId)
+		// Use category cache
+		category, err := c.categoryCache.getOrCreate(*txImport.Category, txImport.Type, workspaceId, c.FindCategoryByNameAndTypeRepository.Find, c.CreateCategoryRepository.Create)
 		if err != nil {
 			return nil, err
 		}
@@ -337,6 +370,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				return nil, fmt.Errorf("error creating category: %w", err)
 			}
 
+			// Add to cache
+			c.categoryCache.mu.Lock()
+			c.categoryCache.items[cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}] = category
+			c.categoryCache.mu.Unlock()
+
 			categoryId = &category.Id
 		} else {
 			categoryId = &category.Id
@@ -362,10 +400,15 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					})
 
 					// Update the category with the new subcategory
-					_, err = c.CreateCategoryRepository.Create(&updatedCategory)
+					updatedCat, err := c.CreateCategoryRepository.Create(&updatedCategory)
 					if err != nil {
 						return nil, fmt.Errorf("error updating category with new subcategory: %w", err)
 					}
+
+					// Update cache
+					c.categoryCache.mu.Lock()
+					c.categoryCache.items[cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}] = updatedCat
+					c.categoryCache.mu.Unlock()
 
 					subCategoryId = &subCatId
 				}
@@ -375,7 +418,8 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 	customFields := make([]models.TransactionCustomField, 0)
 	for _, cf := range txImport.CustomFields {
-		customField, err := c.FindCustomFieldByNameRepository.FindByNameAndWorkspaceId(cf.CustomField, workspaceId)
+		// Use custom field cache
+		customField, err := c.customFieldCache.getByName(cf.CustomField, workspaceId, c.FindCustomFieldByNameRepository.FindByNameAndWorkspaceId)
 		if err != nil {
 			return nil, err
 		}
@@ -405,10 +449,12 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			continue
 		}
 
-		category, err := c.FindCategoryByNameAndTypeRepository.Find(tag.Tag, "TAG", workspaceId)
+		// Use tag cache (categories of type TAG)
+		category, err := c.categoryCache.getOrCreate(tag.Tag, "TAG", workspaceId, c.FindCategoryByNameAndTypeRepository.Find, c.CreateCategoryRepository.Create)
 		if err != nil {
 			return nil, err
 		}
+
 		if category == nil {
 			// Create a new tag category
 			newTag := &models.Category{
@@ -436,6 +482,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					return nil, fmt.Errorf("error creating tag: %w", err)
 				}
 
+				// Add to cache
+				c.categoryCache.mu.Lock()
+				c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = category
+				c.categoryCache.mu.Unlock()
+
 				tags = append(tags, models.TransactionTags{
 					TagId:    category.Id,
 					SubTagId: subTagId,
@@ -445,6 +496,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				if err != nil {
 					return nil, fmt.Errorf("error creating tag: %w", err)
 				}
+
+				// Add to cache
+				c.categoryCache.mu.Lock()
+				c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = category
+				c.categoryCache.mu.Unlock()
 
 				tags = append(tags, models.TransactionTags{
 					TagId:    category.Id,
@@ -486,10 +542,15 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			})
 
 			// Update the tag with the new subtag
-			_, err = c.CreateCategoryRepository.Create(&updatedTag)
+			updatedTagPtr, err := c.CreateCategoryRepository.Create(&updatedTag)
 			if err != nil {
 				return nil, fmt.Errorf("error updating tag with new subtag: %w", err)
 			}
+
+			// Update cache
+			c.categoryCache.mu.Lock()
+			c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = updatedTagPtr
+			c.categoryCache.mu.Unlock()
 
 			tags[len(tags)-1].SubTagId = subTagId
 		}
@@ -542,4 +603,174 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	}
 
 	return transaction, nil
+}
+
+// Cache structures
+type cacheKey struct {
+	name        string
+	typ         string
+	workspaceId primitive.ObjectID
+}
+
+type categoryCache struct {
+	mu    sync.RWMutex
+	items map[cacheKey]*models.Category
+}
+
+type accountCache struct {
+	mu    sync.RWMutex
+	items map[cacheKey]*models.Account
+}
+
+type memberCache struct {
+	mu    sync.RWMutex
+	items map[cacheKey]*models.Member
+}
+
+type customFieldCache struct {
+	mu    sync.RWMutex
+	items map[cacheKey]*models.CustomField
+}
+
+type bankCache struct {
+	mu    sync.RWMutex
+	items map[string]*models.Bank
+}
+
+// Cache methods
+func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.ObjectID, findFn func(string, string, primitive.ObjectID) (*models.Category, error), createFn func(*models.Category) (*models.Category, error)) (*models.Category, error) {
+	key := cacheKey{name: strings.ToLower(name), typ: typ, workspaceId: workspaceId}
+
+	// Try to get from cache first
+	c.mu.RLock()
+	category, ok := c.items[key]
+	c.mu.RUnlock()
+	if ok {
+		return category, nil
+	}
+
+	// Not in cache, find in database
+	category, err := findFn(name, typ, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	// If found, update cache and return
+	if category != nil {
+		c.mu.Lock()
+		c.items[key] = category
+		c.mu.Unlock()
+		return category, nil
+	}
+
+	// Not found, needs to be created
+	return nil, nil
+}
+
+func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Account, error), createFn func(*models.Account) (*models.Account, error)) (*models.Account, error) {
+	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
+
+	// Try to get from cache first
+	c.mu.RLock()
+	account, ok := c.items[key]
+	c.mu.RUnlock()
+	if ok {
+		return account, nil
+	}
+
+	// Not in cache, find in database
+	account, err := findFn(name, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	// If found, update cache and return
+	if account != nil {
+		c.mu.Lock()
+		c.items[key] = account
+		c.mu.Unlock()
+		return account, nil
+	}
+
+	// Not found, needs to be created
+	return nil, nil
+}
+
+func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Member, error)) (*models.Member, error) {
+	key := cacheKey{name: strings.ToLower(email), workspaceId: workspaceId}
+
+	// Try to get from cache first
+	c.mu.RLock()
+	member, ok := c.items[key]
+	c.mu.RUnlock()
+	if ok {
+		return member, nil
+	}
+
+	// Not in cache, find in database
+	member, err := findFn(email, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	// If found, update cache and return
+	if member != nil {
+		c.mu.Lock()
+		c.items[key] = member
+		c.mu.Unlock()
+	}
+
+	return member, nil
+}
+
+func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.CustomField, error)) (*models.CustomField, error) {
+	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
+
+	// Try to get from cache first
+	c.mu.RLock()
+	customField, ok := c.items[key]
+	c.mu.RUnlock()
+	if ok {
+		return customField, nil
+	}
+
+	// Not in cache, find in database
+	customField, err := findFn(name, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	// If found, update cache and return
+	if customField != nil {
+		c.mu.Lock()
+		c.items[key] = customField
+		c.mu.Unlock()
+	}
+
+	return customField, nil
+}
+
+func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, error)) (*models.Bank, error) {
+	// Try to get from cache first
+	c.mu.RLock()
+	bank, ok := c.items[strings.ToLower(name)]
+	c.mu.RUnlock()
+	if ok {
+		return bank, nil
+	}
+
+	// Not in cache, find in database
+	bank, err := findFn(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// If found, update cache and return
+	if bank != nil {
+		c.mu.Lock()
+		c.items[strings.ToLower(name)] = bank
+		c.mu.Unlock()
+	}
+
+	return bank, nil
 }
