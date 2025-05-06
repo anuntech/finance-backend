@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -176,9 +177,10 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	if len(body.Transactions) > 5000 {
+	LIMIT := 10000
+	if len(body.Transactions) > LIMIT {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "maximum of 5000 transactions per import",
+			Error: "maximum of " + strconv.Itoa(LIMIT) + " transactions per import",
 		}, http.StatusBadRequest)
 	}
 
