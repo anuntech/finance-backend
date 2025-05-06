@@ -35,9 +35,9 @@ func MongoHelper(connectionUrl string, databaseName string) *mongo.Database {
 	clientOptions := options.Client().ApplyURI(connectionUrl)
 
 	// Configurações importantes para melhorar a performance
-	clientOptions.SetMaxPoolSize(20)                   // Ajuste esse valor de acordo com sua necessidade
-	clientOptions.SetMinPoolSize(5)                    // Mantém um número mínimo de conexões abertas
-	clientOptions.SetMaxConnIdleTime(30 * time.Second) // Tempo máximo que uma conexão pode ficar inativa
+	clientOptions.SetMaxPoolSize(200)                   // Ajuste esse valor de acordo com sua necessidade
+	clientOptions.SetMinPoolSize(20)                    // Mantém um número mínimo de conexões abertas
+	clientOptions.SetMaxConnIdleTime(200 * time.Second) // Tempo máximo que uma conexão pode ficar inativa
 
 	// Configuração de timeout para operações de conexão
 	ctx, cancel := context.WithTimeout(context.Background(), Timeout)
