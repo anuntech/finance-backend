@@ -151,3 +151,8 @@ func MakeUpdateManyTransactionController(db *mongo.Database) *transaction.Update
 		findCustomFieldByIdRepository,
 	)
 }
+
+// MakeMapTransactionController cria uma instância do controlador de mapeamento de transações
+func MakeMapTransactionController() *transaction.MapTransactionController {
+	return transaction.NewMapTransactionController()
+}

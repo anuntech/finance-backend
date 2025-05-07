@@ -58,4 +58,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("POST /transaction/map", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeMapTransactionController()),
+			workspaceDb,
+		),
+	))
 }
