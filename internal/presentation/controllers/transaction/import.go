@@ -161,6 +161,13 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
+	transactions, err = c.ParseAllDates(transactions)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "error parsing all dates: " + err.Error(),
+		}, http.StatusBadRequest)
+	}
+
 	body := &ImportTransactionBody{
 		Transactions: transactions,
 	}
@@ -1038,4 +1045,37 @@ func normalize(s string) string {
 	}
 
 	return string(result)
+}
+
+func (c *ImportTransactionController) ParseAllDates(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
+	for i := range transactions {
+		// Parse dueDate
+		if transactions[i].DueDate != "" {
+			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
+			if err != nil {
+				return nil, fmt.Errorf("invalid dueDate format for transaction %d: %w", i+1, err)
+			}
+			transactions[i].DueDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		// Parse registrationDate
+		if transactions[i].RegistrationDate != "" {
+			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
+			if err != nil {
+				return nil, fmt.Errorf("invalid registrationDate format for transaction %d: %w", i+1, err)
+			}
+			transactions[i].RegistrationDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		// Parse confirmationDate if present
+		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
+			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
+			if err != nil {
+				return nil, fmt.Errorf("invalid confirmationDate format for transaction %d: %w", i+1, err)
+			}
+			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
+			transactions[i].ConfirmationDate = &formattedDate
+		}
+	}
+	return transactions, nil
 }
