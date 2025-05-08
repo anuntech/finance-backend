@@ -972,10 +972,10 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 
 	mapped := make([]map[string]any, len(rows))
 	for i, row := range rows {
-		m := make(map[string]any)
+		mappedToAppend := make(map[string]any)
 		// copia tudo primeiro
 		for k, v := range row {
-			m[k] = v
+			mappedToAppend[k] = v
 		}
 		// aplica mapping
 		for _, col := range defs {
@@ -986,7 +986,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				id := col.Key
 				value := row[col.KeyToMap]
 
-				cfSlice, ok := m["customFields"].([]map[string]any)
+				cfSlice, ok := mappedToAppend["customFields"].([]map[string]any)
 				if !ok {
 					cfSlice = []map[string]any{}
 				}
@@ -995,7 +995,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					"customField": id,
 					"value":       value,
 				})
-				m["customFields"] = cfSlice
+				mappedToAppend["customFields"] = cfSlice
 				continue
 			}
 
@@ -1052,11 +1052,11 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					}
 
 					// Ensure parent object exists
-					parentObj, ok := m[parentKey].(map[string]any)
+					parentObj, ok := mappedToAppend[parentKey].(map[string]any)
 					if !ok {
 						// Create parent object if it doesn't exist
 						parentObj = make(map[string]any)
-						m[parentKey] = parentObj
+						mappedToAppend[parentKey] = parentObj
 					}
 
 					// Set the value in the nested object
@@ -1069,9 +1069,9 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			// Tenta encontrar a chave original usando o mapa normalizado
 			if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
 				if val, ok := row[originalKey]; ok {
-					m[col.Key] = val
+					mappedToAppend[col.Key] = val
 					if col.Key != originalKey {
-						delete(m, originalKey)
+						delete(mappedToAppend, originalKey)
 					}
 					continue
 				}
@@ -1095,13 +1095,13 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			}
 
 			if found {
-				m[col.Key] = foundValue
+				mappedToAppend[col.Key] = foundValue
 				if col.Key != foundKey {
-					delete(m, foundKey)
+					delete(mappedToAppend, foundKey)
 				}
 			}
 		}
-		mapped[i] = m
+		mapped[i] = mappedToAppend
 	}
 	return mapped
 }
