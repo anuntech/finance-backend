@@ -1,10 +1,15 @@
 package transaction
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +25,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/utils"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	"github.com/xuri/excelize/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -148,12 +154,19 @@ type ImportTransactionBody struct {
 }
 
 func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body ImportTransactionBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	transactions, err := c.ParseMultipartAndMap(r.Req)
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request: " + err.Error(),
+			Error: "error parsing multipart and mapping: " + err.Error(),
 		}, http.StatusBadRequest)
 	}
+
+	body := &ImportTransactionBody{
+		Transactions: transactions,
+	}
+
+	bodyJSON, _ := json.MarshalIndent(body, "", "  ")
+	fmt.Println(string(bodyJSON))
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -775,4 +788,174 @@ func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, er
 	}
 
 	return bank, nil
+}
+
+type ColumnDef struct {
+	Key           string `json:"key"`           // novo nome
+	KeyToMap      string `json:"keyToMap"`      // chave original
+	IsCustomField bool   `json:"isCustomField"` // se é custom field
+}
+
+// parseMultipartAndMap lê o formulário, decodifica Columns, faz parse do arquivo
+// CSV ou XLSX e devolve o slice de TransactionImportItem já mapeado.
+func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]TransactionImportItem, error) {
+	// ~32 MB de memória antes de cair em arquivo temporário
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		return nil, fmt.Errorf("invalid multipart form: %w", err)
+	}
+
+	// --- Columns ----------------------------------------------------------
+	columnsJSON := r.FormValue("columns")
+	if columnsJSON == "" {
+		return nil, fmt.Errorf("missing 'columns' field in form-data")
+	}
+
+	var columns []ColumnDef
+	if err := json.Unmarshal([]byte(columnsJSON), &columns); err != nil {
+		return nil, fmt.Errorf("invalid columns JSON: %w", err)
+	}
+
+	// --- File ---
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, fmt.Errorf("missing 'file' field in form-data: %w", err)
+	}
+	defer file.Close()
+
+	var rawRows []map[string]any
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch ext {
+	case ".csv":
+		rawRows, err = ParseCSV(file)
+	case ".xlsx", ".xlsm", ".xls":
+		rawRows, err = ParseXLSX(file)
+	default:
+		return nil, fmt.Errorf("unsupported file type %s", ext)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// --- Apply mapping ----------------------------------------------------
+	mappedRows := ApplyMapping(rawRows, columns)
+
+	// --- Convert to TransactionImportItem ---------------------------------
+	txs := make([]TransactionImportItem, 0, len(mappedRows))
+	for _, row := range mappedRows {
+		// os valores vêm como string; convertemos via json → struct
+		b, _ := json.Marshal(row)
+		var tx TransactionImportItem
+		if err := json.Unmarshal(b, &tx); err != nil {
+			return nil, fmt.Errorf("row to struct error: %w", err)
+		}
+		txs = append(txs, tx)
+	}
+	return txs, nil
+}
+
+// -----------------------------------------------------
+// Helpers
+// -----------------------------------------------------
+
+func ParseCSV(r io.Reader) ([]map[string]any, error) {
+	cr := csv.NewReader(r)
+	cr.TrimLeadingSpace = true
+	cr.LazyQuotes = true // Enable LazyQuotes to handle improperly quoted fields
+	headers, err := cr.Read()
+	if err != nil {
+		return nil, fmt.Errorf("csv header: %w", err)
+	}
+	var rows []map[string]any
+	for {
+		rec, err := cr.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("csv row: %w", err)
+		}
+		row := make(map[string]any)
+		for i, h := range headers {
+			row[h] = rec[i]
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+func ParseXLSX(r multipart.File) ([]map[string]any, error) {
+	// excelize precisa de io.ReadSeeker, então copiamos para buffer
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, r); err != nil {
+		return nil, fmt.Errorf("copy xlsx: %w", err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return nil, fmt.Errorf("open xlsx: %w", err)
+	}
+	defer f.Close()
+
+	sheet := f.GetSheetName(0)
+	rowsIter, err := f.Rows(sheet)
+	if err != nil {
+		return nil, err
+	}
+	// header
+	if !rowsIter.Next() {
+		return nil, fmt.Errorf("xlsx empty sheet")
+	}
+	headers, _ := rowsIter.Columns()
+	var rows []map[string]any
+	for rowsIter.Next() {
+		cols, _ := rowsIter.Columns()
+		row := make(map[string]any)
+		for i, h := range headers {
+			if i < len(cols) {
+				row[h] = cols[i]
+			} else {
+				row[h] = ""
+			}
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
+	if len(defs) == 0 {
+		return rows // nada para mapear
+	}
+	mapped := make([]map[string]any, len(rows))
+	for i, row := range rows {
+		m := make(map[string]any)
+		// copia tudo primeiro
+		for k, v := range row {
+			m[k] = v
+		}
+		// aplica mapping
+		for _, col := range defs {
+			if col.IsCustomField {
+				// customFields é []any de objetos {id, value}
+				if cfSlice, ok := row["customFields"].([]any); ok {
+					for _, raw := range cfSlice {
+						if cf, ok := raw.(map[string]any); ok {
+							if cf["id"] == col.KeyToMap {
+								cf["id"] = col.Key
+							}
+						}
+					}
+					m["customFields"] = cfSlice
+				}
+			} else {
+				if val, ok := row[col.KeyToMap]; ok {
+					m[col.Key] = val
+					if col.Key != col.KeyToMap {
+						delete(m, col.KeyToMap)
+					}
+				}
+			}
+		}
+		mapped[i] = m
+	}
+	return mapped
 }
