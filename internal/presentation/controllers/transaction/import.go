@@ -962,6 +962,15 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		}
 	}
 
+	// Define known numeric fields that need conversion
+	numericFields := map[string]bool{
+		"balance.value":              true,
+		"balance.discount":           true,
+		"balance.interest":           true,
+		"balance.discountPercentage": true,
+		"balance.interestPercentage": true,
+	}
+
 	mapped := make([]map[string]any, len(rows))
 	for i, row := range rows {
 		m := make(map[string]any)
@@ -987,6 +996,73 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			}
 			normalizedKeyToMap := normalize(col.KeyToMap)
 
+			// Check if key is a nested path (using dot notation)
+			if strings.Contains(col.Key, ".") {
+				parts := strings.SplitN(col.Key, ".", 2)
+				parentKey := parts[0]
+				childKey := parts[1]
+
+				// Find the source value
+				var foundValue any
+				var found bool
+
+				// Tenta encontrar a chave original usando o mapa normalizado
+				if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
+					if val, ok := row[originalKey]; ok {
+						foundValue = val
+						found = true
+					}
+				}
+
+				// Busca caso-insensitiva como fallback
+				if !found {
+					for k, v := range row {
+						normalizedK := normalize(k)
+						if normalizedK == normalizedKeyToMap {
+							foundValue = v
+							found = true
+							break
+						}
+					}
+				}
+
+				if found {
+					// Convert string to float for numeric fields
+					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
+						// Remove any thousand separators and replace comma with dot for decimal point
+						cleanVal := strings.ReplaceAll(strVal, ".", "")   // Remove thousand separators
+						cleanVal = strings.ReplaceAll(cleanVal, ",", ".") // Convert decimal comma to dot
+
+						// Parse string to float64
+						if floatVal, err := strconv.ParseFloat(cleanVal, 64); err == nil {
+							foundValue = floatVal
+						} else {
+							// If parsing fails, try to interpret as currency
+							cleanVal = strings.TrimSpace(cleanVal)
+							cleanVal = strings.TrimPrefix(cleanVal, "R$")
+							cleanVal = strings.TrimSpace(cleanVal)
+
+							if floatVal, err := strconv.ParseFloat(cleanVal, 64); err == nil {
+								foundValue = floatVal
+							}
+						}
+					}
+
+					// Ensure parent object exists
+					parentObj, ok := m[parentKey].(map[string]any)
+					if !ok {
+						// Create parent object if it doesn't exist
+						parentObj = make(map[string]any)
+						m[parentKey] = parentObj
+					}
+
+					// Set the value in the nested object
+					parentObj[childKey] = foundValue
+				}
+				continue
+			}
+
+			// Process regular non-nested fields (existing code)
 			// Tenta encontrar a chave original usando o mapa normalizado
 			if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
 				if val, ok := row[originalKey]; ok {
@@ -1021,7 +1097,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					delete(m, foundKey)
 				}
 			}
-
 		}
 		mapped[i] = m
 	}
