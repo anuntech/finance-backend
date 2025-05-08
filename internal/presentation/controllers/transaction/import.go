@@ -966,67 +966,55 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		for _, col := range defs {
 			if col.IsCustomField {
 				// customFields é []any de objetos {id, value}
-				if cfSlice, ok := row["customFields"].([]any); ok {
-					for _, raw := range cfSlice {
-						if cf, ok := raw.(map[string]any); ok {
-							if cf["id"] == col.KeyToMap {
-								cf["id"] = col.Key
-							}
-						}
-					}
-					m["customFields"] = cfSlice
+				cfSlice, ok := row["customFields"].([]any)
+				if !ok {
+					continue
 				}
-			} else {
-				normalizedKeyToMap := normalize(col.KeyToMap)
-
-				// Tenta encontrar a chave original usando o mapa normalizado
-				if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
-					if val, ok := row[originalKey]; ok {
-						m[col.Key] = val
-						if col.Key != originalKey {
-							delete(m, originalKey)
-						}
-						continue
+				for _, raw := range cfSlice {
+					if cf, ok := raw.(map[string]any); ok && cf["id"] == col.KeyToMap {
+						cf["id"] = col.Key
 					}
 				}
+				m["customFields"] = cfSlice
+				continue
+			}
+			normalizedKeyToMap := normalize(col.KeyToMap)
 
-				// Busca caso-insensitiva como fallback
-				found := false
-				var foundKey string
-				var foundValue any
-
-				for k, v := range row {
-					// Antes era apenas case insensitive, agora removemos todos os caracteres não alfanuméricos
-					normalizedK := normalize(k)
-
-					if normalizedK == normalizedKeyToMap {
-						found = true
-						foundKey = k
-						foundValue = v
-						break
+			// Tenta encontrar a chave original usando o mapa normalizado
+			if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
+				if val, ok := row[originalKey]; ok {
+					m[col.Key] = val
+					if col.Key != originalKey {
+						delete(m, originalKey)
 					}
-				}
-
-				if found {
-					m[col.Key] = foundValue
-					if col.Key != foundKey {
-						delete(m, foundKey)
-					}
-				} else {
-					// Debug adicional para "Tipo"
-					if col.KeyToMap == "Tipo" {
-						fmt.Printf("Special debug for 'Tipo' key:\n")
-						fmt.Printf("Normalized keyToMap: '%s'\n", normalizedKeyToMap)
-						fmt.Println("All normalized keys:")
-						for k := range row {
-							normalized := normalize(k)
-							fmt.Printf("'%s' -> '%s'\n", k, normalized)
-						}
-					}
-
-					fmt.Printf("Warning: Could not find key '%s' in row\n", col.KeyToMap)
+					continue
 				}
 			}
+
+			// Busca caso-insensitiva como fallback
+			found := false
+			var foundKey string
+			var foundValue any
+
+			for k, v := range row {
+				// Antes era apenas case insensitive, agora removemos todos os caracteres não alfanuméricos
+				normalizedK := normalize(k)
+
+				if normalizedK == normalizedKeyToMap {
+					found = true
+					foundKey = k
+					foundValue = v
+					break
+				}
+			}
+
+			if found {
+				m[col.Key] = foundValue
+				if col.Key != foundKey {
+					delete(m, foundKey)
+				}
+			}
+
 		}
 		mapped[i] = m
 	}
