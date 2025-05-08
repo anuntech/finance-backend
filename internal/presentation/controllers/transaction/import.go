@@ -942,7 +942,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 
 	// Debug all headers
 	if len(rows) > 0 {
-		fmt.Println("Available headers in CSV:")
 		for k := range rows[0] {
 			// Debug hexadecimal representation to find hidden characters
 			hexStr := ""
@@ -980,21 +979,25 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		}
 		// aplica mapping
 		for _, col := range defs {
+			normalizedKeyToMap := normalize(col.KeyToMap)
+
 			if col.IsCustomField {
 				// customFields é []any de objetos {id, value}
-				cfSlice, ok := row["customFields"].([]any)
+				id := col.Key
+				value := row[col.KeyToMap]
+
+				cfSlice, ok := m["customFields"].([]map[string]any)
 				if !ok {
-					continue
+					cfSlice = []map[string]any{}
 				}
-				for _, raw := range cfSlice {
-					if cf, ok := raw.(map[string]any); ok && cf["id"] == col.KeyToMap {
-						cf["id"] = col.Key
-					}
-				}
+
+				cfSlice = append(cfSlice, map[string]any{
+					"customField": id,
+					"value":       value,
+				})
 				m["customFields"] = cfSlice
 				continue
 			}
-			normalizedKeyToMap := normalize(col.KeyToMap)
 
 			// Check if key is a nested path (using dot notation)
 			if strings.Contains(col.Key, ".") {
@@ -1150,7 +1153,7 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 			}
 			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
 			transactions[i].ConfirmationDate = &formattedDate
-			transactions[i].IsConfirmed = true
+			transactions[i].IsConfirmed = false
 		}
 
 		transactions[i].Frequency = "DO_NOT_REPEAT"
