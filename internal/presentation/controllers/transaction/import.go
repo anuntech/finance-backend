@@ -1153,7 +1153,7 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 			}
 			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
 			transactions[i].ConfirmationDate = &formattedDate
-			transactions[i].IsConfirmed = false
+			transactions[i].IsConfirmed = true
 		}
 
 		transactions[i].Frequency = "DO_NOT_REPEAT"
