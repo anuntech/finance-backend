@@ -865,6 +865,13 @@ func ParseCSV(r io.Reader) ([]map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("csv header: %w", err)
 	}
+
+	// Clean headers by removing quotes
+	for i, h := range headers {
+		// Remove all quote characters, not just at the boundaries
+		headers[i] = strings.ReplaceAll(h, "\"", "")
+	}
+
 	var rows []map[string]any
 	for {
 		rec, err := cr.Read()
@@ -925,6 +932,29 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 	if len(defs) == 0 {
 		return rows // nada para mapear
 	}
+
+	// Debug all headers
+	if len(rows) > 0 {
+		fmt.Println("Available headers in CSV:")
+		for k := range rows[0] {
+			// Debug hexadecimal representation to find hidden characters
+			hexStr := ""
+			for _, r := range k {
+				hexStr += fmt.Sprintf("%x ", r)
+			}
+			fmt.Printf("'%s' (hex: %s)\n", k, hexStr)
+		}
+	}
+
+	// Pre-process header map for case-insensitive lookup
+	headerMap := make(map[string]string)
+	if len(rows) > 0 {
+		for k := range rows[0] {
+			normalizedKey := normalize(k)
+			headerMap[normalizedKey] = k
+		}
+	}
+
 	mapped := make([]map[string]any, len(rows))
 	for i, row := range rows {
 		m := make(map[string]any)
@@ -947,15 +977,77 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					m["customFields"] = cfSlice
 				}
 			} else {
-				if val, ok := row[col.KeyToMap]; ok {
-					m[col.Key] = val
-					if col.Key != col.KeyToMap {
-						delete(m, col.KeyToMap)
+				normalizedKeyToMap := normalize(col.KeyToMap)
+
+				// Tenta encontrar a chave original usando o mapa normalizado
+				if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
+					if val, ok := row[originalKey]; ok {
+						m[col.Key] = val
+						if col.Key != originalKey {
+							delete(m, originalKey)
+						}
+						continue
 					}
+				}
+
+				// Busca caso-insensitiva como fallback
+				found := false
+				var foundKey string
+				var foundValue any
+
+				for k, v := range row {
+					// Antes era apenas case insensitive, agora removemos todos os caracteres não alfanuméricos
+					normalizedK := normalize(k)
+
+					if normalizedK == normalizedKeyToMap {
+						found = true
+						foundKey = k
+						foundValue = v
+						break
+					}
+				}
+
+				if found {
+					m[col.Key] = foundValue
+					if col.Key != foundKey {
+						delete(m, foundKey)
+					}
+				} else {
+					// Debug adicional para "Tipo"
+					if col.KeyToMap == "Tipo" {
+						fmt.Printf("Special debug for 'Tipo' key:\n")
+						fmt.Printf("Normalized keyToMap: '%s'\n", normalizedKeyToMap)
+						fmt.Println("All normalized keys:")
+						for k := range row {
+							normalized := normalize(k)
+							fmt.Printf("'%s' -> '%s'\n", k, normalized)
+						}
+					}
+
+					fmt.Printf("Warning: Could not find key '%s' in row\n", col.KeyToMap)
 				}
 			}
 		}
 		mapped[i] = m
 	}
 	return mapped
+}
+
+// Função auxiliar para normalizar strings para comparação
+func normalize(s string) string {
+	// Converte para minúsculas
+	s = strings.ToLower(s)
+
+	// Remove espaços extras
+	s = strings.TrimSpace(s)
+
+	// Remove caracteres invisíveis e não imprimíveis (como BOM, zero-width spaces, etc)
+	var result []rune
+	for _, r := range s {
+		if r > 32 && r < 127 { // Mantém apenas ASCII imprimível
+			result = append(result, r)
+		}
+	}
+
+	return string(result)
 }
