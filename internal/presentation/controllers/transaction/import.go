@@ -161,7 +161,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	transactions, err = c.ParseAllDates(transactions)
+	transactions, err = c.ParseAllDatesAndTypes(transactions)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "error parsing all dates: " + err.Error(),
@@ -1122,7 +1122,7 @@ func normalize(s string) string {
 	return string(result)
 }
 
-func (c *ImportTransactionController) ParseAllDates(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
+func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
 	for i := range transactions {
 		// Parse dueDate
 		if transactions[i].DueDate != "" {
@@ -1150,6 +1150,16 @@ func (c *ImportTransactionController) ParseAllDates(transactions []TransactionIm
 			}
 			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
 			transactions[i].ConfirmationDate = &formattedDate
+		}
+
+		transactions[i].Frequency = "DO_NOT_REPEAT"
+
+		if strings.ToLower(transactions[i].Type) == "receita" || strings.ToLower(transactions[i].Type) == "recurring" {
+			transactions[i].Type = "RECIPE"
+		}
+
+		if strings.ToLower(transactions[i].Type) == "despesa" || strings.ToLower(transactions[i].Type) == "expense" {
+			transactions[i].Type = "EXPENSE"
 		}
 	}
 	return transactions, nil
