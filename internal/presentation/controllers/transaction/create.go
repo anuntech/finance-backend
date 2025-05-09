@@ -252,6 +252,13 @@ func (c *CreateTransactionController) Handle(r presentationProtocols.HttpRequest
 		seenTags := make(map[string]bool)
 
 		for _, tag := range transaction.Tags {
+			if tag.SubTagId == primitive.NilObjectID {
+				errChan <- helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+					Error: "subtag não encontrada",
+				}, http.StatusNotFound)
+				return
+			}
+
 			compositeKey := tag.TagId.Hex() + "|" + tag.SubTagId.Hex()
 
 			if seenTags[compositeKey] {
