@@ -174,7 +174,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	// bodyJSON, _ := json.MarshalIndent(body, "", "  ")
 	// fmt.Println(string(bodyJSON))
-	validationErrors := []map[string]interface{}{}
+	validationErrors := []map[string]any{}
 
 	if err := c.Validate.Struct(body); err != nil {
 		// Converter os erros de validação para o mesmo formato de array
@@ -198,14 +198,14 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 				// Traduzir a mensagem de erro
 				errorMsg := c.translateValidationError(e)
-				validationErrors = append(validationErrors, map[string]interface{}{
+				validationErrors = append(validationErrors, map[string]any{
 					"linha": index + 2,
 					"erro":  errorMsg,
 				})
 			}
 		} else {
 			// Caso não seja um erro de validação padrão
-			validationErrors = append(validationErrors, map[string]interface{}{
+			validationErrors = append(validationErrors, map[string]any{
 				"linha": 0,
 				"erro":  "Erro de validação: " + err.Error(),
 			})
@@ -259,7 +259,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 				wg.Done() // decrementa só quem realmente executou
 			}()
 
-			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			defer utils.RecoveryWithCallback(&wg, func(r any) {
 				errs <- errorInfo{index: index + 1, err: fmt.Errorf("panic recovered: %v", r)}
 			})
 
@@ -290,7 +290,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	for e := range errs {
 		// Traduzir a mensagem de erro para português e adicionar ao array
 		errorMessage := c.translateErrorMessage(e.err.Error())
-		validationErrors = append(validationErrors, map[string]interface{}{
+		validationErrors = append(validationErrors, map[string]any{
 			"linha": e.index + 1,
 			"erro":  errorMessage,
 		})
@@ -298,7 +298,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	// Se houver erros, retornar todos eles
 	if len(validationErrors) > 0 {
-		return helpers.CreateResponse(map[string]interface{}{
+		return helpers.CreateResponse(map[string]any{
 			"erros": validationErrors,
 		}, http.StatusBadRequest)
 	}
@@ -1043,6 +1043,10 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		// aplica mapping
 		for _, col := range defs {
 			normalizedKeyToMap := normalize(col.KeyToMap)
+
+			if col.Key == "" || col.KeyToMap == "" {
+				continue
+			}
 
 			if col.IsCustomField {
 				// customFields é []any de objetos {id, value}
