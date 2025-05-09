@@ -309,7 +309,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}
 
-	createdTransactions, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
+	_, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
 
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -317,7 +317,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	return helpers.CreateResponse(createdTransactions, http.StatusCreated)
+	return helpers.CreateResponse(nil, http.StatusCreated)
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
