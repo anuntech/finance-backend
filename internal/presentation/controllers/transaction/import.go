@@ -1150,6 +1150,12 @@ func normalize(s string) string {
 
 func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
 	for i := range transactions {
+		transactions[i].DueDate = strings.ReplaceAll(transactions[i].DueDate, "-", "/")
+		transactions[i].RegistrationDate = strings.ReplaceAll(transactions[i].RegistrationDate, "-", "/")
+		if transactions[i].ConfirmationDate != nil {
+			*transactions[i].ConfirmationDate = strings.ReplaceAll(*transactions[i].ConfirmationDate, "-", "/")
+		}
+
 		// Parse dueDate
 		if transactions[i].DueDate != "" {
 			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
