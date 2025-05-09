@@ -255,9 +255,21 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		close(errs)
 	}()
 
+	// Coletar todos os erros em vez de retornar no primeiro
+	allErrors := []map[string]interface{}{}
 	for e := range errs {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: fmt.Sprintf("error processing transaction #%d: %s", e.index+1, e.err.Error()),
+		// Traduzir a mensagem de erro para português e adicionar ao array
+		errorMessage := c.translateErrorMessage(e.err.Error())
+		allErrors = append(allErrors, map[string]interface{}{
+			"linha": e.index + 1,
+			"erro":  errorMessage,
+		})
+	}
+
+	// Se houver erros, retornar todos eles
+	if len(allErrors) > 0 {
+		return helpers.CreateResponse(map[string]interface{}{
+			"erros": allErrors,
 		}, http.StatusBadRequest)
 	}
 
@@ -272,7 +284,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: fmt.Sprintf("error creating transactions: %s", err.Error()),
+			Error: fmt.Sprintf("erro ao criar transações: %s", err.Error()),
 		}, http.StatusBadRequest)
 	}
 
@@ -1247,4 +1259,36 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 		}
 	}
 	return transactions, nil
+}
+
+// translateErrorMessage traduz mensagens de erro para português
+func (c *ImportTransactionController) translateErrorMessage(errorMsg string) string {
+	// Mapeamento de mensagens de erro em inglês para português
+	errorTranslations := map[string]string{
+		"member not found with email":                  "membro não encontrado com o email",
+		"bank not found":                               "banco não encontrado",
+		"error creating account":                       "erro ao criar conta",
+		"error creating category":                      "erro ao criar categoria",
+		"error updating category with new subcategory": "erro ao atualizar categoria com nova subcategoria",
+		"custom field not found":                       "campo personalizado não encontrado",
+		"custom field type mismatch":                   "tipo de campo personalizado incompatível",
+		"invalid custom field ID":                      "ID de campo personalizado inválido",
+		"category is not a tag":                        "categoria não é uma tag",
+		"error creating tag":                           "erro ao criar tag",
+		"error updating tag with new subtag":           "erro ao atualizar tag com nova subtag",
+		"panic recovered":                              "erro inesperado",
+		"invalid user ID format":                       "formato de ID de usuário inválido",
+		"invalid workspace ID format":                  "formato de ID de espaço de trabalho inválido",
+	}
+
+	// Procura por fragmentos de mensagens de erro conhecidas e substitui
+	for engMsg, ptMsg := range errorTranslations {
+		if strings.Contains(errorMsg, engMsg) {
+			// Substitui a parte em inglês pelo equivalente em português
+			return strings.Replace(errorMsg, engMsg, ptMsg, 1)
+		}
+	}
+
+	// Se não encontrar uma tradução específica, retorna a mensagem original
+	return errorMsg
 }
