@@ -198,15 +198,15 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 				// Traduzir a mensagem de erro
 				errorMsg := c.translateValidationError(e)
 				validationErrors = append(validationErrors, map[string]any{
-					"linha": index + 2, // Linha começa em 1 (após o cabeçalho)
-					"erro":  errorMsg,
+					"line":  index + 2, // Linha começa em 1 (após o cabeçalho)
+					"error": errorMsg,
 				})
 			}
 		} else {
 			// Caso não seja um erro de validação padrão
 			validationErrors = append(validationErrors, map[string]any{
-				"linha": 0,
-				"erro":  "Erro de validação: " + err.Error(),
+				"line":  0,
+				"error": "Erro de validação: " + err.Error(),
 			})
 		}
 	}
@@ -290,8 +290,8 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		// Traduzir a mensagem de erro para português e adicionar ao array
 		errorMessage := c.translateErrorMessage(e.err.Error())
 		validationErrors = append(validationErrors, map[string]any{
-			"linha": e.index + 1, // Linha começa em 1 (após o cabeçalho)
-			"erro":  errorMessage,
+			"line":  e.index + 2, // Linha começa em 1 (após o cabeçalho)
+			"error": errorMessage,
 		})
 	}
 
