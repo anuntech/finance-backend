@@ -199,7 +199,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 				// Traduzir a mensagem de erro
 				errorMsg := c.translateValidationError(e)
 				validationErrors = append(validationErrors, map[string]interface{}{
-					"linha": index + 1,
+					"linha": index + 2,
 					"erro":  errorMsg,
 				})
 			}
@@ -260,12 +260,12 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			}()
 
 			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
-				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
+				errs <- errorInfo{index: index + 1, err: fmt.Errorf("panic recovered: %v", r)}
 			})
 
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
-				errs <- errorInfo{index: index, err: err}
+				errs <- errorInfo{index: index + 1, err: err}
 				return
 			}
 
