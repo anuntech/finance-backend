@@ -1,10 +1,17 @@
 package transaction
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +26,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/utils"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	"github.com/xuri/excelize/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -127,8 +135,8 @@ type TransactionImportItem struct {
 	} `json:"repeatSettings" validate:"excluded_if=Frequency DO_NOT_REPEAT,excluded_if=Frequency RECURRING,required_if=Frequency REPEAT,omitempty"`
 	DueDate     string  `json:"dueDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	IsConfirmed bool    `json:"isConfirmed"`
-	Category    *string `json:"category" validate:"omitempty"`
-	SubCategory *string `json:"subCategory" validate:"omitempty"`
+	Category    *string `json:"categoryId" validate:"omitempty"`
+	SubCategory *string `json:"subCategoryId" validate:"omitempty"`
 	Tags        []struct {
 		Tag    string `json:"tag" validate:"omitempty"`
 		SubTag string `json:"subTag" validate:"omitempty"`
@@ -137,7 +145,7 @@ type TransactionImportItem struct {
 		CustomField string `json:"customField" validate:"required"`
 		Value       string `json:"value" validate:"required,max=100"`
 	} `json:"customFields" validate:"omitempty"`
-	Account          string  `json:"account"`
+	Account          string  `json:"accountId"`
 	RegistrationDate string  `json:"registrationDate" validate:"required,datetime=2006-01-02T15:04:05Z"`
 	ConfirmationDate *string `json:"confirmationDate" validate:"excluded_if=IsConfirmed false,required_if=IsConfirmed true,omitempty,datetime=2006-01-02T15:04:05Z"`
 }
@@ -147,17 +155,60 @@ type ImportTransactionBody struct {
 }
 
 func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
-	var body ImportTransactionBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	transactions, err := c.ParseMultipartAndMap(r.Req)
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid body request: " + err.Error(),
+			Error: "error parsing multipart and mapping: " + err.Error(),
 		}, http.StatusBadRequest)
 	}
 
-	if err := c.Validate.Struct(body); err != nil {
+	transactions, err = c.ParseAllDatesAndTypes(transactions)
+	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: helpers.GetErrorMessages(c.Validate, err),
+			Error: "error parsing all dates: " + err.Error(),
 		}, http.StatusBadRequest)
+	}
+
+	body := &ImportTransactionBody{
+		Transactions: transactions,
+	}
+
+	// bodyJSON, _ := json.MarshalIndent(body, "", "  ")
+	// fmt.Println(string(bodyJSON))
+	validationErrors := []map[string]any{}
+
+	if err := c.Validate.Struct(body); err != nil {
+		// Converter os erros de validação para o mesmo formato de array
+
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			for _, e := range errs {
+				// Encontrar o índice da transação com erro
+				field := e.Namespace() // Usar Namespace() em vez de Field() para obter o caminho completo
+				index := 0
+
+				// Extrair índice da transação com regex para maior precisão
+				re := regexp.MustCompile(`Transactions\[(\d+)\]`)
+				matches := re.FindStringSubmatch(field)
+				if len(matches) >= 2 {
+					if idx, err := strconv.Atoi(matches[1]); err == nil {
+						index = idx
+					}
+				}
+
+				// Traduzir a mensagem de erro
+				errorMsg := c.translateValidationError(e)
+				validationErrors = append(validationErrors, map[string]any{
+					"line":  index + 2, // Linha começa em 1 (após o cabeçalho)
+					"error": errorMsg,
+				})
+			}
+		} else {
+			// Caso não seja um erro de validação padrão
+			validationErrors = append(validationErrors, map[string]any{
+				"line":  0,
+				"error": "Erro de validação: " + err.Error(),
+			})
+		}
 	}
 
 	userID := r.Header.Get("userId")
@@ -176,9 +227,10 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
-	if len(body.Transactions) > 5000 {
+	LIMIT := 10000
+	if len(body.Transactions) > LIMIT {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "maximum of 5000 transactions per import",
+			Error: "maximum of " + strconv.Itoa(LIMIT) + " transactions per import",
 		}, http.StatusBadRequest)
 	}
 
@@ -206,7 +258,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 				wg.Done() // decrementa só quem realmente executou
 			}()
 
-			defer utils.RecoveryWithCallback(&wg, func(r interface{}) {
+			defer utils.RecoveryWithCallback(&wg, func(r any) {
 				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
 			})
 
@@ -233,9 +285,20 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		close(errs)
 	}()
 
+	// Coletar todos os erros em vez de retornar no primeiro
 	for e := range errs {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: fmt.Sprintf("error processing transaction #%d: %s", e.index+1, e.err.Error()),
+		// Traduzir a mensagem de erro para português e adicionar ao array
+		errorMessage := c.translateErrorMessage(e.err.Error())
+		validationErrors = append(validationErrors, map[string]any{
+			"line":  e.index + 2, // Linha começa em 1 (após o cabeçalho)
+			"error": errorMessage,
+		})
+	}
+
+	// Se houver erros, retornar todos eles
+	if len(validationErrors) > 0 {
+		return helpers.CreateResponse(map[string]any{
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
@@ -246,15 +309,15 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}
 
-	createdTransactions, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
+	_, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
 
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: fmt.Sprintf("error creating transactions: %s", err.Error()),
+			Error: fmt.Sprintf("erro ao criar transações: %s", err.Error()),
 		}, http.StatusBadRequest)
 	}
 
-	return helpers.CreateResponse(createdTransactions, http.StatusCreated)
+	return helpers.CreateResponse(nil, http.StatusCreated)
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
@@ -292,43 +355,61 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
+	// Verificar se o campo Account está vazio
+	if strings.TrimSpace(txImport.Account) == "" {
+		return nil, errors.New("nome da conta não pode estar vazio")
+	}
+
 	// Try to find account with cache, create if not found
 	account, err := c.accountCache.getOrCreate(txImport.Account, workspaceId, c.FindAccountByNameRepository.FindByNameAndWorkspaceId, c.CreateAccountRepository.Create)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao buscar conta '%s': %w", txImport.Account, err)
 	}
 
 	if account == nil {
-		// Use bank cache
-		bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
-		if err != nil {
-			return nil, err
-		}
-
-		if bank == nil {
-			return nil, errors.New("bank not found: Outro")
-		}
-
-		// Create a new account
-		newAccount := &models.Account{
-			Id:          primitive.NewObjectID(),
-			Name:        txImport.Account,
-			Balance:     0,
-			WorkspaceId: workspaceId,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-			BankId:      bank.Id,
-		}
-
-		account, err = c.CreateAccountRepository.Create(newAccount)
-		if err != nil {
-			return nil, fmt.Errorf("error creating account: %w", err)
-		}
-
-		// Add to cache
+		// Aqui precisamos de um lock adicional para evitar criações duplicadas
+		// Uma vez que voltamos do getOrCreate com nil
 		c.accountCache.mu.Lock()
-		c.accountCache.items[cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}] = account
-		c.accountCache.mu.Unlock()
+
+		// Verificar novamente o cache agora que temos o lock exclusivo
+		key := cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}
+		if existingAccount, ok := c.accountCache.items[key]; ok {
+			c.accountCache.mu.Unlock()
+			account = existingAccount // Usar a conta encontrada, mas continuar o processamento normalmente
+		} else {
+			// Use bank cache
+			bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
+			if err != nil {
+				c.accountCache.mu.Unlock()
+				return nil, fmt.Errorf("erro ao buscar banco 'Outro': %w", err)
+			}
+
+			if bank == nil {
+				c.accountCache.mu.Unlock()
+				return nil, errors.New("banco 'Outro' não encontrado no sistema")
+			}
+
+			// Create a new account
+			newAccount := &models.Account{
+				Id:          primitive.NewObjectID(),
+				Name:        txImport.Account,
+				Balance:     0,
+				WorkspaceId: workspaceId,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+				BankId:      bank.Id,
+			}
+
+			account, err = c.CreateAccountRepository.Create(newAccount)
+			if err != nil {
+				c.accountCache.mu.Unlock()
+				return nil, fmt.Errorf("erro ao criar conta '%s': %w", txImport.Account, err)
+			}
+
+			// Add to cache
+			c.accountCache.items[key] = account
+			c.accountCache.mu.Unlock()
+		}
 	}
 
 	var categoryId *primitive.ObjectID
@@ -342,40 +423,50 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		}
 
 		if category == nil {
-			// Create a new category
-			newCategory := &models.Category{
-				Id:            primitive.NewObjectID(),
-				Name:          *txImport.Category,
-				Type:          txImport.Type,
-				WorkspaceId:   workspaceId,
-				SubCategories: []models.SubCategoryCategory{},
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-				Icon:          "BookCopy",
-			}
-
-			// If subcategory is specified, add it to the new category
-			if txImport.SubCategory != nil && *txImport.SubCategory != "" {
-				subCatId := primitive.NewObjectID()
-				newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
-					Id:   subCatId,
-					Name: *txImport.SubCategory,
-					Icon: "BookCopy",
-				})
-				subCategoryId = &subCatId
-			}
-
-			category, err = c.CreateCategoryRepository.Create(newCategory)
-			if err != nil {
-				return nil, fmt.Errorf("error creating category: %w", err)
-			}
-
-			// Add to cache
+			// Aqui precisamos de um lock adicional para evitar criações duplicadas
 			c.categoryCache.mu.Lock()
-			c.categoryCache.items[cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}] = category
-			c.categoryCache.mu.Unlock()
 
-			categoryId = &category.Id
+			// Verificar novamente o cache agora que temos o lock exclusivo
+			key := cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}
+			if category, ok := c.categoryCache.items[key]; ok {
+				categoryId = &category.Id
+				c.categoryCache.mu.Unlock()
+			} else {
+				// Create a new category
+				newCategory := &models.Category{
+					Id:            primitive.NewObjectID(),
+					Name:          *txImport.Category,
+					Type:          txImport.Type,
+					WorkspaceId:   workspaceId,
+					SubCategories: []models.SubCategoryCategory{},
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+					Icon:          "BookCopy",
+				}
+
+				// If subcategory is specified, add it to the new category
+				if txImport.SubCategory != nil && *txImport.SubCategory != "" {
+					subCatId := primitive.NewObjectID()
+					newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
+						Id:   subCatId,
+						Name: *txImport.SubCategory,
+						Icon: "BookCopy",
+					})
+					subCategoryId = &subCatId
+				}
+
+				category, err = c.CreateCategoryRepository.Create(newCategory)
+				if err != nil {
+					c.categoryCache.mu.Unlock()
+					return nil, fmt.Errorf("error creating category: %w", err)
+				}
+
+				// Add to cache
+				c.categoryCache.items[key] = category
+				c.categoryCache.mu.Unlock()
+
+				categoryId = &category.Id
+			}
 		} else {
 			categoryId = &category.Id
 
@@ -641,11 +732,22 @@ type bankCache struct {
 func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.ObjectID, findFn func(string, string, primitive.ObjectID) (*models.Category, error), createFn func(*models.Category) (*models.Category, error)) (*models.Category, error) {
 	key := cacheKey{name: strings.ToLower(name), typ: typ, workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Adquirir o lock de leitura para verificar o cache
 	c.mu.RLock()
 	category, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return category, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	// (outra goroutine pode ter inserido o item enquanto esperávamos o lock)
+	if category, ok := c.items[key]; ok {
 		return category, nil
 	}
 
@@ -657,9 +759,7 @@ func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.Obje
 
 	// If found, update cache and return
 	if category != nil {
-		c.mu.Lock()
 		c.items[key] = category
-		c.mu.Unlock()
 		return category, nil
 	}
 
@@ -670,11 +770,21 @@ func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.Obje
 func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Account, error), createFn func(*models.Account) (*models.Account, error)) (*models.Account, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	account, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return account, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if account, ok := c.items[key]; ok {
 		return account, nil
 	}
 
@@ -686,9 +796,7 @@ func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, 
 
 	// If found, update cache and return
 	if account != nil {
-		c.mu.Lock()
 		c.items[key] = account
-		c.mu.Unlock()
 		return account, nil
 	}
 
@@ -699,11 +807,21 @@ func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, 
 func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Member, error)) (*models.Member, error) {
 	key := cacheKey{name: strings.ToLower(email), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	member, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return member, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if member, ok := c.items[key]; ok {
 		return member, nil
 	}
 
@@ -715,9 +833,7 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 
 	// If found, update cache and return
 	if member != nil {
-		c.mu.Lock()
 		c.items[key] = member
-		c.mu.Unlock()
 	}
 
 	return member, nil
@@ -726,11 +842,21 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.CustomField, error)) (*models.CustomField, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	customField, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return customField, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if customField, ok := c.items[key]; ok {
 		return customField, nil
 	}
 
@@ -742,20 +868,28 @@ func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID
 
 	// If found, update cache and return
 	if customField != nil {
-		c.mu.Lock()
 		c.items[key] = customField
-		c.mu.Unlock()
 	}
 
 	return customField, nil
 }
 
 func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, error)) (*models.Bank, error) {
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	bank, ok := c.items[strings.ToLower(name)]
 	c.mu.RUnlock()
+
 	if ok {
+		return bank, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if bank, ok := c.items[strings.ToLower(name)]; ok {
 		return bank, nil
 	}
 
@@ -767,10 +901,583 @@ func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, er
 
 	// If found, update cache and return
 	if bank != nil {
-		c.mu.Lock()
 		c.items[strings.ToLower(name)] = bank
-		c.mu.Unlock()
 	}
 
 	return bank, nil
+}
+
+type ColumnDef struct {
+	Key           string `json:"key"`           // novo nome
+	KeyToMap      string `json:"keyToMap"`      // chave original
+	IsCustomField bool   `json:"isCustomField"` // se é custom field
+}
+
+// parseMultipartAndMap lê o formulário, decodifica Columns, faz parse do arquivo
+// CSV ou XLSX e devolve o slice de TransactionImportItem já mapeado.
+func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]TransactionImportItem, error) {
+	// ~32 MB de memória antes de cair em arquivo temporário
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		return nil, fmt.Errorf("invalid multipart form: %w", err)
+	}
+
+	// --- Columns ----------------------------------------------------------
+	columnsJSON := r.FormValue("columns")
+	if columnsJSON == "" {
+		return nil, fmt.Errorf("campo 'columns' vazio ou ausente no form-data")
+	}
+
+	var columns []ColumnDef
+	if err := json.Unmarshal([]byte(columnsJSON), &columns); err != nil {
+		return nil, fmt.Errorf("JSON de colunas inválido: %w", err)
+	}
+
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("nenhuma coluna definida no mapeamento")
+	}
+
+	// --- File ---
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, fmt.Errorf("missing 'file' field in form-data: %w", err)
+	}
+	defer file.Close()
+
+	var rawRows []map[string]any
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch ext {
+	case ".csv":
+		rawRows, err = ParseCSV(file)
+	case ".xlsx", ".xlsm", ".xls":
+		rawRows, err = ParseXLSX(file)
+	default:
+		return nil, fmt.Errorf("unsupported file type %s", ext)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// --- Apply mapping ----------------------------------------------------
+	mappedRows := ApplyMapping(rawRows, columns)
+
+	// --- Convert to TransactionImportItem ---------------------------------
+	txs := make([]TransactionImportItem, 0, len(mappedRows))
+	for _, row := range mappedRows {
+		// os valores vêm como string; convertemos via json → struct
+		b, _ := json.Marshal(row)
+		var tx TransactionImportItem
+		if err := json.Unmarshal(b, &tx); err != nil {
+			return nil, fmt.Errorf("row to struct error: %w", err)
+		}
+		txs = append(txs, tx)
+	}
+	return txs, nil
+}
+
+// -----------------------------------------------------
+// Helpers
+// -----------------------------------------------------
+
+func ParseCSV(r io.Reader) ([]map[string]any, error) {
+	cr := csv.NewReader(r)
+	cr.TrimLeadingSpace = true
+	cr.LazyQuotes = true // Enable LazyQuotes to handle improperly quoted fields
+	headers, err := cr.Read()
+	if err != nil {
+		return nil, fmt.Errorf("csv header: %w", err)
+	}
+
+	// Clean headers by removing quotes
+	for i, h := range headers {
+		// Remove all quote characters, not just at the boundaries
+		headers[i] = strings.ReplaceAll(h, "\"", "")
+	}
+
+	var rows []map[string]any
+	for {
+		rec, err := cr.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("csv row: %w", err)
+		}
+
+		// Pula linhas vazias
+		if isEmptyRow(rec) {
+			continue
+		}
+
+		row := make(map[string]any)
+		for i, h := range headers {
+			row[h] = rec[i]
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+func ParseXLSX(r multipart.File) ([]map[string]any, error) {
+	// excelize precisa de io.ReadSeeker, então copiamos para buffer
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, r); err != nil {
+		return nil, fmt.Errorf("copy xlsx: %w", err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return nil, fmt.Errorf("open xlsx: %w", err)
+	}
+	defer f.Close()
+
+	sheet := f.GetSheetName(0)
+	rowsIter, err := f.Rows(sheet)
+	if err != nil {
+		return nil, err
+	}
+	// header
+	if !rowsIter.Next() {
+		return nil, fmt.Errorf("xlsx empty sheet")
+	}
+	headers, _ := rowsIter.Columns()
+	var rows []map[string]any
+	for rowsIter.Next() {
+		cols, _ := rowsIter.Columns()
+
+		// Pula linhas vazias
+		if isEmptyRow(cols) {
+			continue
+		}
+
+		row := make(map[string]any)
+		for i, h := range headers {
+			if i < len(cols) {
+				row[h] = cols[i]
+			} else {
+				row[h] = ""
+			}
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+// isEmptyRow verifica se todas as colunas de uma linha estão vazias
+func isEmptyRow(cols []string) bool {
+	if len(cols) == 0 {
+		return true
+	}
+
+	for _, col := range cols {
+		// Se pelo menos uma coluna tiver conteúdo, a linha não está vazia
+		if strings.TrimSpace(col) != "" {
+			return false
+		}
+	}
+
+	// Se todas as colunas estiverem vazias, a linha está vazia
+	return true
+}
+
+func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
+	if len(defs) == 0 {
+		return rows // nada para mapear
+	}
+
+	// Pre-process header map for case-insensitive lookup
+	headerMap := make(map[string]string)
+	if len(rows) > 0 {
+		for k := range rows[0] {
+			normalizedKey := normalize(k)
+			headerMap[normalizedKey] = k
+		}
+	}
+
+	// Define known numeric fields that need conversion
+	numericFields := map[string]bool{
+		"balance.value":              true,
+		"balance.discount":           true,
+		"balance.interest":           true,
+		"balance.discountPercentage": true,
+		"balance.interestPercentage": true,
+	}
+
+	mapped := make([]map[string]any, len(rows))
+	for i, row := range rows {
+		mappedToAppend := make(map[string]any)
+		// copia tudo primeiro
+		for k, v := range row {
+			mappedToAppend[k] = v
+		}
+		// aplica mapping
+		for _, col := range defs {
+			normalizedKeyToMap := normalize(col.KeyToMap)
+
+			if col.Key == "" || col.KeyToMap == "" {
+				continue
+			}
+
+			if col.IsCustomField {
+				// customFields é []any de objetos {id, value}
+				id := col.Key
+				value := row[col.KeyToMap]
+
+				cfSlice, ok := mappedToAppend["customFields"].([]map[string]any)
+				if !ok {
+					cfSlice = []map[string]any{}
+				}
+
+				cfSlice = append(cfSlice, map[string]any{
+					"customField": id,
+					"value":       value,
+				})
+				mappedToAppend["customFields"] = cfSlice
+				continue
+			}
+
+			if col.Key == "tags" {
+				tags := row[col.KeyToMap].(string)
+				tagsSlice, ok := mappedToAppend["tags"].([]map[string]any)
+				if !ok {
+					tagsSlice = []map[string]any{}
+				}
+
+				tagSplited := strings.Split(tags, ",")
+				for _, tag := range tagSplited {
+					splitSubTagAndTag := strings.Split(tag, "-")
+					if len(splitSubTagAndTag) == 2 {
+						tagsSlice = append(tagsSlice, map[string]any{
+							"tag":    splitSubTagAndTag[0],
+							"subTag": splitSubTagAndTag[1],
+						})
+					} else {
+						// error here
+						continue
+					}
+				}
+
+				mappedToAppend["tags"] = tagsSlice
+				continue
+			}
+
+			// Check if key is a nested path (using dot notation)
+			if strings.Contains(col.Key, ".") {
+				parts := strings.SplitN(col.Key, ".", 2)
+				parentKey := parts[0]
+				childKey := parts[1]
+
+				// Find the source value
+				var foundValue any
+				var found bool
+
+				// Tenta encontrar a chave original usando o mapa normalizado
+				if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
+					if val, ok := row[originalKey]; ok {
+						foundValue = val
+						found = true
+					}
+				}
+
+				// Busca caso-insensitiva como fallback
+				if !found {
+					for k, v := range row {
+						normalizedK := normalize(k)
+						if normalizedK == normalizedKeyToMap {
+							foundValue = v
+							found = true
+							break
+						}
+					}
+				}
+
+				if found {
+					// Convert string to float for numeric fields
+					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
+						cleanVal := strings.ReplaceAll(strVal, ",", ".") // Convert decimal comma to dot
+
+						if cleanVal == "" {
+							cleanVal = "0"
+						}
+
+						// Parse string to float64
+						floatVal, err := strconv.ParseFloat(cleanVal, 64)
+						if err != nil {
+							continue
+						}
+
+						foundValue = floatVal
+					}
+
+					// Ensure parent object exists
+					parentObj, ok := mappedToAppend[parentKey].(map[string]any)
+					if !ok {
+						// Create parent object if it doesn't exist
+						parentObj = make(map[string]any)
+						mappedToAppend[parentKey] = parentObj
+					}
+
+					// Set the value in the nested object
+					parentObj[childKey] = foundValue
+				}
+				continue
+			}
+
+			// Process regular non-nested fields (existing code)
+			// Tenta encontrar a chave original usando o mapa normalizado
+			if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
+				if val, ok := row[originalKey]; ok {
+					mappedToAppend[col.Key] = val
+					if col.Key != originalKey {
+						delete(mappedToAppend, originalKey)
+					}
+					continue
+				}
+			}
+
+			// Busca caso-insensitiva como fallback
+			found := false
+			var foundKey string
+			var foundValue any
+
+			for k, v := range row {
+				// Antes era apenas case insensitive, agora removemos todos os caracteres não alfanuméricos
+				normalizedK := normalize(k)
+
+				if normalizedK == normalizedKeyToMap {
+					found = true
+					foundKey = k
+					foundValue = v
+					break
+				}
+			}
+
+			if found {
+				mappedToAppend[col.Key] = foundValue
+				if col.Key != foundKey {
+					delete(mappedToAppend, foundKey)
+				}
+			}
+		}
+		mapped[i] = mappedToAppend
+	}
+	return mapped
+}
+
+// Função auxiliar para normalizar strings para comparação
+func normalize(s string) string {
+	// Converte para minúsculas
+	s = strings.ToLower(s)
+
+	// Remove espaços extras
+	s = strings.TrimSpace(s)
+
+	// Remove caracteres invisíveis e não imprimíveis (como BOM, zero-width spaces, etc)
+	var result []rune
+	for _, r := range s {
+		if r > 32 && r < 127 { // Mantém apenas ASCII imprimível
+			result = append(result, r)
+		}
+	}
+
+	return string(result)
+}
+
+func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
+	for i := range transactions {
+		transactions[i].DueDate = strings.ReplaceAll(transactions[i].DueDate, "-", "/")
+		transactions[i].RegistrationDate = strings.ReplaceAll(transactions[i].RegistrationDate, "-", "/")
+		if transactions[i].ConfirmationDate != nil {
+			*transactions[i].ConfirmationDate = strings.ReplaceAll(*transactions[i].ConfirmationDate, "-", "/")
+		}
+
+		// Parse dueDate
+		if transactions[i].DueDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(transactions[i].DueDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].DueDate = strings.Join(parts, "/")
+			}
+
+			// Tenta primeiro com o formato de 4 dígitos para o ano
+			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
+			if err != nil {
+				// Se falhar, tenta com o formato de 2 dígitos para o ano
+				t, err = time.Parse("02/01/06", transactions[i].DueDate)
+				if err != nil {
+					return nil, fmt.Errorf("invalid dueDate format for transaction %d: %w", i+1, err)
+				}
+			}
+			transactions[i].DueDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		// Parse registrationDate
+		if transactions[i].RegistrationDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(transactions[i].RegistrationDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].RegistrationDate = strings.Join(parts, "/")
+			}
+
+			// Tenta primeiro com o formato de 4 dígitos para o ano
+			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
+			if err != nil {
+				// Se falhar, tenta com o formato de 2 dígitos para o ano
+				t, err = time.Parse("02/01/06", transactions[i].RegistrationDate)
+				if err != nil {
+					return nil, fmt.Errorf("invalid registrationDate format for transaction %d: %w", i+1, err)
+				}
+			}
+			transactions[i].RegistrationDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		// Parse confirmationDate if present
+		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(*transactions[i].ConfirmationDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				*transactions[i].ConfirmationDate = strings.Join(parts, "/")
+			}
+
+			// Tenta primeiro com o formato de 4 dígitos para o ano
+			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
+			if err != nil {
+				// Se falhar, tenta com o formato de 2 dígitos para o ano
+				t, err = time.Parse("02/01/06", *transactions[i].ConfirmationDate)
+				if err != nil {
+					return nil, fmt.Errorf("invalid confirmationDate format for transaction %d: %w", i+1, err)
+				}
+			}
+			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
+			transactions[i].ConfirmationDate = &formattedDate
+			transactions[i].IsConfirmed = true
+		}
+
+		// Verifica se ConfirmationDate é nil antes de acessar
+		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate == "" {
+			transactions[i].ConfirmationDate = nil
+			transactions[i].IsConfirmed = false
+		}
+
+		transactions[i].Frequency = "DO_NOT_REPEAT"
+
+		if strings.ToLower(transactions[i].Type) == "receita" || strings.ToLower(transactions[i].Type) == "recurring" {
+			transactions[i].Type = "RECIPE"
+		}
+
+		if strings.ToLower(transactions[i].Type) == "despesa" || strings.ToLower(transactions[i].Type) == "expense" {
+			transactions[i].Type = "EXPENSE"
+		}
+	}
+	return transactions, nil
+}
+
+// translateErrorMessage traduz mensagens de erro para português
+func (c *ImportTransactionController) translateErrorMessage(errorMsg string) string {
+	// Mapeamento de mensagens de erro em inglês para português
+	errorTranslations := map[string]string{
+		"member not found with email":                  "membro não encontrado com o email",
+		"bank not found":                               "banco não encontrado",
+		"error creating account":                       "erro ao criar conta",
+		"nome da conta não pode estar vazio":           "nome da conta não pode estar vazio",
+		"banco 'Outro' não encontrado no sistema":      "banco 'Outro' não encontrado no sistema",
+		"erro ao criar conta":                          "erro ao criar conta",
+		"erro ao buscar conta":                         "erro ao buscar conta",
+		"erro ao buscar banco":                         "erro ao buscar banco",
+		"error creating category":                      "erro ao criar categoria",
+		"error updating category with new subcategory": "erro ao atualizar categoria com nova subcategoria",
+		"custom field not found":                       "campo personalizado não encontrado",
+		"custom field type mismatch":                   "tipo de campo personalizado incompatível",
+		"invalid custom field ID":                      "ID de campo personalizado inválido",
+		"category is not a tag":                        "categoria não é uma tag",
+		"error creating tag":                           "erro ao criar tag",
+		"error updating tag with new subtag":           "erro ao atualizar tag com nova subtag",
+		"panic recovered":                              "erro inesperado",
+		"invalid user ID format":                       "formato de ID de usuário inválido",
+		"invalid workspace ID format":                  "formato de ID de espaço de trabalho inválido",
+	}
+
+	// Procura por fragmentos de mensagens de erro conhecidas e substitui
+	for engMsg, ptMsg := range errorTranslations {
+		if strings.Contains(errorMsg, engMsg) {
+			// Substitui a parte em inglês pelo equivalente em português
+			return strings.Replace(errorMsg, engMsg, ptMsg, 1)
+		}
+	}
+
+	// Se não encontrar uma tradução específica, retorna a mensagem original
+	return errorMsg
+}
+
+// translateValidationError traduz erros de validação para português
+func (c *ImportTransactionController) translateValidationError(err validator.FieldError) string {
+	fieldName := err.Field()
+	tag := err.Tag()
+	param := err.Param()
+
+	// Remover prefixo "Transactions[n]." se existir
+	if strings.Contains(fieldName, "Transactions") && strings.Contains(fieldName, ".") {
+		parts := strings.Split(fieldName, ".")
+		if len(parts) > 1 {
+			fieldName = parts[len(parts)-1]
+		}
+	}
+
+	// Mapeamento de nomes de campos para português
+	fieldTranslations := map[string]string{
+		"Name":        "Nome",
+		"Description": "Descrição",
+		"Invoice":     "Fatura",
+		"Type":        "Tipo",
+		"Supplier":    "Fornecedor",
+		"AssignedTo":  "Responsável",
+		"Balance":     "Balanço",
+		"Value":       "Valor",
+		"Discount":    "Desconto",
+		"Interest":    "Juros",
+		"DueDate":     "Data de vencimento",
+		"Account":     "Conta",
+		"Category":    "Categoria",
+		"SubCategory": "Subcategoria",
+	}
+
+	// Tradução do nome do campo
+	fieldTranslated := fieldName
+	if translated, ok := fieldTranslations[fieldName]; ok {
+		fieldTranslated = translated
+	}
+
+	// Mapeamento de mensagens de erro de validação
+	switch tag {
+	case "required":
+		return fieldTranslated + " é obrigatório"
+	case "min":
+		return fieldTranslated + " deve ter no mínimo " + param + " caracteres"
+	case "max":
+		return fieldTranslated + " deve ter no máximo " + param + " caracteres"
+	case "email":
+		return fieldTranslated + " deve ser um email válido"
+	case "oneof":
+		return fieldTranslated + " deve ser um dos seguintes valores: " + param
+	case "datetime":
+		return fieldTranslated + " deve estar no formato de data válido"
+	default:
+		return "Erro de validação no campo " + fieldTranslated + ": " + tag
+	}
 }
