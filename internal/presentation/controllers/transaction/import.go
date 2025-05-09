@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -182,24 +183,22 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			for _, e := range errs {
 				// Encontrar o índice da transação com erro
-				field := e.Field()
+				field := e.Namespace() // Usar Namespace() em vez de Field() para obter o caminho completo
 				index := 0
 
-				// Extrair índice da transação se o erro for em um item do array
-				if strings.HasPrefix(field, "Transactions[") {
-					parts := strings.Split(field, "[")
-					if len(parts) > 1 {
-						indexPart := strings.Split(parts[1], "]")[0]
-						if idx, err := strconv.Atoi(indexPart); err == nil {
-							index = idx
-						}
+				// Extrair índice da transação com regex para maior precisão
+				re := regexp.MustCompile(`Transactions\[(\d+)\]`)
+				matches := re.FindStringSubmatch(field)
+				if len(matches) >= 2 {
+					if idx, err := strconv.Atoi(matches[1]); err == nil {
+						index = idx
 					}
 				}
 
 				// Traduzir a mensagem de erro
 				errorMsg := c.translateValidationError(e)
 				validationErrors = append(validationErrors, map[string]any{
-					"linha": index + 2,
+					"linha": index + 2, // Linha começa em 1 (após o cabeçalho)
 					"erro":  errorMsg,
 				})
 			}
@@ -260,12 +259,12 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			}()
 
 			defer utils.RecoveryWithCallback(&wg, func(r any) {
-				errs <- errorInfo{index: index + 1, err: fmt.Errorf("panic recovered: %v", r)}
+				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
 			})
 
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
-				errs <- errorInfo{index: index + 1, err: err}
+				errs <- errorInfo{index: index, err: err}
 				return
 			}
 
@@ -291,7 +290,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		// Traduzir a mensagem de erro para português e adicionar ao array
 		errorMessage := c.translateErrorMessage(e.err.Error())
 		validationErrors = append(validationErrors, map[string]any{
-			"linha": e.index + 1,
+			"linha": e.index + 1, // Linha começa em 1 (após o cabeçalho)
 			"erro":  errorMessage,
 		})
 	}
@@ -1083,7 +1082,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 						})
 					} else {
 						// error here
-						fmt.Println("error here")
 						continue
 					}
 				}
