@@ -1058,8 +1058,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				if found {
 					// Convert string to float for numeric fields
 					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
-						cleanVal := strings.ReplaceAll(strVal, ".", "")
-						cleanVal = strings.ReplaceAll(cleanVal, ",", ".")
+						cleanVal := strings.ReplaceAll(strVal, ",", ".") // Convert decimal comma to dot
 
 						if cleanVal == "" {
 							cleanVal = "0"
