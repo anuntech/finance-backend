@@ -934,6 +934,12 @@ func ParseCSV(r io.Reader) ([]map[string]any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("csv row: %w", err)
 		}
+
+		// Pula linhas vazias
+		if isEmptyRow(rec) {
+			continue
+		}
+
 		row := make(map[string]any)
 		for i, h := range headers {
 			row[h] = rec[i]
@@ -968,6 +974,12 @@ func ParseXLSX(r multipart.File) ([]map[string]any, error) {
 	var rows []map[string]any
 	for rowsIter.Next() {
 		cols, _ := rowsIter.Columns()
+
+		// Pula linhas vazias
+		if isEmptyRow(cols) {
+			continue
+		}
+
 		row := make(map[string]any)
 		for i, h := range headers {
 			if i < len(cols) {
@@ -979,6 +991,23 @@ func ParseXLSX(r multipart.File) ([]map[string]any, error) {
 		rows = append(rows, row)
 	}
 	return rows, nil
+}
+
+// isEmptyRow verifica se todas as colunas de uma linha estão vazias
+func isEmptyRow(cols []string) bool {
+	if len(cols) == 0 {
+		return true
+	}
+
+	for _, col := range cols {
+		// Se pelo menos uma coluna tiver conteúdo, a linha não está vazia
+		if strings.TrimSpace(col) != "" {
+			return false
+		}
+	}
+
+	// Se todas as colunas estiverem vazias, a linha está vazia
+	return true
 }
 
 func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
