@@ -298,7 +298,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	// Se houver erros, retornar todos eles
 	if len(validationErrors) > 0 {
 		return helpers.CreateResponse(map[string]any{
-			"erros": validationErrors,
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
