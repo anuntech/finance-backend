@@ -1248,6 +1248,11 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 			transactions[i].IsConfirmed = true
 		}
 
+		if *transactions[i].ConfirmationDate == "" {
+			transactions[i].ConfirmationDate = nil
+			transactions[i].IsConfirmed = false
+		}
+
 		transactions[i].Frequency = "DO_NOT_REPEAT"
 
 		if strings.ToLower(transactions[i].Type) == "receita" || strings.ToLower(transactions[i].Type) == "recurring" {
