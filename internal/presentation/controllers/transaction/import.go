@@ -355,21 +355,26 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
+	// Verificar se o campo Account está vazio
+	if strings.TrimSpace(txImport.Account) == "" {
+		return nil, errors.New("nome da conta não pode estar vazio")
+	}
+
 	// Try to find account with cache, create if not found
 	account, err := c.accountCache.getOrCreate(txImport.Account, workspaceId, c.FindAccountByNameRepository.FindByNameAndWorkspaceId, c.CreateAccountRepository.Create)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao buscar conta '%s': %w", txImport.Account, err)
 	}
 
 	if account == nil {
 		// Use bank cache
 		bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("erro ao buscar banco 'Outro': %w", err)
 		}
 
 		if bank == nil {
-			return nil, errors.New("bank not found: Outro")
+			return nil, errors.New("banco 'Outro' não encontrado no sistema")
 		}
 
 		// Create a new account
@@ -385,7 +390,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 		account, err = c.CreateAccountRepository.Create(newAccount)
 		if err != nil {
-			return nil, fmt.Errorf("error creating account: %w", err)
+			return nil, fmt.Errorf("erro ao criar conta '%s': %w", txImport.Account, err)
 		}
 
 		// Add to cache
@@ -1326,6 +1331,11 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 		"member not found with email":                  "membro não encontrado com o email",
 		"bank not found":                               "banco não encontrado",
 		"error creating account":                       "erro ao criar conta",
+		"nome da conta não pode estar vazio":           "nome da conta não pode estar vazio",
+		"banco 'Outro' não encontrado no sistema":      "banco 'Outro' não encontrado no sistema",
+		"erro ao criar conta":                          "erro ao criar conta",
+		"erro ao buscar conta":                         "erro ao buscar conta",
+		"erro ao buscar banco":                         "erro ao buscar banco",
 		"error creating category":                      "erro ao criar categoria",
 		"error updating category with new subcategory": "erro ao atualizar categoria com nova subcategoria",
 		"custom field not found":                       "campo personalizado não encontrado",
