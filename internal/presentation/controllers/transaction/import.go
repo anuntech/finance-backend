@@ -174,11 +174,42 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	// bodyJSON, _ := json.MarshalIndent(body, "", "  ")
 	// fmt.Println(string(bodyJSON))
+	validationErrors := []map[string]interface{}{}
 
 	if err := c.Validate.Struct(body); err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: helpers.GetErrorMessages(c.Validate, err),
-		}, http.StatusBadRequest)
+		// Converter os erros de validação para o mesmo formato de array
+
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			for _, e := range errs {
+				// Encontrar o índice da transação com erro
+				field := e.Field()
+				index := 0
+
+				// Extrair índice da transação se o erro for em um item do array
+				if strings.HasPrefix(field, "Transactions[") {
+					parts := strings.Split(field, "[")
+					if len(parts) > 1 {
+						indexPart := strings.Split(parts[1], "]")[0]
+						if idx, err := strconv.Atoi(indexPart); err == nil {
+							index = idx
+						}
+					}
+				}
+
+				// Traduzir a mensagem de erro
+				errorMsg := c.translateValidationError(e)
+				validationErrors = append(validationErrors, map[string]interface{}{
+					"linha": index + 1,
+					"erro":  errorMsg,
+				})
+			}
+		} else {
+			// Caso não seja um erro de validação padrão
+			validationErrors = append(validationErrors, map[string]interface{}{
+				"linha": 0,
+				"erro":  "Erro de validação: " + err.Error(),
+			})
+		}
 	}
 
 	userID := r.Header.Get("userId")
@@ -256,20 +287,19 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}()
 
 	// Coletar todos os erros em vez de retornar no primeiro
-	allErrors := []map[string]interface{}{}
 	for e := range errs {
 		// Traduzir a mensagem de erro para português e adicionar ao array
 		errorMessage := c.translateErrorMessage(e.err.Error())
-		allErrors = append(allErrors, map[string]interface{}{
+		validationErrors = append(validationErrors, map[string]interface{}{
 			"linha": e.index + 1,
 			"erro":  errorMessage,
 		})
 	}
 
 	// Se houver erros, retornar todos eles
-	if len(allErrors) > 0 {
+	if len(validationErrors) > 0 {
 		return helpers.CreateResponse(map[string]interface{}{
-			"erros": allErrors,
+			"erros": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
@@ -952,18 +982,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		return rows // nada para mapear
 	}
 
-	// Debug all headers
-	if len(rows) > 0 {
-		for k := range rows[0] {
-			// Debug hexadecimal representation to find hidden characters
-			hexStr := ""
-			for _, r := range k {
-				hexStr += fmt.Sprintf("%x ", r)
-			}
-			fmt.Printf("'%s' (hex: %s)\n", k, hexStr)
-		}
-	}
-
 	// Pre-process header map for case-insensitive lookup
 	headerMap := make(map[string]string)
 	if len(rows) > 0 {
@@ -1079,7 +1097,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 						// Parse string to float64
 						floatVal, err := strconv.ParseFloat(cleanVal, 64)
 						if err != nil {
-							fmt.Println("error here")
 							continue
 						}
 
@@ -1296,4 +1313,61 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 
 	// Se não encontrar uma tradução específica, retorna a mensagem original
 	return errorMsg
+}
+
+// translateValidationError traduz erros de validação para português
+func (c *ImportTransactionController) translateValidationError(err validator.FieldError) string {
+	fieldName := err.Field()
+	tag := err.Tag()
+	param := err.Param()
+
+	// Remover prefixo "Transactions[n]." se existir
+	if strings.Contains(fieldName, "Transactions") && strings.Contains(fieldName, ".") {
+		parts := strings.Split(fieldName, ".")
+		if len(parts) > 1 {
+			fieldName = parts[len(parts)-1]
+		}
+	}
+
+	// Mapeamento de nomes de campos para português
+	fieldTranslations := map[string]string{
+		"Name":        "Nome",
+		"Description": "Descrição",
+		"Invoice":     "Fatura",
+		"Type":        "Tipo",
+		"Supplier":    "Fornecedor",
+		"AssignedTo":  "Responsável",
+		"Balance":     "Balanço",
+		"Value":       "Valor",
+		"Discount":    "Desconto",
+		"Interest":    "Juros",
+		"DueDate":     "Data de vencimento",
+		"Account":     "Conta",
+		"Category":    "Categoria",
+		"SubCategory": "Subcategoria",
+	}
+
+	// Tradução do nome do campo
+	fieldTranslated := fieldName
+	if translated, ok := fieldTranslations[fieldName]; ok {
+		fieldTranslated = translated
+	}
+
+	// Mapeamento de mensagens de erro de validação
+	switch tag {
+	case "required":
+		return fieldTranslated + " é obrigatório"
+	case "min":
+		return fieldTranslated + " deve ter no mínimo " + param + " caracteres"
+	case "max":
+		return fieldTranslated + " deve ter no máximo " + param + " caracteres"
+	case "email":
+		return fieldTranslated + " deve ser um email válido"
+	case "oneof":
+		return fieldTranslated + " deve ser um dos seguintes valores: " + param
+	case "datetime":
+		return fieldTranslated + " deve estar no formato de data válido"
+	default:
+		return "Erro de validação no campo " + fieldTranslated + ": " + tag
+	}
 }
