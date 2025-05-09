@@ -367,36 +367,49 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	}
 
 	if account == nil {
-		// Use bank cache
-		bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
-		if err != nil {
-			return nil, fmt.Errorf("erro ao buscar banco 'Outro': %w", err)
-		}
-
-		if bank == nil {
-			return nil, errors.New("banco 'Outro' não encontrado no sistema")
-		}
-
-		// Create a new account
-		newAccount := &models.Account{
-			Id:          primitive.NewObjectID(),
-			Name:        txImport.Account,
-			Balance:     0,
-			WorkspaceId: workspaceId,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-			BankId:      bank.Id,
-		}
-
-		account, err = c.CreateAccountRepository.Create(newAccount)
-		if err != nil {
-			return nil, fmt.Errorf("erro ao criar conta '%s': %w", txImport.Account, err)
-		}
-
-		// Add to cache
+		// Aqui precisamos de um lock adicional para evitar criações duplicadas
+		// Uma vez que voltamos do getOrCreate com nil
 		c.accountCache.mu.Lock()
-		c.accountCache.items[cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}] = account
-		c.accountCache.mu.Unlock()
+
+		// Verificar novamente o cache agora que temos o lock exclusivo
+		key := cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}
+		if existingAccount, ok := c.accountCache.items[key]; ok {
+			c.accountCache.mu.Unlock()
+			account = existingAccount // Usar a conta encontrada, mas continuar o processamento normalmente
+		} else {
+			// Use bank cache
+			bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
+			if err != nil {
+				c.accountCache.mu.Unlock()
+				return nil, fmt.Errorf("erro ao buscar banco 'Outro': %w", err)
+			}
+
+			if bank == nil {
+				c.accountCache.mu.Unlock()
+				return nil, errors.New("banco 'Outro' não encontrado no sistema")
+			}
+
+			// Create a new account
+			newAccount := &models.Account{
+				Id:          primitive.NewObjectID(),
+				Name:        txImport.Account,
+				Balance:     0,
+				WorkspaceId: workspaceId,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+				BankId:      bank.Id,
+			}
+
+			account, err = c.CreateAccountRepository.Create(newAccount)
+			if err != nil {
+				c.accountCache.mu.Unlock()
+				return nil, fmt.Errorf("erro ao criar conta '%s': %w", txImport.Account, err)
+			}
+
+			// Add to cache
+			c.accountCache.items[key] = account
+			c.accountCache.mu.Unlock()
+		}
 	}
 
 	var categoryId *primitive.ObjectID
@@ -410,40 +423,50 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		}
 
 		if category == nil {
-			// Create a new category
-			newCategory := &models.Category{
-				Id:            primitive.NewObjectID(),
-				Name:          *txImport.Category,
-				Type:          txImport.Type,
-				WorkspaceId:   workspaceId,
-				SubCategories: []models.SubCategoryCategory{},
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-				Icon:          "BookCopy",
-			}
-
-			// If subcategory is specified, add it to the new category
-			if txImport.SubCategory != nil && *txImport.SubCategory != "" {
-				subCatId := primitive.NewObjectID()
-				newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
-					Id:   subCatId,
-					Name: *txImport.SubCategory,
-					Icon: "BookCopy",
-				})
-				subCategoryId = &subCatId
-			}
-
-			category, err = c.CreateCategoryRepository.Create(newCategory)
-			if err != nil {
-				return nil, fmt.Errorf("error creating category: %w", err)
-			}
-
-			// Add to cache
+			// Aqui precisamos de um lock adicional para evitar criações duplicadas
 			c.categoryCache.mu.Lock()
-			c.categoryCache.items[cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}] = category
-			c.categoryCache.mu.Unlock()
 
-			categoryId = &category.Id
+			// Verificar novamente o cache agora que temos o lock exclusivo
+			key := cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}
+			if category, ok := c.categoryCache.items[key]; ok {
+				categoryId = &category.Id
+				c.categoryCache.mu.Unlock()
+			} else {
+				// Create a new category
+				newCategory := &models.Category{
+					Id:            primitive.NewObjectID(),
+					Name:          *txImport.Category,
+					Type:          txImport.Type,
+					WorkspaceId:   workspaceId,
+					SubCategories: []models.SubCategoryCategory{},
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+					Icon:          "BookCopy",
+				}
+
+				// If subcategory is specified, add it to the new category
+				if txImport.SubCategory != nil && *txImport.SubCategory != "" {
+					subCatId := primitive.NewObjectID()
+					newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
+						Id:   subCatId,
+						Name: *txImport.SubCategory,
+						Icon: "BookCopy",
+					})
+					subCategoryId = &subCatId
+				}
+
+				category, err = c.CreateCategoryRepository.Create(newCategory)
+				if err != nil {
+					c.categoryCache.mu.Unlock()
+					return nil, fmt.Errorf("error creating category: %w", err)
+				}
+
+				// Add to cache
+				c.categoryCache.items[key] = category
+				c.categoryCache.mu.Unlock()
+
+				categoryId = &category.Id
+			}
 		} else {
 			categoryId = &category.Id
 
@@ -709,11 +732,22 @@ type bankCache struct {
 func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.ObjectID, findFn func(string, string, primitive.ObjectID) (*models.Category, error), createFn func(*models.Category) (*models.Category, error)) (*models.Category, error) {
 	key := cacheKey{name: strings.ToLower(name), typ: typ, workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Adquirir o lock de leitura para verificar o cache
 	c.mu.RLock()
 	category, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return category, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	// (outra goroutine pode ter inserido o item enquanto esperávamos o lock)
+	if category, ok := c.items[key]; ok {
 		return category, nil
 	}
 
@@ -725,9 +759,7 @@ func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.Obje
 
 	// If found, update cache and return
 	if category != nil {
-		c.mu.Lock()
 		c.items[key] = category
-		c.mu.Unlock()
 		return category, nil
 	}
 
@@ -738,11 +770,21 @@ func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.Obje
 func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Account, error), createFn func(*models.Account) (*models.Account, error)) (*models.Account, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	account, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return account, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if account, ok := c.items[key]; ok {
 		return account, nil
 	}
 
@@ -754,9 +796,7 @@ func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, 
 
 	// If found, update cache and return
 	if account != nil {
-		c.mu.Lock()
 		c.items[key] = account
-		c.mu.Unlock()
 		return account, nil
 	}
 
@@ -767,11 +807,21 @@ func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, 
 func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Member, error)) (*models.Member, error) {
 	key := cacheKey{name: strings.ToLower(email), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	member, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return member, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if member, ok := c.items[key]; ok {
 		return member, nil
 	}
 
@@ -783,9 +833,7 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 
 	// If found, update cache and return
 	if member != nil {
-		c.mu.Lock()
 		c.items[key] = member
-		c.mu.Unlock()
 	}
 
 	return member, nil
@@ -794,11 +842,21 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.CustomField, error)) (*models.CustomField, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	customField, ok := c.items[key]
 	c.mu.RUnlock()
+
 	if ok {
+		return customField, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if customField, ok := c.items[key]; ok {
 		return customField, nil
 	}
 
@@ -810,20 +868,28 @@ func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID
 
 	// If found, update cache and return
 	if customField != nil {
-		c.mu.Lock()
 		c.items[key] = customField
-		c.mu.Unlock()
 	}
 
 	return customField, nil
 }
 
 func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, error)) (*models.Bank, error) {
-	// Try to get from cache first
+	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	bank, ok := c.items[strings.ToLower(name)]
 	c.mu.RUnlock()
+
 	if ok {
+		return bank, nil
+	}
+
+	// Se não estiver no cache, adquire o lock de escrita para o processo completo
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Verificar novamente o cache agora que temos o lock exclusivo
+	if bank, ok := c.items[strings.ToLower(name)]; ok {
 		return bank, nil
 	}
 
@@ -835,9 +901,7 @@ func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, er
 
 	// If found, update cache and return
 	if bank != nil {
-		c.mu.Lock()
 		c.items[strings.ToLower(name)] = bank
-		c.mu.Unlock()
 	}
 
 	return bank, nil
