@@ -999,6 +999,32 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				continue
 			}
 
+			if col.Key == "tags" {
+				tags := row[col.KeyToMap].(string)
+				tagsSlice, ok := mappedToAppend["tags"].([]map[string]any)
+				if !ok {
+					tagsSlice = []map[string]any{}
+				}
+
+				tagSplited := strings.Split(tags, ",")
+				for _, tag := range tagSplited {
+					splitSubTagAndTag := strings.Split(tag, "-")
+					if len(splitSubTagAndTag) == 2 {
+						tagsSlice = append(tagsSlice, map[string]any{
+							"tag":    splitSubTagAndTag[0],
+							"subTag": splitSubTagAndTag[1],
+						})
+					} else {
+						// error here
+						fmt.Println("error here")
+						continue
+					}
+				}
+
+				mappedToAppend["tags"] = tagsSlice
+				continue
+			}
+
 			// Check if key is a nested path (using dot notation)
 			if strings.Contains(col.Key, ".") {
 				parts := strings.SplitN(col.Key, ".", 2)
