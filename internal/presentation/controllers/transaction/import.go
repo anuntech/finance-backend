@@ -1065,18 +1065,13 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 						}
 
 						// Parse string to float64
-						if floatVal, err := strconv.ParseFloat(cleanVal, 64); err == nil {
-							foundValue = floatVal
-						} else {
-							// If parsing fails, try to interpret as currency
-							cleanVal = strings.TrimSpace(cleanVal)
-							cleanVal = strings.TrimPrefix(cleanVal, "R$")
-							cleanVal = strings.TrimSpace(cleanVal)
-
-							if floatVal, err := strconv.ParseFloat(cleanVal, 64); err == nil {
-								foundValue = floatVal
-							}
+						floatVal, err := strconv.ParseFloat(cleanVal, 64)
+						if err != nil {
+							fmt.Println("error here")
+							continue
 						}
+
+						foundValue = floatVal
 					}
 
 					// Ensure parent object exists
