@@ -1158,6 +1158,18 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 		// Parse dueDate
 		if transactions[i].DueDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(transactions[i].DueDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].DueDate = strings.Join(parts, "/")
+			}
+
 			// Tenta primeiro com o formato de 4 dígitos para o ano
 			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
 			if err != nil {
@@ -1172,6 +1184,18 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 		// Parse registrationDate
 		if transactions[i].RegistrationDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(transactions[i].RegistrationDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].RegistrationDate = strings.Join(parts, "/")
+			}
+
 			// Tenta primeiro com o formato de 4 dígitos para o ano
 			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
 			if err != nil {
@@ -1186,6 +1210,18 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 		// Parse confirmationDate if present
 		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
+			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
+			parts := strings.Split(*transactions[i].ConfirmationDate, "/")
+			if len(parts) == 3 {
+				// Adicionar zero à esquerda se necessário
+				for j := 0; j < 2; j++ { // Apenas para dia e mês
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				*transactions[i].ConfirmationDate = strings.Join(parts, "/")
+			}
+
 			// Tenta primeiro com o formato de 4 dígitos para o ano
 			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
 			if err != nil {
