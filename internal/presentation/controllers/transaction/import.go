@@ -172,8 +172,8 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		Transactions: transactions,
 	}
 
-	bodyJSON, _ := json.MarshalIndent(body, "", "  ")
-	fmt.Println(string(bodyJSON))
+	// bodyJSON, _ := json.MarshalIndent(body, "", "  ")
+	// fmt.Println(string(bodyJSON))
 
 	if err := c.Validate.Struct(body); err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
