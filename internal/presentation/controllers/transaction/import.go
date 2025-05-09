@@ -848,7 +848,7 @@ type ColumnDef struct {
 // parseMultipartAndMap lê o formulário, decodifica Columns, faz parse do arquivo
 // CSV ou XLSX e devolve o slice de TransactionImportItem já mapeado.
 func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]TransactionImportItem, error) {
-	// ~32 MB de memória antes de cair em arquivo temporário
+	// ~32 MB de memória antes de cair em arquivo temporário
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		return nil, fmt.Errorf("invalid multipart form: %w", err)
 	}
@@ -856,12 +856,16 @@ func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]T
 	// --- Columns ----------------------------------------------------------
 	columnsJSON := r.FormValue("columns")
 	if columnsJSON == "" {
-		return nil, fmt.Errorf("missing 'columns' field in form-data")
+		return nil, fmt.Errorf("campo 'columns' vazio ou ausente no form-data")
 	}
 
 	var columns []ColumnDef
 	if err := json.Unmarshal([]byte(columnsJSON), &columns); err != nil {
-		return nil, fmt.Errorf("invalid columns JSON: %w", err)
+		return nil, fmt.Errorf("JSON de colunas inválido: %w", err)
+	}
+
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("nenhuma coluna definida no mapeamento")
 	}
 
 	// --- File ---
@@ -1265,7 +1269,8 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 			transactions[i].IsConfirmed = true
 		}
 
-		if *transactions[i].ConfirmationDate == "" {
+		// Verifica se ConfirmationDate é nil antes de acessar
+		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate == "" {
 			transactions[i].ConfirmationDate = nil
 			transactions[i].IsConfirmed = false
 		}
