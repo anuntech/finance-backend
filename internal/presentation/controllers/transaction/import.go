@@ -1412,6 +1412,8 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 			transactions[i].IsConfirmed = false
 		}
 
+		transactions[i].AssignedTo = strings.TrimSpace(strings.ToLower(transactions[i].AssignedTo))
+
 		transactions[i].DueDate = strings.ReplaceAll(transactions[i].DueDate, "-", "/")
 		transactions[i].RegistrationDate = strings.ReplaceAll(transactions[i].RegistrationDate, "-", "/")
 		if transactions[i].ConfirmationDate != nil {
