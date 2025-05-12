@@ -1511,6 +1511,10 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 		fieldTranslated = translated
 	}
 
+	if param == "EXPENSE RECIPE" {
+		param = "Despesa Receita"
+	}
+
 	switch tag {
 	case "required":
 		return fieldTranslated + " é obrigatório"
