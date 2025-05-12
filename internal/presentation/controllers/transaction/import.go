@@ -1367,7 +1367,6 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 		}
 
 		if transactions[i].DueDate != "" {
-			fmt.Println("dueDate", transactions[i].DueDate)
 			parts := strings.Split(transactions[i].DueDate, "/")
 			if len(parts) == 3 {
 				for j := 0; j < 2; j++ {
