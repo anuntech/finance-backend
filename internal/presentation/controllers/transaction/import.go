@@ -1180,7 +1180,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			if col.IsCustomField {
 
 				id := col.Key
-				value := row[col.KeyToMap]
+				value := row[strings.TrimSpace(col.KeyToMap)]
 
 				cfSlice, ok := mappedToAppend["customFields"].([]map[string]any)
 				if !ok {
@@ -1196,9 +1196,9 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			}
 
 			if col.Key == "tags" {
-				tagValue, exists := row[col.KeyToMap]
+				tagValue, exists := row[strings.TrimSpace(col.KeyToMap)]
 				if !exists || tagValue == nil {
-					continue // Skip if tags value doesn't exist or is nil
+					continue
 				}
 
 				tags, ok := tagValue.(string)
