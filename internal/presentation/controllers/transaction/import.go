@@ -182,25 +182,22 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		dateErrors := strings.Split(errorMsg, "; ")
 
 		for _, dateError := range dateErrors {
-
-			re := regexp.MustCompile(`transação (\d+):`)
+			re := regexp.MustCompile(`linha (\d+)`)
 			matches := re.FindStringSubmatch(dateError)
 			if len(matches) >= 2 {
 				idx, err := strconv.Atoi(matches[1])
 				if err == nil {
 					validationErrors = append(validationErrors, map[string]any{
-						"line":  idx + 1,
+						"line":  idx,
 						"error": dateError,
 					})
 				} else {
-
 					validationErrors = append(validationErrors, map[string]any{
 						"line":  0,
 						"error": dateError,
 					})
 				}
 			} else {
-
 				validationErrors = append(validationErrors, map[string]any{
 					"line":  0,
 					"error": dateError,
@@ -474,7 +471,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, fmt.Errorf("erro ao buscar membro com o email %s: %w", txImport.AssignedTo, err)
 	}
 	if member == nil {
-		return nil, fmt.Errorf("member not found with email: %s. Verifique se o usuário está cadastrado no sistema", txImport.AssignedTo)
+		return nil, fmt.Errorf("member not found with email: %s", txImport.AssignedTo)
 	}
 
 	if strings.TrimSpace(txImport.Account) == "" {
@@ -1455,7 +1452,7 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 		"invalid custom field ID":                      "ID do campo personalizado inválido",
 		"category is not a tag":                        "A categoria selecionada não é uma tag",
 		"error creating tag":                           "Erro ao criar tag. Por favor, tente novamente",
-		"error updating tag with new subtag":           "Erro ao adicionar subtag. Por favor, tente novamente",
+		"error updating tag with new subtag":           "Erro ao atualizar tag com nova subtag",
 		"panic recovered":                              "Ocorreu um erro inesperado. Por favor, tente novamente",
 		"invalid user ID format":                       "Formato de ID de usuário inválido",
 		"invalid workspace ID format":                  "Formato de ID de espaço de trabalho inválido",
@@ -1463,22 +1460,16 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 
 	for engMsg, ptMsg := range errorTranslations {
 		if strings.Contains(errorMsg, engMsg) {
-
 			return strings.Replace(errorMsg, engMsg, ptMsg, 1)
 		}
 	}
 
-	// Handle specific parsing errors with clearer messages
-	if strings.Contains(errorMsg, "formato de data de confirmação inválido") {
-		return "Data de confirmação inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
-	}
-
-	if strings.Contains(errorMsg, "formato de data de vencimento inválido") {
-		return "Data de vencimento inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
-	}
-
-	if strings.Contains(errorMsg, "formato de data de registro inválido") {
-		return "Data de registro inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
+	// Return the error message as is for our new date format errors
+	// They already have line numbers and clear messages
+	if strings.Contains(errorMsg, "A data de confirmação na linha") ||
+		strings.Contains(errorMsg, "A data de vencimento na linha") ||
+		strings.Contains(errorMsg, "A data de registro na linha") {
+		return errorMsg
 	}
 
 	return errorMsg
