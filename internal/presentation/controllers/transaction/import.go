@@ -217,6 +217,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"error": "ID de usuário inválido",
 		})
 		return helpers.CreateResponse(map[string]any{
+			"total":  len(validationErrors),
 			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
@@ -229,6 +230,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"error": "ID de workspace inválido",
 		})
 		return helpers.CreateResponse(map[string]any{
+			"total":  len(validationErrors),
 			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
@@ -240,6 +242,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"error": "Máximo de " + strconv.Itoa(LIMIT) + " transações por importação",
 		})
 		return helpers.CreateResponse(map[string]any{
+			"total":  len(validationErrors),
 			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
@@ -308,7 +311,8 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	// Se houver erros, retornar todos eles
 	if len(validationErrors) > 0 {
 		return helpers.CreateResponse(map[string]any{
-			"errors": validationErrors,
+			"total":  len(validationErrors),
+			"errors": validationErrors[0:50],
 		}, http.StatusBadRequest)
 	}
 
