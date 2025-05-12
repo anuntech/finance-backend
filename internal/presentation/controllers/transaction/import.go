@@ -291,7 +291,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}
 	}
 
-	if len(missingMembers) > 0 && float64(len(missingMembers))/float64(len(memberEmails)) > 0.5 {
+	if len(missingMembers) > 0 && float64(len(missingMembers))/float64(len(memberEmails)) > 0.25 {
 		for i, tx := range body.Transactions {
 			if slices.Contains(missingMembers, tx.AssignedTo) {
 				validationErrors = append(validationErrors, map[string]any{
@@ -301,13 +301,8 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			}
 		}
 
-		totalErrors := len(validationErrors)
-		if totalErrors > 50 {
-			validationErrors = validationErrors[0:50]
-		}
-
 		return helpers.CreateResponse(map[string]any{
-			"total":  totalErrors,
+			"total":  len(missingMembers),
 			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
@@ -318,7 +313,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		index int
 		err   error
 	}
-	errs := make(chan errorInfo, len(body.Transactions))
+	errs := make(chan errorInfo, 1000)
 	createdTransactions := make([]*models.Transaction, len(body.Transactions))
 	const workers = 50
 	sem := make(chan struct{}, workers)
@@ -329,8 +324,38 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	earlyTerminate := make(chan bool, 1)
 	stopProcessing := false
 	var stopMutex sync.Mutex
+	maxErrors := 50
+	errorCount := 0
+	var errorCountMutex sync.Mutex
+
+	if len(missingMembers) > 0 && float64(len(missingMembers))/float64(len(memberEmails)) > 0.25 {
+		for i, tx := range body.Transactions {
+			if slices.Contains(missingMembers, tx.AssignedTo) {
+				validationErrors = append(validationErrors, map[string]any{
+					"line":  i + 2,
+					"error": "Usuário não encontrado: " + tx.AssignedTo + ". Verifique se este email está cadastrado em seu workspace.",
+				})
+				errorCount++
+				if errorCount >= maxErrors {
+					break
+				}
+			}
+		}
+
+		return helpers.CreateResponse(map[string]any{
+			"total":  len(missingMembers),
+			"errors": validationErrors,
+		}, http.StatusBadRequest)
+	}
 
 	for i, txImport := range body.Transactions {
+		errorCountMutex.Lock()
+		if errorCount >= maxErrors {
+			errorCountMutex.Unlock()
+			break
+		}
+		errorCountMutex.Unlock()
+
 		sem <- struct{}{}
 
 		wg.Add(1)
@@ -349,12 +374,22 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			}
 
 			defer utils.RecoveryWithCallback(&wg, func(r any) {
-				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
+				errorCountMutex.Lock()
+				if errorCount < maxErrors {
+					errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
+					errorCount++
+				}
+				errorCountMutex.Unlock()
 			})
 
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
-				errs <- errorInfo{index: index, err: err}
+				errorCountMutex.Lock()
+				if errorCount < maxErrors {
+					errs <- errorInfo{index: index, err: err}
+					errorCount++
+				}
+				errorCountMutex.Unlock()
 
 				errMsg := err.Error()
 				if strings.Contains(errMsg, "membro não encontrado") ||
@@ -362,7 +397,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 					errMutex.Lock()
 					errTypeCount["member_not_found"]++
 
-					if errTypeCount["member_not_found"] > len(body.Transactions)/2 {
+					if errTypeCount["member_not_found"] > len(body.Transactions)/4 {
 						stopMutex.Lock()
 						stopProcessing = true
 						stopMutex.Unlock()
@@ -397,12 +432,19 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	select {
 	case <-done:
-
 	case <-earlyTerminate:
-
+	case <-time.After(3 * time.Minute):
+		stopMutex.Lock()
+		stopProcessing = true
+		stopMutex.Unlock()
 	}
 
+	errorsCollected := 0
 	for e := range errs {
+		if errorsCollected >= maxErrors {
+			break
+		}
+		errorsCollected++
 
 		errorMessage := c.translateErrorMessage(e.err.Error())
 		validationErrors = append(validationErrors, map[string]any{
