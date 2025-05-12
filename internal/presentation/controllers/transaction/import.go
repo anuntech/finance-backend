@@ -173,8 +173,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		Transactions: transactions,
 	}
 
-	// bodyJSON, _ := json.MarshalIndent(body, "", "  ")
-	// fmt.Println(string(bodyJSON))
 	validationErrors := []map[string]any{}
 
 	if err := c.Validate.Struct(body); err != nil {
@@ -214,23 +212,35 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	userID := r.Header.Get("userId")
 	userObjectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid user ID format",
+		validationErrors = append(validationErrors, map[string]any{
+			"line":  0,
+			"error": "ID de usuário inválido",
+		})
+		return helpers.CreateResponse(map[string]any{
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
 	workspaceIdStr := r.Header.Get("workspaceId")
 	workspaceId, err := primitive.ObjectIDFromHex(workspaceIdStr)
 	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "invalid workspace ID format",
+		validationErrors = append(validationErrors, map[string]any{
+			"line":  0,
+			"error": "ID de workspace inválido",
+		})
+		return helpers.CreateResponse(map[string]any{
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
-	LIMIT := 10000
+	LIMIT := 15000
 	if len(body.Transactions) > LIMIT {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "maximum of " + strconv.Itoa(LIMIT) + " transactions per import",
+		validationErrors = append(validationErrors, map[string]any{
+			"line":  0,
+			"error": "Máximo de " + strconv.Itoa(LIMIT) + " transações por importação",
+		})
+		return helpers.CreateResponse(map[string]any{
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
@@ -312,8 +322,12 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	_, err = c.CreateTransactionRepository.CreateMany(finalTransactions)
 
 	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: fmt.Sprintf("erro ao criar transações: %s", err.Error()),
+		validationErrors = append(validationErrors, map[string]any{
+			"line":  0,
+			"error": "Erro ao criar transações: " + err.Error(),
+		})
+		return helpers.CreateResponse(map[string]any{
+			"errors": validationErrors,
 		}, http.StatusBadRequest)
 	}
 
