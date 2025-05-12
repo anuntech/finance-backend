@@ -247,6 +247,42 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
+	memberEmails := map[string]bool{}
+	for _, tx := range body.Transactions {
+		if tx.AssignedTo != "" {
+			memberEmails[tx.AssignedTo] = true
+		}
+	}
+
+	missingMembers := []string{}
+	for email := range memberEmails {
+		member, err := c.memberCache.getByEmail(email, workspaceId, c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId)
+		if err != nil || member == nil {
+			missingMembers = append(missingMembers, email)
+		}
+	}
+
+	if len(missingMembers) > 0 && float64(len(missingMembers))/float64(len(memberEmails)) > 0.5 {
+		for i, tx := range body.Transactions {
+			if containsString(missingMembers, tx.AssignedTo) {
+				validationErrors = append(validationErrors, map[string]any{
+					"line":  i + 2, // Linha começa em 1 (após o cabeçalho)
+					"error": "Membro não encontrado com email: " + tx.AssignedTo,
+				})
+			}
+		}
+
+		totalErrors := len(validationErrors)
+		if totalErrors > 50 {
+			validationErrors = validationErrors[0:50]
+		}
+
+		return helpers.CreateResponse(map[string]any{
+			"total":  totalErrors,
+			"errors": validationErrors,
+		}, http.StatusBadRequest)
+	}
+
 	var wg sync.WaitGroup
 	importedTransactions := make([]*models.Transaction, len(body.Transactions))
 	type errorInfo struct {
@@ -255,22 +291,33 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 	}
 	errs := make(chan errorInfo, len(body.Transactions))
 	createdTransactions := make([]*models.Transaction, len(body.Transactions))
-	const workers = 100
+	const workers = 50
 	sem := make(chan struct{}, workers)
 
+	errTypeCount := make(map[string]int)
+	var errMutex sync.Mutex
+
+	earlyTerminate := make(chan bool, 1)
+	stopProcessing := false
+	var stopMutex sync.Mutex
+
 	for i, txImport := range body.Transactions {
-		// 1) bloqueia aqui se já houver 100 em execução
 		sem <- struct{}{}
 
-		// 2) agora sim a vaga foi conquistada: conta 1 no WaitGroup
 		wg.Add(1)
 
 		go func(index int, tx TransactionImportItem) {
-			fmt.Println("CHEGOU AQUI222")
 			defer func() {
-				<-sem     // libera a vaga
-				wg.Done() // decrementa só quem realmente executou
+				<-sem
+				wg.Done()
 			}()
+
+			stopMutex.Lock()
+			shouldStop := stopProcessing
+			stopMutex.Unlock()
+			if shouldStop {
+				return
+			}
 
 			defer utils.RecoveryWithCallback(&wg, func(r any) {
 				errs <- errorInfo{index: index, err: fmt.Errorf("panic recovered: %v", r)}
@@ -279,6 +326,24 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			transaction, err := c.convertImportedTransaction(&tx, workspaceId, userObjectID)
 			if err != nil {
 				errs <- errorInfo{index: index, err: err}
+
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "membro não encontrado") ||
+					strings.Contains(errMsg, "member not found") {
+					errMutex.Lock()
+					errTypeCount["member_not_found"]++
+
+					if errTypeCount["member_not_found"] > len(body.Transactions)/2 {
+						stopMutex.Lock()
+						stopProcessing = true
+						stopMutex.Unlock()
+						select {
+						case earlyTerminate <- true:
+						default:
+						}
+					}
+					errMutex.Unlock()
+				}
 				return
 			}
 
@@ -293,27 +358,40 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}(i, txImport)
 	}
 
+	done := make(chan struct{})
 	go func() {
 		defer utils.Recovery(&wg)
 		wg.Wait()
 		close(errs)
+		close(done)
 	}()
 
-	// Coletar todos os erros em vez de retornar no primeiro
+	select {
+	case <-done:
+
+	case <-earlyTerminate:
+
+	}
+
 	for e := range errs {
-		// Traduzir a mensagem de erro para português e adicionar ao array
+
 		errorMessage := c.translateErrorMessage(e.err.Error())
 		validationErrors = append(validationErrors, map[string]any{
-			"line":  e.index + 2, // Linha começa em 1 (após o cabeçalho)
+			"line":  e.index + 2,
 			"error": errorMessage,
 		})
 	}
-	fmt.Println("CHEGOU AQUIII")
-	// Se houver erros, retornar todos eles
+
 	if len(validationErrors) > 0 {
+		totalErrors := len(validationErrors)
+		displayErrors := validationErrors
+		if totalErrors > 50 {
+			displayErrors = validationErrors[0:50]
+		}
+
 		return helpers.CreateResponse(map[string]any{
-			"total":  len(validationErrors),
-			"errors": validationErrors[0:50],
+			"total":  totalErrors,
+			"errors": displayErrors,
 		}, http.StatusBadRequest)
 	}
 
@@ -340,7 +418,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 }
 
 func (c *ImportTransactionController) convertImportedTransaction(txImport *TransactionImportItem, workspaceId, userID primitive.ObjectID) (*models.Transaction, error) {
-
 	parseDate := func(date string) (time.Time, error) {
 		location := time.UTC
 		return time.ParseInLocation("2006-01-02T15:04:05Z", date, location)
@@ -365,7 +442,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		confirmationDate = &parsedConfDate
 	}
 
-	// Use cache for member lookup
 	member, err := c.memberCache.getByEmail(txImport.AssignedTo, workspaceId, c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId)
 	if err != nil {
 		return nil, err
@@ -1499,4 +1575,13 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 	default:
 		return "Erro de validação no campo " + fieldTranslated + ": " + tag
 	}
+}
+
+func containsString(slice []string, item string) bool {
+	for _, i := range slice {
+		if i == item {
+			return true
+		}
+	}
+	return false
 }
