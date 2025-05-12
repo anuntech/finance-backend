@@ -226,6 +226,11 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 					}
 				}
 
+				// Skip ConfirmationDate validation errors
+				if strings.Contains(field, "ConfirmationDate") {
+					continue
+				}
+
 				errorMsg := c.translateValidationError(e)
 				validationErrors = append(validationErrors, map[string]any{
 					"line":  index + 2,
