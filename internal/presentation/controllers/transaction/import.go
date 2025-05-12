@@ -294,7 +294,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			if slices.Contains(missingMembers, tx.AssignedTo) {
 				validationErrors = append(validationErrors, map[string]any{
 					"line":  i + 2,
-					"error": "Membro não encontrado com email: " + tx.AssignedTo,
+					"error": "Usuário não encontrado: " + tx.AssignedTo + ". Verifique se este email está cadastrado em seu workspace.",
 				})
 			}
 		}
@@ -471,10 +471,10 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 	member, err := c.memberCache.getByEmail(txImport.AssignedTo, workspaceId, c.FindMemberByEmailRepository.FindByEmailAndWorkspaceId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro ao buscar membro com o email %s: %w", txImport.AssignedTo, err)
 	}
 	if member == nil {
-		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
+		return nil, fmt.Errorf("member not found with email: %s. Verifique se o usuário está cadastrado no sistema", txImport.AssignedTo)
 	}
 
 	if strings.TrimSpace(txImport.Account) == "" {
@@ -1370,8 +1370,7 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 				t, err = time.Parse("02/01/06", transactions[i].DueDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de vencimento inválido para transação %d: %v", i+1, err))
-
+					dateErrors = append(dateErrors, fmt.Sprintf("A data de vencimento na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
 					continue
 				}
 			}
@@ -1396,8 +1395,7 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 				t, err = time.Parse("02/01/06", transactions[i].RegistrationDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de registro inválido para transação %d: %v", i+1, err))
-
+					dateErrors = append(dateErrors, fmt.Sprintf("A data de registro na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
 					continue
 				}
 			}
@@ -1422,8 +1420,7 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 
 				t, err = time.Parse("02/01/06", *transactions[i].ConfirmationDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de confirmação inválido para transação %d: %v", i+1, err))
-
+					dateErrors = append(dateErrors, fmt.Sprintf("A data de confirmação na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
 					continue
 				}
 			}
@@ -1443,25 +1440,25 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 func (c *ImportTransactionController) translateErrorMessage(errorMsg string) string {
 
 	errorTranslations := map[string]string{
-		"member not found with email":                  "membro não encontrado com o email",
-		"bank not found":                               "banco não encontrado",
-		"error creating account":                       "erro ao criar conta",
-		"nome da conta não pode estar vazio":           "nome da conta não pode estar vazio",
-		"banco 'Outro' não encontrado no sistema":      "banco 'Outro' não encontrado no sistema",
-		"erro ao criar conta":                          "erro ao criar conta",
-		"erro ao buscar conta":                         "erro ao buscar conta",
-		"erro ao buscar banco":                         "erro ao buscar banco",
-		"error creating category":                      "erro ao criar categoria",
-		"error updating category with new subcategory": "erro ao atualizar categoria com nova subcategoria",
-		"custom field not found":                       "campo personalizado não encontrado",
-		"custom field type mismatch":                   "tipo de campo personalizado incompatível",
-		"invalid custom field ID":                      "ID de campo personalizado inválido",
-		"category is not a tag":                        "categoria não é uma tag",
-		"error creating tag":                           "erro ao criar tag",
-		"error updating tag with new subtag":           "erro ao atualizar tag com nova subtag",
-		"panic recovered":                              "erro inesperado",
-		"invalid user ID format":                       "formato de ID de usuário inválido",
-		"invalid workspace ID format":                  "formato de ID de espaço de trabalho inválido",
+		"member not found with email":                  "Usuário não encontrado. Verifique se o email está cadastrado no sistema",
+		"bank not found":                               "Banco não encontrado no sistema",
+		"error creating account":                       "Erro ao criar conta. Por favor, tente novamente",
+		"nome da conta não pode estar vazio":           "O nome da conta é obrigatório",
+		"banco 'Outro' não encontrado no sistema":      "Banco padrão 'Outro' não encontrado no sistema",
+		"erro ao criar conta":                          "Erro ao criar conta. Por favor, tente novamente",
+		"erro ao buscar conta":                         "Erro ao buscar conta. Verifique se a conta existe no sistema",
+		"erro ao buscar banco":                         "Erro ao buscar banco. Verifique se o banco existe no sistema",
+		"error creating category":                      "Erro ao criar categoria. Por favor, tente novamente",
+		"error updating category with new subcategory": "Erro ao adicionar subcategoria. Por favor, tente novamente",
+		"custom field not found":                       "Campo personalizado não encontrado no sistema",
+		"custom field type mismatch":                   "O tipo do campo personalizado não é compatível com o tipo da transação",
+		"invalid custom field ID":                      "ID do campo personalizado inválido",
+		"category is not a tag":                        "A categoria selecionada não é uma tag",
+		"error creating tag":                           "Erro ao criar tag. Por favor, tente novamente",
+		"error updating tag with new subtag":           "Erro ao adicionar subtag. Por favor, tente novamente",
+		"panic recovered":                              "Ocorreu um erro inesperado. Por favor, tente novamente",
+		"invalid user ID format":                       "Formato de ID de usuário inválido",
+		"invalid workspace ID format":                  "Formato de ID de espaço de trabalho inválido",
 	}
 
 	for engMsg, ptMsg := range errorTranslations {
@@ -1469,6 +1466,19 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 
 			return strings.Replace(errorMsg, engMsg, ptMsg, 1)
 		}
+	}
+
+	// Handle specific parsing errors with clearer messages
+	if strings.Contains(errorMsg, "formato de data de confirmação inválido") {
+		return "Data de confirmação inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
+	}
+
+	if strings.Contains(errorMsg, "formato de data de vencimento inválido") {
+		return "Data de vencimento inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
+	}
+
+	if strings.Contains(errorMsg, "formato de data de registro inválido") {
+		return "Data de registro inválida. Use o formato DD/MM/AAAA (exemplo: 01/10/2023)"
 	}
 
 	return errorMsg
@@ -1487,20 +1497,22 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 	}
 
 	fieldTranslations := map[string]string{
-		"Name":        "Nome",
-		"Description": "Descrição",
-		"Invoice":     "Fatura",
-		"Type":        "Tipo",
-		"Supplier":    "Fornecedor",
-		"AssignedTo":  "Responsável",
-		"Balance":     "Balanço",
-		"Value":       "Valor",
-		"Discount":    "Desconto",
-		"Interest":    "Juros",
-		"DueDate":     "Data de vencimento",
-		"Account":     "Conta",
-		"Category":    "Categoria",
-		"SubCategory": "Subcategoria",
+		"Name":             "Nome",
+		"Description":      "Descrição",
+		"Invoice":          "Fatura",
+		"Type":             "Tipo",
+		"Supplier":         "Fornecedor",
+		"AssignedTo":       "Responsável",
+		"Balance":          "Balanço",
+		"Value":            "Valor",
+		"Discount":         "Desconto",
+		"Interest":         "Juros",
+		"DueDate":          "Data de vencimento",
+		"Account":          "Conta",
+		"Category":         "Categoria",
+		"SubCategory":      "Subcategoria",
+		"ConfirmationDate": "Data de confirmação",
+		"RegistrationDate": "Data de registro",
 	}
 
 	fieldTranslated := fieldName
@@ -1520,7 +1532,17 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 	case "oneof":
 		return fieldTranslated + " deve ser um dos seguintes valores: " + param
 	case "datetime":
-		return fieldTranslated + " deve estar no formato de data válido"
+		return fieldTranslated + " deve estar no formato de data válido (DD/MM/AAAA)"
+	case "excluded_if":
+		if fieldName == "ConfirmationDate" {
+			return "Data de confirmação só deve ser informada para transações confirmadas"
+		}
+		return fieldTranslated + " não deve ser informado nas condições atuais"
+	case "required_if":
+		if fieldName == "ConfirmationDate" {
+			return "Data de confirmação é obrigatória para transações confirmadas"
+		}
+		return fieldTranslated + " é obrigatório nas condições atuais"
 	default:
 		return "Erro de validação no campo " + fieldTranslated + ": " + tag
 	}
