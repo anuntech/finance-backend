@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"slices"
+
 	"github.com/anuntech/finance-backend/internal/domain/models"
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	infraHelpers "github.com/anuntech/finance-backend/internal/infra/db/mongodb/helpers"
@@ -66,7 +68,6 @@ type ImportTransactionController struct {
 	CreateCategoryRepository CreateCategoryRepository
 	FindBankByNameRepository usecase.FindBankByNameRepository
 
-	// Caches
 	categoryCache    categoryCache
 	accountCache     accountCache
 	memberCache      memberCache
@@ -162,29 +163,64 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		}, http.StatusBadRequest)
 	}
 
+	validationErrors := []map[string]any{}
+
 	transactions, err = c.ParseAllDatesAndTypes(transactions)
 	if err != nil {
-		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-			Error: "error parsing all dates: " + err.Error(),
-		}, http.StatusBadRequest)
+		if !strings.Contains(err.Error(), "erros na análise de datas:") {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "error parsing all dates: " + err.Error(),
+			}, http.StatusBadRequest)
+		}
+
+		errorMsg := err.Error()
+
+		if idx := strings.Index(errorMsg, "erros na análise de datas: "); idx >= 0 {
+			errorMsg = errorMsg[idx+len("erros na análise de datas: "):]
+		}
+
+		dateErrors := strings.Split(errorMsg, "; ")
+
+		for _, dateError := range dateErrors {
+
+			re := regexp.MustCompile(`transação (\d+):`)
+			matches := re.FindStringSubmatch(dateError)
+			if len(matches) >= 2 {
+				idx, err := strconv.Atoi(matches[1])
+				if err == nil {
+					validationErrors = append(validationErrors, map[string]any{
+						"line":  idx + 1,
+						"error": dateError,
+					})
+				} else {
+
+					validationErrors = append(validationErrors, map[string]any{
+						"line":  0,
+						"error": dateError,
+					})
+				}
+			} else {
+
+				validationErrors = append(validationErrors, map[string]any{
+					"line":  0,
+					"error": dateError,
+				})
+			}
+		}
 	}
 
 	body := &ImportTransactionBody{
 		Transactions: transactions,
 	}
 
-	validationErrors := []map[string]any{}
-
 	if err := c.Validate.Struct(body); err != nil {
-		// Converter os erros de validação para o mesmo formato de array
 
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			for _, e := range errs {
-				// Encontrar o índice da transação com erro
-				field := e.Namespace() // Usar Namespace() em vez de Field() para obter o caminho completo
+
+				field := e.Namespace()
 				index := 0
 
-				// Extrair índice da transação com regex para maior precisão
 				re := regexp.MustCompile(`Transactions\[(\d+)\]`)
 				matches := re.FindStringSubmatch(field)
 				if len(matches) >= 2 {
@@ -193,15 +229,14 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 					}
 				}
 
-				// Traduzir a mensagem de erro
 				errorMsg := c.translateValidationError(e)
 				validationErrors = append(validationErrors, map[string]any{
-					"line":  index + 2, // Linha começa em 1 (após o cabeçalho)
+					"line":  index + 2,
 					"error": errorMsg,
 				})
 			}
 		} else {
-			// Caso não seja um erro de validação padrão
+
 			validationErrors = append(validationErrors, map[string]any{
 				"line":  0,
 				"error": "Erro de validação: " + err.Error(),
@@ -216,10 +251,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"line":  0,
 			"error": "ID de usuário inválido",
 		})
-		return helpers.CreateResponse(map[string]any{
-			"total":  len(validationErrors),
-			"errors": validationErrors,
-		}, http.StatusBadRequest)
 	}
 
 	workspaceIdStr := r.Header.Get("workspaceId")
@@ -241,10 +272,6 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"line":  0,
 			"error": "Máximo de " + strconv.Itoa(LIMIT) + " transações por importação",
 		})
-		return helpers.CreateResponse(map[string]any{
-			"total":  len(validationErrors),
-			"errors": validationErrors,
-		}, http.StatusBadRequest)
 	}
 
 	memberEmails := map[string]bool{}
@@ -264,9 +291,9 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 
 	if len(missingMembers) > 0 && float64(len(missingMembers))/float64(len(memberEmails)) > 0.5 {
 		for i, tx := range body.Transactions {
-			if containsString(missingMembers, tx.AssignedTo) {
+			if slices.Contains(missingMembers, tx.AssignedTo) {
 				validationErrors = append(validationErrors, map[string]any{
-					"line":  i + 2, // Linha começa em 1 (após o cabeçalho)
+					"line":  i + 2,
 					"error": "Membro não encontrado com email: " + tx.AssignedTo,
 				})
 			}
@@ -450,29 +477,25 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 		return nil, errors.New("member not found with email: " + txImport.AssignedTo)
 	}
 
-	// Verificar se o campo Account está vazio
 	if strings.TrimSpace(txImport.Account) == "" {
 		return nil, errors.New("nome da conta não pode estar vazio")
 	}
 
-	// Try to find account with cache, create if not found
 	account, err := c.accountCache.getOrCreate(txImport.Account, workspaceId, c.FindAccountByNameRepository.FindByNameAndWorkspaceId, c.CreateAccountRepository.Create)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao buscar conta '%s': %w", txImport.Account, err)
 	}
 
 	if account == nil {
-		// Aqui precisamos de um lock adicional para evitar criações duplicadas
-		// Uma vez que voltamos do getOrCreate com nil
+
 		c.accountCache.mu.Lock()
 
-		// Verificar novamente o cache agora que temos o lock exclusivo
 		key := cacheKey{name: strings.ToLower(txImport.Account), workspaceId: workspaceId}
 		if existingAccount, ok := c.accountCache.items[key]; ok {
 			c.accountCache.mu.Unlock()
-			account = existingAccount // Usar a conta encontrada, mas continuar o processamento normalmente
+			account = existingAccount
 		} else {
-			// Use bank cache
+
 			bank, err := c.bankCache.getByName("Outro", c.FindBankByNameRepository.FindByName)
 			if err != nil {
 				c.accountCache.mu.Unlock()
@@ -484,7 +507,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				return nil, errors.New("banco 'Outro' não encontrado no sistema")
 			}
 
-			// Create a new account
 			newAccount := &models.Account{
 				Id:          primitive.NewObjectID(),
 				Name:        txImport.Account,
@@ -501,7 +523,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				return nil, fmt.Errorf("erro ao criar conta '%s': %w", txImport.Account, err)
 			}
 
-			// Add to cache
 			c.accountCache.items[key] = account
 			c.accountCache.mu.Unlock()
 		}
@@ -511,23 +532,22 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	var subCategoryId *primitive.ObjectID
 
 	if txImport.Category != nil && *txImport.Category != "" {
-		// Use category cache
+
 		category, err := c.categoryCache.getOrCreate(*txImport.Category, txImport.Type, workspaceId, c.FindCategoryByNameAndTypeRepository.Find, c.CreateCategoryRepository.Create)
 		if err != nil {
 			return nil, err
 		}
 
 		if category == nil {
-			// Aqui precisamos de um lock adicional para evitar criações duplicadas
+
 			c.categoryCache.mu.Lock()
 
-			// Verificar novamente o cache agora que temos o lock exclusivo
 			key := cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}
 			if category, ok := c.categoryCache.items[key]; ok {
 				categoryId = &category.Id
 				c.categoryCache.mu.Unlock()
 			} else {
-				// Create a new category
+
 				newCategory := &models.Category{
 					Id:            primitive.NewObjectID(),
 					Name:          *txImport.Category,
@@ -539,7 +559,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					Icon:          "BookCopy",
 				}
 
-				// If subcategory is specified, add it to the new category
 				if txImport.SubCategory != nil && *txImport.SubCategory != "" {
 					subCatId := primitive.NewObjectID()
 					newCategory.SubCategories = append(newCategory.SubCategories, models.SubCategoryCategory{
@@ -556,7 +575,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					return nil, fmt.Errorf("error creating category: %w", err)
 				}
 
-				// Add to cache
 				c.categoryCache.items[key] = category
 				c.categoryCache.mu.Unlock()
 
@@ -576,7 +594,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				}
 
 				if !found {
-					// Add the subcategory to the existing category
+
 					updatedCategory := *category
 					subCatId := primitive.NewObjectID()
 					updatedCategory.SubCategories = append(updatedCategory.SubCategories, models.SubCategoryCategory{
@@ -585,13 +603,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 						Icon: "BookCopy",
 					})
 
-					// Update the category with the new subcategory
 					updatedCat, err := c.CreateCategoryRepository.Create(&updatedCategory)
 					if err != nil {
 						return nil, fmt.Errorf("error updating category with new subcategory: %w", err)
 					}
 
-					// Update cache
 					c.categoryCache.mu.Lock()
 					c.categoryCache.items[cacheKey{name: strings.ToLower(*txImport.Category), typ: txImport.Type, workspaceId: workspaceId}] = updatedCat
 					c.categoryCache.mu.Unlock()
@@ -604,7 +620,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 
 	customFields := make([]models.TransactionCustomField, 0)
 	for _, cf := range txImport.CustomFields {
-		// Use custom field cache
+
 		customField, err := c.customFieldCache.getByName(cf.CustomField, workspaceId, c.FindCustomFieldByNameRepository.FindByNameAndWorkspaceId)
 		if err != nil {
 			return nil, err
@@ -635,14 +651,13 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			continue
 		}
 
-		// Use tag cache (categories of type TAG)
 		category, err := c.categoryCache.getOrCreate(tag.Tag, "TAG", workspaceId, c.FindCategoryByNameAndTypeRepository.Find, c.CreateCategoryRepository.Create)
 		if err != nil {
 			return nil, err
 		}
 
 		if category == nil {
-			// Create a new tag category
+
 			newTag := &models.Category{
 				Id:            primitive.NewObjectID(),
 				Name:          tag.Tag,
@@ -654,7 +669,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				UpdatedAt:     time.Now(),
 			}
 
-			// If subtag is specified, add it to the new tag
 			if tag.SubTag != "" {
 				subTagId := primitive.NewObjectID()
 				newTag.SubCategories = append(newTag.SubCategories, models.SubCategoryCategory{
@@ -668,7 +682,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					return nil, fmt.Errorf("error creating tag: %w", err)
 				}
 
-				// Add to cache
 				c.categoryCache.mu.Lock()
 				c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = category
 				c.categoryCache.mu.Unlock()
@@ -683,7 +696,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 					return nil, fmt.Errorf("error creating tag: %w", err)
 				}
 
-				// Add to cache
 				c.categoryCache.mu.Lock()
 				c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = category
 				c.categoryCache.mu.Unlock()
@@ -719,7 +731,7 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 			if found {
 				continue
 			}
-			// Add the subtag to the existing tag
+
 			updatedTag := *category
 			subTagId := primitive.NewObjectID()
 			updatedTag.SubCategories = append(updatedTag.SubCategories, models.SubCategoryCategory{
@@ -727,13 +739,11 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 				Name: tag.SubTag,
 			})
 
-			// Update the tag with the new subtag
 			updatedTagPtr, err := c.CreateCategoryRepository.Create(&updatedTag)
 			if err != nil {
 				return nil, fmt.Errorf("error updating tag with new subtag: %w", err)
 			}
 
-			// Update cache
 			c.categoryCache.mu.Lock()
 			c.categoryCache.items[cacheKey{name: strings.ToLower(tag.Tag), typ: "TAG", workspaceId: workspaceId}] = updatedTagPtr
 			c.categoryCache.mu.Unlock()
@@ -791,7 +801,6 @@ func (c *ImportTransactionController) convertImportedTransaction(txImport *Trans
 	return transaction, nil
 }
 
-// Cache structures
 type cacheKey struct {
 	name        string
 	typ         string
@@ -823,11 +832,9 @@ type bankCache struct {
 	items map[string]*models.Bank
 }
 
-// Cache methods
 func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.ObjectID, findFn func(string, string, primitive.ObjectID) (*models.Category, error), createFn func(*models.Category) (*models.Category, error)) (*models.Category, error) {
 	key := cacheKey{name: strings.ToLower(name), typ: typ, workspaceId: workspaceId}
 
-	// Adquirir o lock de leitura para verificar o cache
 	c.mu.RLock()
 	category, ok := c.items[key]
 	c.mu.RUnlock()
@@ -836,36 +843,29 @@ func (c *categoryCache) getOrCreate(name, typ string, workspaceId primitive.Obje
 		return category, nil
 	}
 
-	// Se não estiver no cache, adquire o lock de escrita para o processo completo
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verificar novamente o cache agora que temos o lock exclusivo
-	// (outra goroutine pode ter inserido o item enquanto esperávamos o lock)
 	if category, ok := c.items[key]; ok {
 		return category, nil
 	}
 
-	// Not in cache, find in database
 	category, err := findFn(name, typ, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 
-	// If found, update cache and return
 	if category != nil {
 		c.items[key] = category
 		return category, nil
 	}
 
-	// Not found, needs to be created
 	return nil, nil
 }
 
 func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Account, error), createFn func(*models.Account) (*models.Account, error)) (*models.Account, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	account, ok := c.items[key]
 	c.mu.RUnlock()
@@ -874,35 +874,29 @@ func (c *accountCache) getOrCreate(name string, workspaceId primitive.ObjectID, 
 		return account, nil
 	}
 
-	// Se não estiver no cache, adquire o lock de escrita para o processo completo
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verificar novamente o cache agora que temos o lock exclusivo
 	if account, ok := c.items[key]; ok {
 		return account, nil
 	}
 
-	// Not in cache, find in database
 	account, err := findFn(name, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 
-	// If found, update cache and return
 	if account != nil {
 		c.items[key] = account
 		return account, nil
 	}
 
-	// Not found, needs to be created
 	return nil, nil
 }
 
 func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.Member, error)) (*models.Member, error) {
 	key := cacheKey{name: strings.ToLower(email), workspaceId: workspaceId}
 
-	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	member, ok := c.items[key]
 	c.mu.RUnlock()
@@ -911,22 +905,18 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 		return member, nil
 	}
 
-	// Se não estiver no cache, adquire o lock de escrita para o processo completo
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verificar novamente o cache agora que temos o lock exclusivo
 	if member, ok := c.items[key]; ok {
 		return member, nil
 	}
 
-	// Not in cache, find in database
 	member, err := findFn(email, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 
-	// If found, update cache and return
 	if member != nil {
 		c.items[key] = member
 	}
@@ -937,7 +927,6 @@ func (c *memberCache) getByEmail(email string, workspaceId primitive.ObjectID, f
 func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID, findFn func(string, primitive.ObjectID) (*models.CustomField, error)) (*models.CustomField, error) {
 	key := cacheKey{name: strings.ToLower(name), workspaceId: workspaceId}
 
-	// Verificar o cache com lock de leitura
 	c.mu.RLock()
 	customField, ok := c.items[key]
 	c.mu.RUnlock()
@@ -946,22 +935,18 @@ func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID
 		return customField, nil
 	}
 
-	// Se não estiver no cache, adquire o lock de escrita para o processo completo
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verificar novamente o cache agora que temos o lock exclusivo
 	if customField, ok := c.items[key]; ok {
 		return customField, nil
 	}
 
-	// Not in cache, find in database
 	customField, err := findFn(name, workspaceId)
 	if err != nil {
 		return nil, err
 	}
 
-	// If found, update cache and return
 	if customField != nil {
 		c.items[key] = customField
 	}
@@ -970,7 +955,7 @@ func (c *customFieldCache) getByName(name string, workspaceId primitive.ObjectID
 }
 
 func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, error)) (*models.Bank, error) {
-	// Verificar o cache com lock de leitura
+
 	c.mu.RLock()
 	bank, ok := c.items[strings.ToLower(name)]
 	c.mu.RUnlock()
@@ -979,22 +964,18 @@ func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, er
 		return bank, nil
 	}
 
-	// Se não estiver no cache, adquire o lock de escrita para o processo completo
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Verificar novamente o cache agora que temos o lock exclusivo
 	if bank, ok := c.items[strings.ToLower(name)]; ok {
 		return bank, nil
 	}
 
-	// Not in cache, find in database
 	bank, err := findFn(name)
 	if err != nil {
 		return nil, err
 	}
 
-	// If found, update cache and return
 	if bank != nil {
 		c.items[strings.ToLower(name)] = bank
 	}
@@ -1003,20 +984,17 @@ func (c *bankCache) getByName(name string, findFn func(string) (*models.Bank, er
 }
 
 type ColumnDef struct {
-	Key           string `json:"key"`           // novo nome
-	KeyToMap      string `json:"keyToMap"`      // chave original
-	IsCustomField bool   `json:"isCustomField"` // se é custom field
+	Key           string `json:"key"`
+	KeyToMap      string `json:"keyToMap"`
+	IsCustomField bool   `json:"isCustomField"`
 }
 
-// parseMultipartAndMap lê o formulário, decodifica Columns, faz parse do arquivo
-// CSV ou XLSX e devolve o slice de TransactionImportItem já mapeado.
 func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]TransactionImportItem, error) {
-	// ~32 MB de memória antes de cair em arquivo temporário
+
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		return nil, fmt.Errorf("invalid multipart form: %w", err)
 	}
 
-	// --- Columns ----------------------------------------------------------
 	columnsJSON := r.FormValue("columns")
 	if columnsJSON == "" {
 		return nil, fmt.Errorf("campo 'columns' vazio ou ausente no form-data")
@@ -1031,7 +1009,6 @@ func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]T
 		return nil, fmt.Errorf("nenhuma coluna definida no mapeamento")
 	}
 
-	// --- File ---
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		return nil, fmt.Errorf("missing 'file' field in form-data: %w", err)
@@ -1052,13 +1029,11 @@ func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]T
 		return nil, err
 	}
 
-	// --- Apply mapping ----------------------------------------------------
 	mappedRows := ApplyMapping(rawRows, columns)
 
-	// --- Convert to TransactionImportItem ---------------------------------
 	txs := make([]TransactionImportItem, 0, len(mappedRows))
 	for _, row := range mappedRows {
-		// os valores vêm como string; convertemos via json → struct
+
 		b, _ := json.Marshal(row)
 		var tx TransactionImportItem
 		if err := json.Unmarshal(b, &tx); err != nil {
@@ -1069,22 +1044,17 @@ func (c *ImportTransactionController) ParseMultipartAndMap(r *http.Request) ([]T
 	return txs, nil
 }
 
-// -----------------------------------------------------
-// Helpers
-// -----------------------------------------------------
-
 func ParseCSV(r io.Reader) ([]map[string]any, error) {
 	cr := csv.NewReader(r)
 	cr.TrimLeadingSpace = true
-	cr.LazyQuotes = true // Enable LazyQuotes to handle improperly quoted fields
+	cr.LazyQuotes = true
 	headers, err := cr.Read()
 	if err != nil {
 		return nil, fmt.Errorf("csv header: %w", err)
 	}
 
-	// Clean headers by removing quotes
 	for i, h := range headers {
-		// Remove all quote characters, not just at the boundaries
+
 		headers[i] = strings.ReplaceAll(h, "\"", "")
 	}
 
@@ -1098,7 +1068,6 @@ func ParseCSV(r io.Reader) ([]map[string]any, error) {
 			return nil, fmt.Errorf("csv row: %w", err)
 		}
 
-		// Pula linhas vazias
 		if isEmptyRow(rec) {
 			continue
 		}
@@ -1113,7 +1082,7 @@ func ParseCSV(r io.Reader) ([]map[string]any, error) {
 }
 
 func ParseXLSX(r multipart.File) ([]map[string]any, error) {
-	// excelize precisa de io.ReadSeeker, então copiamos para buffer
+
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, r); err != nil {
 		return nil, fmt.Errorf("copy xlsx: %w", err)
@@ -1129,7 +1098,7 @@ func ParseXLSX(r multipart.File) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	// header
+
 	if !rowsIter.Next() {
 		return nil, fmt.Errorf("xlsx empty sheet")
 	}
@@ -1138,7 +1107,6 @@ func ParseXLSX(r multipart.File) ([]map[string]any, error) {
 	for rowsIter.Next() {
 		cols, _ := rowsIter.Columns()
 
-		// Pula linhas vazias
 		if isEmptyRow(cols) {
 			continue
 		}
@@ -1156,29 +1124,26 @@ func ParseXLSX(r multipart.File) ([]map[string]any, error) {
 	return rows, nil
 }
 
-// isEmptyRow verifica se todas as colunas de uma linha estão vazias
 func isEmptyRow(cols []string) bool {
 	if len(cols) == 0 {
 		return true
 	}
 
 	for _, col := range cols {
-		// Se pelo menos uma coluna tiver conteúdo, a linha não está vazia
+
 		if strings.TrimSpace(col) != "" {
 			return false
 		}
 	}
 
-	// Se todas as colunas estiverem vazias, a linha está vazia
 	return true
 }
 
 func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 	if len(defs) == 0 {
-		return rows // nada para mapear
+		return rows
 	}
 
-	// Pre-process header map for case-insensitive lookup
 	headerMap := make(map[string]string)
 	if len(rows) > 0 {
 		for k := range rows[0] {
@@ -1187,7 +1152,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 		}
 	}
 
-	// Define known numeric fields that need conversion
 	numericFields := map[string]bool{
 		"balance.value":              true,
 		"balance.discount":           true,
@@ -1199,11 +1163,11 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 	mapped := make([]map[string]any, len(rows))
 	for i, row := range rows {
 		mappedToAppend := make(map[string]any)
-		// copia tudo primeiro
+
 		for k, v := range row {
 			mappedToAppend[k] = v
 		}
-		// aplica mapping
+
 		for _, col := range defs {
 			normalizedKeyToMap := normalize(col.KeyToMap)
 
@@ -1212,7 +1176,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			}
 
 			if col.IsCustomField {
-				// customFields é []any de objetos {id, value}
+
 				id := col.Key
 				value := row[col.KeyToMap]
 
@@ -1245,7 +1209,7 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 							"subTag": splitSubTagAndTag[1],
 						})
 					} else {
-						// error here
+
 						continue
 					}
 				}
@@ -1254,17 +1218,14 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				continue
 			}
 
-			// Check if key is a nested path (using dot notation)
 			if strings.Contains(col.Key, ".") {
 				parts := strings.SplitN(col.Key, ".", 2)
 				parentKey := parts[0]
 				childKey := parts[1]
 
-				// Find the source value
 				var foundValue any
 				var found bool
 
-				// Tenta encontrar a chave original usando o mapa normalizado
 				if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
 					if val, ok := row[originalKey]; ok {
 						foundValue = val
@@ -1272,7 +1233,6 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					}
 				}
 
-				// Busca caso-insensitiva como fallback
 				if !found {
 					for k, v := range row {
 						normalizedK := normalize(k)
@@ -1285,15 +1245,14 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				}
 
 				if found {
-					// Convert string to float for numeric fields
+
 					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
-						cleanVal := strings.ReplaceAll(strVal, ",", ".") // Convert decimal comma to dot
+						cleanVal := strings.ReplaceAll(strVal, ",", ".")
 
 						if cleanVal == "" {
 							cleanVal = "0"
 						}
 
-						// Parse string to float64
 						floatVal, err := strconv.ParseFloat(cleanVal, 64)
 						if err != nil {
 							continue
@@ -1302,22 +1261,18 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 						foundValue = floatVal
 					}
 
-					// Ensure parent object exists
 					parentObj, ok := mappedToAppend[parentKey].(map[string]any)
 					if !ok {
-						// Create parent object if it doesn't exist
+
 						parentObj = make(map[string]any)
 						mappedToAppend[parentKey] = parentObj
 					}
 
-					// Set the value in the nested object
 					parentObj[childKey] = foundValue
 				}
 				continue
 			}
 
-			// Process regular non-nested fields (existing code)
-			// Tenta encontrar a chave original usando o mapa normalizado
 			if originalKey, ok := headerMap[normalizedKeyToMap]; ok {
 				if val, ok := row[originalKey]; ok {
 					mappedToAppend[col.Key] = val
@@ -1328,13 +1283,12 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 				}
 			}
 
-			// Busca caso-insensitiva como fallback
 			found := false
 			var foundKey string
 			var foundValue any
 
 			for k, v := range row {
-				// Antes era apenas case insensitive, agora removemos todos os caracteres não alfanuméricos
+
 				normalizedK := normalize(k)
 
 				if normalizedK == normalizedKeyToMap {
@@ -1357,18 +1311,15 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 	return mapped
 }
 
-// Função auxiliar para normalizar strings para comparação
 func normalize(s string) string {
-	// Converte para minúsculas
+
 	s = strings.ToLower(s)
 
-	// Remove espaços extras
 	s = strings.TrimSpace(s)
 
-	// Remove caracteres invisíveis e não imprimíveis (como BOM, zero-width spaces, etc)
 	var result []rune
 	for _, r := range s {
-		if r > 32 && r < 127 { // Mantém apenas ASCII imprimível
+		if r > 32 && r < 127 {
 			result = append(result, r)
 		}
 	}
@@ -1377,99 +1328,9 @@ func normalize(s string) string {
 }
 
 func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []TransactionImportItem) ([]TransactionImportItem, error) {
+	var dateErrors []string
+
 	for i := range transactions {
-		transactions[i].DueDate = strings.ReplaceAll(transactions[i].DueDate, "-", "/")
-		transactions[i].RegistrationDate = strings.ReplaceAll(transactions[i].RegistrationDate, "-", "/")
-		if transactions[i].ConfirmationDate != nil {
-			*transactions[i].ConfirmationDate = strings.ReplaceAll(*transactions[i].ConfirmationDate, "-", "/")
-		}
-
-		// Parse dueDate
-		if transactions[i].DueDate != "" {
-			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
-			parts := strings.Split(transactions[i].DueDate, "/")
-			if len(parts) == 3 {
-				// Adicionar zero à esquerda se necessário
-				for j := 0; j < 2; j++ { // Apenas para dia e mês
-					if len(parts[j]) == 1 {
-						parts[j] = "0" + parts[j]
-					}
-				}
-				transactions[i].DueDate = strings.Join(parts, "/")
-			}
-
-			// Tenta primeiro com o formato de 4 dígitos para o ano
-			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
-			if err != nil {
-				// Se falhar, tenta com o formato de 2 dígitos para o ano
-				t, err = time.Parse("02/01/06", transactions[i].DueDate)
-				if err != nil {
-					return nil, fmt.Errorf("invalid dueDate format for transaction %d: %w", i+1, err)
-				}
-			}
-			transactions[i].DueDate = t.UTC().Format("2006-01-02T15:04:05Z")
-		}
-
-		// Parse registrationDate
-		if transactions[i].RegistrationDate != "" {
-			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
-			parts := strings.Split(transactions[i].RegistrationDate, "/")
-			if len(parts) == 3 {
-				// Adicionar zero à esquerda se necessário
-				for j := 0; j < 2; j++ { // Apenas para dia e mês
-					if len(parts[j]) == 1 {
-						parts[j] = "0" + parts[j]
-					}
-				}
-				transactions[i].RegistrationDate = strings.Join(parts, "/")
-			}
-
-			// Tenta primeiro com o formato de 4 dígitos para o ano
-			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
-			if err != nil {
-				// Se falhar, tenta com o formato de 2 dígitos para o ano
-				t, err = time.Parse("02/01/06", transactions[i].RegistrationDate)
-				if err != nil {
-					return nil, fmt.Errorf("invalid registrationDate format for transaction %d: %w", i+1, err)
-				}
-			}
-			transactions[i].RegistrationDate = t.UTC().Format("2006-01-02T15:04:05Z")
-		}
-
-		// Parse confirmationDate if present
-		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
-			// Normalizar formato da data com dígitos únicos para o formato com dois dígitos
-			parts := strings.Split(*transactions[i].ConfirmationDate, "/")
-			if len(parts) == 3 {
-				// Adicionar zero à esquerda se necessário
-				for j := 0; j < 2; j++ { // Apenas para dia e mês
-					if len(parts[j]) == 1 {
-						parts[j] = "0" + parts[j]
-					}
-				}
-				*transactions[i].ConfirmationDate = strings.Join(parts, "/")
-			}
-
-			// Tenta primeiro com o formato de 4 dígitos para o ano
-			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
-			if err != nil {
-				// Se falhar, tenta com o formato de 2 dígitos para o ano
-				t, err = time.Parse("02/01/06", *transactions[i].ConfirmationDate)
-				if err != nil {
-					return nil, fmt.Errorf("invalid confirmationDate format for transaction %d: %w", i+1, err)
-				}
-			}
-			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
-			transactions[i].ConfirmationDate = &formattedDate
-			transactions[i].IsConfirmed = true
-		}
-
-		// Verifica se ConfirmationDate é nil antes de acessar
-		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate == "" {
-			transactions[i].ConfirmationDate = nil
-			transactions[i].IsConfirmed = false
-		}
-
 		transactions[i].Frequency = "DO_NOT_REPEAT"
 
 		if strings.ToLower(transactions[i].Type) == "receita" || strings.ToLower(transactions[i].Type) == "recurring" {
@@ -1479,13 +1340,108 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 		if strings.ToLower(transactions[i].Type) == "despesa" || strings.ToLower(transactions[i].Type) == "expense" {
 			transactions[i].Type = "EXPENSE"
 		}
+
+		if *transactions[i].ConfirmationDate == "" {
+			transactions[i].ConfirmationDate = nil
+			transactions[i].IsConfirmed = false
+		}
+
+		transactions[i].DueDate = strings.ReplaceAll(transactions[i].DueDate, "-", "/")
+		transactions[i].RegistrationDate = strings.ReplaceAll(transactions[i].RegistrationDate, "-", "/")
+		if transactions[i].ConfirmationDate != nil {
+			*transactions[i].ConfirmationDate = strings.ReplaceAll(*transactions[i].ConfirmationDate, "-", "/")
+		}
+
+		if transactions[i].DueDate != "" {
+
+			parts := strings.Split(transactions[i].DueDate, "/")
+			if len(parts) == 3 {
+
+				for j := 0; j < 2; j++ {
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].DueDate = strings.Join(parts, "/")
+			}
+
+			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
+			if err != nil {
+
+				t, err = time.Parse("02/01/06", transactions[i].DueDate)
+				if err != nil {
+					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de vencimento inválido para transação %d: %v", i+1, err))
+
+					continue
+				}
+			}
+			transactions[i].DueDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		if transactions[i].RegistrationDate != "" {
+
+			parts := strings.Split(transactions[i].RegistrationDate, "/")
+			if len(parts) == 3 {
+
+				for j := 0; j < 2; j++ {
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				transactions[i].RegistrationDate = strings.Join(parts, "/")
+			}
+
+			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
+			if err != nil {
+
+				t, err = time.Parse("02/01/06", transactions[i].RegistrationDate)
+				if err != nil {
+					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de registro inválido para transação %d: %v", i+1, err))
+
+					continue
+				}
+			}
+			transactions[i].RegistrationDate = t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+
+		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
+
+			parts := strings.Split(*transactions[i].ConfirmationDate, "/")
+			if len(parts) == 3 {
+
+				for j := 0; j < 2; j++ {
+					if len(parts[j]) == 1 {
+						parts[j] = "0" + parts[j]
+					}
+				}
+				*transactions[i].ConfirmationDate = strings.Join(parts, "/")
+			}
+
+			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
+			if err != nil {
+
+				t, err = time.Parse("02/01/06", *transactions[i].ConfirmationDate)
+				if err != nil {
+					dateErrors = append(dateErrors, fmt.Sprintf("formato de data de confirmação inválido para transação %d: %v", i+1, err))
+
+					continue
+				}
+			}
+			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
+			transactions[i].ConfirmationDate = &formattedDate
+			transactions[i].IsConfirmed = true
+		}
 	}
+
+	if len(dateErrors) > 0 {
+		return transactions, fmt.Errorf("erros na análise de datas: %s", strings.Join(dateErrors, "; "))
+	}
+
 	return transactions, nil
 }
 
-// translateErrorMessage traduz mensagens de erro para português
 func (c *ImportTransactionController) translateErrorMessage(errorMsg string) string {
-	// Mapeamento de mensagens de erro em inglês para português
+
 	errorTranslations := map[string]string{
 		"member not found with email":                  "membro não encontrado com o email",
 		"bank not found":                               "banco não encontrado",
@@ -1508,25 +1464,21 @@ func (c *ImportTransactionController) translateErrorMessage(errorMsg string) str
 		"invalid workspace ID format":                  "formato de ID de espaço de trabalho inválido",
 	}
 
-	// Procura por fragmentos de mensagens de erro conhecidas e substitui
 	for engMsg, ptMsg := range errorTranslations {
 		if strings.Contains(errorMsg, engMsg) {
-			// Substitui a parte em inglês pelo equivalente em português
+
 			return strings.Replace(errorMsg, engMsg, ptMsg, 1)
 		}
 	}
 
-	// Se não encontrar uma tradução específica, retorna a mensagem original
 	return errorMsg
 }
 
-// translateValidationError traduz erros de validação para português
 func (c *ImportTransactionController) translateValidationError(err validator.FieldError) string {
 	fieldName := err.Field()
 	tag := err.Tag()
 	param := err.Param()
 
-	// Remover prefixo "Transactions[n]." se existir
 	if strings.Contains(fieldName, "Transactions") && strings.Contains(fieldName, ".") {
 		parts := strings.Split(fieldName, ".")
 		if len(parts) > 1 {
@@ -1534,7 +1486,6 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 		}
 	}
 
-	// Mapeamento de nomes de campos para português
 	fieldTranslations := map[string]string{
 		"Name":        "Nome",
 		"Description": "Descrição",
@@ -1552,13 +1503,11 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 		"SubCategory": "Subcategoria",
 	}
 
-	// Tradução do nome do campo
 	fieldTranslated := fieldName
 	if translated, ok := fieldTranslations[fieldName]; ok {
 		fieldTranslated = translated
 	}
 
-	// Mapeamento de mensagens de erro de validação
 	switch tag {
 	case "required":
 		return fieldTranslated + " é obrigatório"
@@ -1575,13 +1524,4 @@ func (c *ImportTransactionController) translateValidationError(err validator.Fie
 	default:
 		return "Erro de validação no campo " + fieldTranslated + ": " + tag
 	}
-}
-
-func containsString(slice []string, item string) bool {
-	for _, i := range slice {
-		if i == item {
-			return true
-		}
-	}
-	return false
 }
