@@ -1196,7 +1196,17 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 			}
 
 			if col.Key == "tags" {
-				tags := row[col.KeyToMap].(string)
+				tagValue, exists := row[col.KeyToMap]
+				if !exists || tagValue == nil {
+					continue // Skip if tags value doesn't exist or is nil
+				}
+
+				tags, ok := tagValue.(string)
+				if !ok {
+					// If not a string, skip this tag
+					continue
+				}
+
 				tagsSlice, ok := mappedToAppend["tags"].([]map[string]any)
 				if !ok {
 					tagsSlice = []map[string]any{}
@@ -1204,14 +1214,16 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 
 				tagSplited := strings.Split(tags, ",")
 				for _, tag := range tagSplited {
+					if strings.TrimSpace(tag) == "" {
+						continue
+					}
 					splitSubTagAndTag := strings.Split(tag, "-")
 					if len(splitSubTagAndTag) == 2 {
 						tagsSlice = append(tagsSlice, map[string]any{
-							"tag":    splitSubTagAndTag[0],
-							"subTag": splitSubTagAndTag[1],
+							"tag":    strings.TrimSpace(splitSubTagAndTag[0]),
+							"subTag": strings.TrimSpace(splitSubTagAndTag[1]),
 						})
 					} else {
-
 						continue
 					}
 				}
