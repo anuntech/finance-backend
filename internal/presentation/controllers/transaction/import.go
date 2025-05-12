@@ -1367,10 +1367,9 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 		}
 
 		if transactions[i].DueDate != "" {
-
+			fmt.Println("dueDate", transactions[i].DueDate)
 			parts := strings.Split(transactions[i].DueDate, "/")
 			if len(parts) == 3 {
-
 				for j := 0; j < 2; j++ {
 					if len(parts[j]) == 1 {
 						parts[j] = "0" + parts[j]
@@ -1379,23 +1378,29 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 				transactions[i].DueDate = strings.Join(parts, "/")
 			}
 
+			// Tenta formatos DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA e MM/DD/AA
 			t, err := time.Parse("02/01/2006", transactions[i].DueDate)
 			if err != nil {
-
 				t, err = time.Parse("02/01/06", transactions[i].DueDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("A data de vencimento na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
-					continue
+					// Tenta formato MM/DD/AAAA
+					t, err = time.Parse("01/02/2006", transactions[i].DueDate)
+					if err != nil {
+						// Tenta formato MM/DD/AA
+						t, err = time.Parse("01/02/06", transactions[i].DueDate)
+						if err != nil {
+							dateErrors = append(dateErrors, fmt.Sprintf("A data de vencimento "+transactions[i].DueDate+" na linha %d não está em um formato válido. Formatos aceitos: DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA ou MM/DD/AA", i+2))
+							continue
+						}
+					}
 				}
 			}
 			transactions[i].DueDate = t.UTC().Format("2006-01-02T15:04:05Z")
 		}
 
 		if transactions[i].RegistrationDate != "" {
-
 			parts := strings.Split(transactions[i].RegistrationDate, "/")
 			if len(parts) == 3 {
-
 				for j := 0; j < 2; j++ {
 					if len(parts[j]) == 1 {
 						parts[j] = "0" + parts[j]
@@ -1404,23 +1409,29 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 				transactions[i].RegistrationDate = strings.Join(parts, "/")
 			}
 
+			// Tenta formatos DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA e MM/DD/AA
 			t, err := time.Parse("02/01/2006", transactions[i].RegistrationDate)
 			if err != nil {
-
 				t, err = time.Parse("02/01/06", transactions[i].RegistrationDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("A data de registro na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
-					continue
+					// Tenta formato MM/DD/AAAA
+					t, err = time.Parse("01/02/2006", transactions[i].RegistrationDate)
+					if err != nil {
+						// Tenta formato MM/DD/AA
+						t, err = time.Parse("01/02/06", transactions[i].RegistrationDate)
+						if err != nil {
+							dateErrors = append(dateErrors, fmt.Sprintf("A data de registro na linha %d não está em um formato válido. Formatos aceitos: DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA ou MM/DD/AA", i+2))
+							continue
+						}
+					}
 				}
 			}
 			transactions[i].RegistrationDate = t.UTC().Format("2006-01-02T15:04:05Z")
 		}
 
 		if transactions[i].ConfirmationDate != nil && *transactions[i].ConfirmationDate != "" {
-
 			parts := strings.Split(*transactions[i].ConfirmationDate, "/")
 			if len(parts) == 3 {
-
 				for j := 0; j < 2; j++ {
 					if len(parts[j]) == 1 {
 						parts[j] = "0" + parts[j]
@@ -1429,13 +1440,21 @@ func (c *ImportTransactionController) ParseAllDatesAndTypes(transactions []Trans
 				*transactions[i].ConfirmationDate = strings.Join(parts, "/")
 			}
 
+			// Tenta formatos DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA e MM/DD/AA
 			t, err := time.Parse("02/01/2006", *transactions[i].ConfirmationDate)
 			if err != nil {
-
 				t, err = time.Parse("02/01/06", *transactions[i].ConfirmationDate)
 				if err != nil {
-					dateErrors = append(dateErrors, fmt.Sprintf("A data de confirmação na linha %d não está no formato correto. Use DD/MM/AAAA (ex: 01/10/2023)", i+2))
-					continue
+					// Tenta formato MM/DD/AAAA
+					t, err = time.Parse("01/02/2006", *transactions[i].ConfirmationDate)
+					if err != nil {
+						// Tenta formato MM/DD/AA
+						t, err = time.Parse("01/02/06", *transactions[i].ConfirmationDate)
+						if err != nil {
+							dateErrors = append(dateErrors, fmt.Sprintf("A data de confirmação na linha %d não está em um formato válido. Formatos aceitos: DD/MM/AAAA, DD/MM/AA, MM/DD/AAAA ou MM/DD/AA", i+2))
+							continue
+						}
+					}
 				}
 			}
 			formattedDate := t.UTC().Format("2006-01-02T15:04:05Z")
