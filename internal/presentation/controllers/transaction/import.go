@@ -1305,6 +1305,13 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
 						cleanVal := strings.ReplaceAll(strVal, ",", ".")
 
+						// Remove all periods except the last one (handle thousand separators)
+						lastDotIndex := strings.LastIndex(cleanVal, ".")
+						if lastDotIndex > -1 {
+							// Replace all periods before the last one with empty string
+							cleanVal = strings.ReplaceAll(cleanVal[:lastDotIndex], ".", "") + cleanVal[lastDotIndex:]
+						}
+
 						cleanVal = strings.TrimSpace(cleanVal)
 
 						if cleanVal == "" {
@@ -1313,12 +1320,11 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 
 						floatVal, err := strconv.ParseFloat(cleanVal, 64)
 						if err != nil {
-							fmt.Println(err)
+							fmt.Println("Error parsing value:", strVal, "cleaned to:", cleanVal, "error:", err)
 							continue
 						}
 
 						foundValue = floatVal
-						fmt.Println(foundValue)
 					}
 
 					parentObj, ok := mappedToAppend[parentKey].(map[string]any)
