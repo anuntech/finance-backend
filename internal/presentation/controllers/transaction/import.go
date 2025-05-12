@@ -1263,16 +1263,20 @@ func ApplyMapping(rows []map[string]any, defs []ColumnDef) []map[string]any {
 					if strVal, isStr := foundValue.(string); isStr && numericFields[col.Key] {
 						cleanVal := strings.ReplaceAll(strVal, ",", ".")
 
+						cleanVal = strings.TrimSpace(cleanVal)
+
 						if cleanVal == "" {
 							cleanVal = "0"
 						}
 
 						floatVal, err := strconv.ParseFloat(cleanVal, 64)
 						if err != nil {
+							fmt.Println(err)
 							continue
 						}
 
 						foundValue = floatVal
+						fmt.Println(foundValue)
 					}
 
 					parentObj, ok := mappedToAppend[parentKey].(map[string]any)
