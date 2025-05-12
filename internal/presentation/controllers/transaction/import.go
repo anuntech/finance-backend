@@ -266,6 +266,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 		wg.Add(1)
 
 		go func(index int, tx TransactionImportItem) {
+			fmt.Println("CHEGOU AQUI222")
 			defer func() {
 				<-sem     // libera a vaga
 				wg.Done() // decrementa só quem realmente executou
@@ -307,7 +308,7 @@ func (c *ImportTransactionController) Handle(r presentationProtocols.HttpRequest
 			"error": errorMessage,
 		})
 	}
-
+	fmt.Println("CHEGOU AQUIII")
 	// Se houver erros, retornar todos eles
 	if len(validationErrors) > 0 {
 		return helpers.CreateResponse(map[string]any{
