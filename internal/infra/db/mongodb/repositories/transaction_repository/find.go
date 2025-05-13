@@ -57,6 +57,10 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 		filter["account_id"] = bson.M{"$in": filters.AccountIds}
 	}
 
+	if filters.Limit > 0 {
+		filter["limit"] = filters.Offset + 100
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), helpers.Timeout)
 	defer cancel()
 
