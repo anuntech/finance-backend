@@ -14,3 +14,9 @@ services:
       - PORT=${PORT}
       - APPLICATION_ID=${APPLICATION_ID}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    networks:
+      - finance-network
+
+networks:
+  finance-network:
+    driver: bridge
