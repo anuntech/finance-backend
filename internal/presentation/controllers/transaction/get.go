@@ -67,6 +67,12 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		return errHttp
 	}
 
+	params := &GetTransactionParams{
+		DateType: r.UrlParams.Get("dateType"),
+		Sort:     r.UrlParams.Get("sort"),
+		Search:   r.UrlParams.Get("search"),
+	}
+
 	transactions, err := c.FindTransactionsByWorkspaceIdAndMonthRepository.Find(&usecase.FindTransactionsByWorkspaceIdInputRepository{
 		Month:       globalFilters.Month,
 		Year:        globalFilters.Year,
@@ -76,6 +82,7 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 		WorkspaceId: workspaceId,
 		Limit:       globalFilters.Limit,
 		Offset:      globalFilters.Offset,
+		IsSearching: r.UrlParams.Get("search") != "",
 	})
 
 	if err != nil {
@@ -87,12 +94,6 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	// Ensure transactions is never nil
 	if transactions == nil {
 		transactions = []models.Transaction{}
-	}
-
-	params := &GetTransactionParams{
-		DateType: r.UrlParams.Get("dateType"),
-		Sort:     r.UrlParams.Get("sort"),
-		Search:   r.UrlParams.Get("search"),
 	}
 
 	slices.Reverse(transactions)

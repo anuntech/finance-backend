@@ -63,7 +63,7 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 	findOptions := options.Find()
 
-	if filters.Limit > 0 {
+	if filters.Limit > 0 && !filters.IsSearching {
 		findOptions.SetLimit(int64(filters.Offset + 300))
 	}
 

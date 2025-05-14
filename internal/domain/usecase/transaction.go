@@ -20,6 +20,7 @@ type FindTransactionsByWorkspaceIdInputRepository struct {
 	AccountIds  []primitive.ObjectID
 	Limit       int
 	Offset      int
+	IsSearching bool
 }
 
 type FindTransactionsByWorkspaceIdRepository interface {
