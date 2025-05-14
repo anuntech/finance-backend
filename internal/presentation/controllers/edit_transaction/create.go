@@ -152,7 +152,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 		if transactionParsed.CategoryId == nil {
 			return
 		}
-		if err := c.validateCategory(workspaceId, *transactionParsed.CategoryId, transactionParsed.Type, *transactionParsed.SubCategoryId); err != nil {
+		if err := c.validateCategory(workspaceId, *transactionParsed.CategoryId, transactionParsed.Type, transactionParsed.SubCategoryId); err != nil {
 			errChan <- err
 		}
 	}()
@@ -450,7 +450,7 @@ func (c *CreateEditTransactionController) validateAccount(workspaceId primitive.
 	return nil
 }
 
-func (c *CreateEditTransactionController) validateCategory(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, transactionType string, subCategoryId primitive.ObjectID) *presentationProtocols.HttpResponse {
+func (c *CreateEditTransactionController) validateCategory(workspaceId primitive.ObjectID, categoryId primitive.ObjectID, transactionType string, subCategoryId *primitive.ObjectID) *presentationProtocols.HttpResponse {
 	category, err := c.FindCategoryByIdRepository.Find(categoryId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
@@ -470,8 +470,12 @@ func (c *CreateEditTransactionController) validateCategory(workspaceId primitive
 		}, http.StatusBadRequest)
 	}
 
+	if subCategoryId == nil {
+		return nil
+	}
+
 	for _, subCategory := range category.SubCategories {
-		if subCategory.Id == subCategoryId {
+		if subCategory.Id == *subCategoryId {
 			return nil
 		}
 	}
