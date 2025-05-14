@@ -12,6 +12,7 @@ import (
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/workspace_repository/member_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
+	"github.com/anuntech/finance-backend/internal/utils"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -131,6 +132,8 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.Recovery(&wg)
+
 		if err := c.validateAssignedMember(workspaceId, assignedTo); err != nil {
 			errChan <- err
 			return
@@ -141,6 +144,8 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.Recovery(&wg)
+
 		if err := c.validateAccount(workspaceId, *transactionParsed.AccountId); err != nil {
 			errChan <- err
 		}
@@ -149,6 +154,8 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.Recovery(&wg)
+
 		if transactionParsed.CategoryId == nil {
 			return
 		}
@@ -160,6 +167,7 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.Recovery(&wg)
 
 		seenCustomFields := make(map[string]bool)
 
@@ -191,6 +199,8 @@ func (c *CreateEditTransactionController) Handle(r presentationProtocols.HttpReq
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer utils.Recovery(&wg)
+
 		seenTags := make(map[string]bool)
 
 		for _, tag := range transactionParsed.Tags {
