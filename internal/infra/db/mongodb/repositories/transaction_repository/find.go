@@ -66,7 +66,8 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 	if filters.Limit > 0 && !filters.IsSearching {
 		findOptions.SetLimit(int64(filters.Offset + 300))
 	}
-
+	// put reverse order
+	findOptions.SetSort(bson.D{{Key: "_id", Value: -1}})
 	cursor, err := collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		return nil, err

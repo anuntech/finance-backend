@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -95,8 +94,6 @@ func (c *GetTransactionController) Handle(r presentationProtocols.HttpRequest) *
 	if transactions == nil {
 		transactions = []models.Transaction{}
 	}
-
-	slices.Reverse(transactions)
 
 	type GetTransactionResponse struct {
 		Transactions []models.Transaction `json:"transactions"`
