@@ -219,6 +219,9 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 			}
 
 			if len(txInstances) > 0 {
+				// Ordena as instâncias por data de vencimento (mais antigas primeiro)
+				helpers.SortTransactionsByDueDate(txInstances)
+
 				filtered = append(filtered, txInstances...)
 				continue
 			}
@@ -323,6 +326,9 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 			// Se encontrou instâncias, adiciona-as aos resultados filtrados
 			if len(txInstances) > 0 {
+				// Ordena as instâncias por data de vencimento (ordem cronológica: das mais antigas para as mais recentes)
+				helpers.SortTransactionsByDueDate(txInstances)
+
 				filtered = append(filtered, txInstances...)
 				continue
 			}
