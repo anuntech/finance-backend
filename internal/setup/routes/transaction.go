@@ -58,4 +58,11 @@ func TransactionRoutes(server *http.ServeMux, db *mongo.Database, workspaceDb *m
 			workspaceDb,
 		),
 	))
+
+	server.Handle("PATCH /transaction/exclude-installments-until", middlewares.VerifyAccessToken(
+		middlewares.IsAllowed(
+			adapters.AdaptRoute(factory.MakeExcludeInstallmentsUntilController(db)),
+			workspaceDb,
+		),
+	))
 }

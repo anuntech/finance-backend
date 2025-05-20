@@ -151,3 +151,10 @@ func MakeUpdateManyTransactionController(db *mongo.Database) *transaction.Update
 		findCustomFieldByIdRepository,
 	)
 }
+
+func MakeExcludeInstallmentsUntilController(db *mongo.Database) *transaction.ExcludeInstallmentsUntilController {
+	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
+	updateTransactionRepository := transaction_repository.NewUpdateTransactionRepository(db)
+
+	return transaction.NewExcludeInstallmentsUntilController(updateTransactionRepository, findTransactionByIdRepository)
+}

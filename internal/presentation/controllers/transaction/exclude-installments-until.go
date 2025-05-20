@@ -32,9 +32,9 @@ func NewExcludeInstallmentsUntilController(
 }
 
 type ExcludeInstallmentsUntilBody struct {
-	TransactionId string `json:"transactionId" validate:"required,mongodb"`
-	Until         string `json:"until" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	Count         int    `json:"count" validate:"required,min=1"`
+	TransactionId string  `json:"transactionId" validate:"required,mongodb"`
+	Until         *string `json:"until" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	Count         *int    `json:"count" validate:"required,min=1"`
 }
 
 func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -74,14 +74,27 @@ func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.Http
 
 	switch transactionFound.Frequency {
 	case "REPEAT":
-		transactionFound.RepeatSettings.Count = body.Count
+		if body.Count != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "Não é possível definir o número de parcelas de uma transação parcelada",
+			}, http.StatusBadRequest)
+		}
+
+		transactionFound.RepeatSettings.Count = *body.Count
 	case "RECURRING":
-		until, err := time.Parse("2006-01-02T15:04:05Z", body.Until)
+		until, err := time.Parse("2006-01-02T15:04:05Z", *body.Until)
 		if err != nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "Formato da data inválido",
 			}, http.StatusBadRequest)
 		}
+
+		if body.Until != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "Não é possível definir o número de parcelas de uma transação recorrente",
+			}, http.StatusBadRequest)
+		}
+
 		transactionFound.ExcludeInstallmentsUntil = &until
 	default:
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
