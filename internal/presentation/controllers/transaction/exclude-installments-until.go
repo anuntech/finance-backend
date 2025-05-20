@@ -33,8 +33,8 @@ func NewExcludeInstallmentsUntilController(
 
 type ExcludeInstallmentsUntilBody struct {
 	TransactionId string  `json:"transactionId" validate:"required,mongodb"`
-	Until         *string `json:"until" validate:"required,datetime=2006-01-02T15:04:05Z"`
-	Count         *int    `json:"count" validate:"required,min=1"`
+	Until         *string `json:"until" validate:"omitempty,datetime=2006-01-02T15:04:05Z"`
+	Count         *int    `json:"count" validate:"omitempty,min=1"`
 }
 
 func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
