@@ -80,7 +80,7 @@ func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.Http
 
 	switch transactionFound.Frequency {
 	case "REPEAT":
-		if body.Count != nil {
+		if body.Count == nil {
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "Não é possível definir o número de parcelas de uma transação parcelada",
 			}, http.StatusBadRequest)
