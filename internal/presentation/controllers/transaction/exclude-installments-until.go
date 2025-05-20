@@ -68,6 +68,12 @@ func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.Http
 	transactionFound, err := c.FindTransactionByIdRepository.Find(transactionId, workspaceId)
 	if err != nil {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Erro ao buscar a transação",
+		}, http.StatusInternalServerError)
+	}
+
+	if transactionFound == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Transação não encontrada",
 		}, http.StatusNotFound)
 	}
