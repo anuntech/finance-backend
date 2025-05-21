@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
+	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
 	"github.com/anuntech/finance-backend/internal/presentation/helpers"
 	presentationProtocols "github.com/anuntech/finance-backend/internal/presentation/protocols"
 	"github.com/go-playground/validator/v10"
@@ -13,28 +14,31 @@ import (
 )
 
 type ExcludeInstallmentsUntilController struct {
-	UpdateTransactionRepository   usecase.UpdateTransactionRepository
-	Validate                      *validator.Validate
-	FindTransactionByIdRepository usecase.FindTransactionByIdRepository
+	UpdateTransactionRepository     usecase.UpdateTransactionRepository
+	Validate                        *validator.Validate
+	FindTransactionByIdRepository   usecase.FindTransactionByIdRepository
+	DeleteEditTransactionRepository edit_transaction_repository.DeleteEditTransactionRepository
 }
 
 func NewExcludeInstallmentsUntilController(
 	updateTransaction usecase.UpdateTransactionRepository,
 	findTransactionById usecase.FindTransactionByIdRepository,
+	deleteEditTransactionRepository edit_transaction_repository.DeleteEditTransactionRepository,
 ) *ExcludeInstallmentsUntilController {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	return &ExcludeInstallmentsUntilController{
-		UpdateTransactionRepository:   updateTransaction,
-		Validate:                      validate,
-		FindTransactionByIdRepository: findTransactionById,
+		UpdateTransactionRepository:     updateTransaction,
+		Validate:                        validate,
+		FindTransactionByIdRepository:   findTransactionById,
+		DeleteEditTransactionRepository: deleteEditTransactionRepository,
 	}
 }
 
 type ExcludeInstallmentsUntilBody struct {
 	TransactionId string  `json:"transactionId" validate:"required,mongodb"`
 	Until         *string `json:"until" validate:"omitempty,datetime=2006-01-02T15:04:05Z"`
-	Count         *int    `json:"count" validate:"omitempty,min=1"`
+	Count         *int    `json:"count" validate:"omitempty,min=2,max=367"`
 }
 
 func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -84,6 +88,13 @@ func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.Http
 			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 				Error: "Não é possível definir o número de parcelas de uma transação parcelada",
 			}, http.StatusBadRequest)
+		}
+
+		err := c.DeleteEditTransactionRepository.DeleteAllAfterCount(transactionId, *body.Count, workspaceId)
+		if err != nil {
+			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+				Error: "Erro ao excluir as transações de edição",
+			}, http.StatusInternalServerError)
 		}
 
 		transactionFound.RepeatSettings.Count = *body.Count

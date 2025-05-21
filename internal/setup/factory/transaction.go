@@ -155,6 +155,7 @@ func MakeUpdateManyTransactionController(db *mongo.Database) *transaction.Update
 func MakeExcludeInstallmentsUntilController(db *mongo.Database) *transaction.ExcludeInstallmentsUntilController {
 	findTransactionByIdRepository := transaction_repository.NewGetTransactionByIdRepository(db)
 	updateTransactionRepository := transaction_repository.NewUpdateTransactionRepository(db)
+	deleteEditTransactionRepository := edit_transaction_repository.NewDeleteEditTransactionRepository(db)
 
-	return transaction.NewExcludeInstallmentsUntilController(updateTransactionRepository, findTransactionByIdRepository)
+	return transaction.NewExcludeInstallmentsUntilController(updateTransactionRepository, findTransactionByIdRepository, *deleteEditTransactionRepository)
 }

@@ -61,3 +61,17 @@ func (r *DeleteEditTransactionRepository) Delete(editTransactionParams []struct 
 	_, err := collection.UpdateMany(ctx, filter, update)
 	return err
 }
+
+func (r *DeleteEditTransactionRepository) DeleteAllAfterCount(mainId primitive.ObjectID, mainCount int, workspaceId primitive.ObjectID) error {
+	collection := r.Db.Collection("edit_transaction")
+
+	filter := bson.M{
+		"main_id":      mainId,
+		"main_count":   bson.M{"$gt": mainCount},
+		"workspace_id": workspaceId,
+	}
+
+	_, err := collection.DeleteMany(context.Background(), filter)
+
+	return err
+}
