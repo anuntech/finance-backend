@@ -267,7 +267,15 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 			// Contador para manter o controle da exibição sequencial (1, 2, 3, ...)
 			installmentCounter := 1
 
+			// Verifique se existe um limite de recorrências definido
+			hasCountLimit := tx.RepeatSettings.Count > 0
+
 			for monthOffset := 0; monthOffset <= totalMonths; monthOffset++ {
+				// Verifica se atingimos o limite de recorrências
+				if hasCountLimit && installmentCounter > tx.RepeatSettings.Count {
+					break
+				}
+
 				// Calcula a data para esta instância
 				currentDate := time.Date(startYear, startMonth, 1, 0, 0, 0, 0, time.UTC)
 				currentDate = currentDate.AddDate(0, monthOffset, 0)
@@ -328,6 +336,12 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 					}
 
 					txInstances = append(txInstances, txCopy)
+				} else {
+					// Incrementa o contador mesmo para instâncias fora do intervalo de tempo
+					// para garantir contagem correta ao respeitar o limite
+					if hasCountLimit {
+						installmentCounter++
+					}
 				}
 			}
 
