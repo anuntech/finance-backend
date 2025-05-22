@@ -3,7 +3,6 @@ package transaction
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/anuntech/finance-backend/internal/domain/usecase"
 	"github.com/anuntech/finance-backend/internal/infra/db/mongodb/repositories/edit_transaction_repository"
@@ -36,9 +35,8 @@ func NewExcludeInstallmentsUntilController(
 }
 
 type ExcludeInstallmentsUntilBody struct {
-	TransactionId string  `json:"transactionId" validate:"required,mongodb"`
-	Until         *string `json:"until" validate:"omitempty,datetime=2006-01-02T15:04:05Z"`
-	Count         *int    `json:"count" validate:"omitempty,min=2,max=367"`
+	TransactionId string `json:"transactionId" validate:"required,mongodb"`
+	Count         *int   `json:"count" validate:"omitempty,min=2,max=367"`
 }
 
 func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.HttpRequest) *presentationProtocols.HttpResponse {
@@ -82,42 +80,26 @@ func (c *ExcludeInstallmentsUntilController) Handle(r presentationProtocols.Http
 		}, http.StatusNotFound)
 	}
 
-	switch transactionFound.Frequency {
-	case "REPEAT":
-		if body.Count == nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Não é possível definir o número de parcelas de uma transação parcelada",
-			}, http.StatusBadRequest)
-		}
-
-		err := c.DeleteEditTransactionRepository.DeleteAllAfterCount(transactionId, *body.Count, workspaceId)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Erro ao excluir as transações de edição",
-			}, http.StatusInternalServerError)
-		}
-
-		transactionFound.RepeatSettings.Count = *body.Count
-	case "RECURRING":
-		until, err := time.Parse("2006-01-02T15:04:05Z", *body.Until)
-		if err != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Formato da data inválido",
-			}, http.StatusBadRequest)
-		}
-
-		if body.Until != nil {
-			return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
-				Error: "Não é possível definir o número de parcelas de uma transação recorrente",
-			}, http.StatusBadRequest)
-		}
-
-		transactionFound.ExcludeInstallmentsUntil = &until
-	default:
+	if transactionFound.Frequency != "REPEAT" && transactionFound.Frequency != "RECURRING" {
 		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
 			Error: "Frequência inválida, não é possível excluir parcelas de uma transação não recorrente",
 		}, http.StatusBadRequest)
 	}
+
+	if body.Count == nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Não é possível definir o número de parcelas de uma transação parcelada",
+		}, http.StatusBadRequest)
+	}
+
+	err = c.DeleteEditTransactionRepository.DeleteAllAfterCount(transactionId, *body.Count, workspaceId)
+	if err != nil {
+		return helpers.CreateResponse(&presentationProtocols.ErrorResponse{
+			Error: "Erro ao excluir as transações de edição",
+		}, http.StatusInternalServerError)
+	}
+
+	transactionFound.RepeatSettings.Count = *body.Count
 
 	transaction, err := c.UpdateTransactionRepository.Update(transactionId, transactionFound)
 	if err != nil {
