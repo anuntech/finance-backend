@@ -41,10 +41,11 @@ func (r *TransactionRepository) Find(filters *usecase.FindTransactionsByWorkspac
 
 		startOfMonth = startDate
 		endOfMonth = endDate
-	} else {
-		// for default use a high end month
-		endOfMonth = time.Date(2050, 12, 31, 23, 59, 59, 0, time.Local)
 	}
+	//else {
+	// for default use a high end month
+	//endOfMonth = time.Date(2050, 12, 31, 23, 59, 59, 0, time.Local)
+	//}
 
 	filter := bson.M{
 		"workspace_id": filters.WorkspaceId,
@@ -132,6 +133,16 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 			if tx.RepeatSettings == nil {
 				continue
 			}
+
+			if startOfMonth.IsZero() || endOfMonth.IsZero() {
+				// Definir CurrentCount como 1 para esta instância
+				if tx.RepeatSettings != nil {
+					tx.RepeatSettings.CurrentCount = 1
+				}
+				filtered = append(filtered, tx)
+				continue
+			}
+
 			var txInstances []models.Transaction
 
 			// Calcular a parcela de base - esta será usada para iniciar o contador
@@ -244,6 +255,16 @@ func (r *TransactionRepository) applyRepeatAndRecurringLogicTransactions(transac
 
 			// Skip confirmed transactions without a confirmation date
 			if tx.IsConfirmed && tx.ConfirmationDate == nil {
+				continue
+			}
+
+			// Se não há filtro de data, retornar apenas a transação original
+			if startOfMonth.IsZero() || endOfMonth.IsZero() {
+				// Definir CurrentCount como 1 para esta instância
+				if tx.RepeatSettings != nil {
+					tx.RepeatSettings.CurrentCount = 1
+				}
+				filtered = append(filtered, tx)
 				continue
 			}
 
